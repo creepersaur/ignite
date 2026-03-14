@@ -43,7 +43,8 @@ impl Compiler {
                     .push(Inst::LOAD_CONST(self.constants.len() - 1));
             }
 
-            Node::ListNode(values) => self.compile_list(values),
+            Node::ListNode(values) => self.compile_list(values, false),
+            Node::TupleNode(values) => self.compile_list(values, true),
             Node::DictNode(values) => self.compile_dict(values),
 
             Node::RangeNode {
@@ -58,7 +59,11 @@ impl Compiler {
                 self.instructions.push(Inst::POP)
             }
 
-            Node::UnaryOp { op, right } => self.compile_unary_op(op, right),
+            Node::UnaryOp {
+                op,
+                right,
+                is_prefix,
+            } => self.compile_unary_op(op, right, *is_prefix),
             Node::BinOp { left, right, op } => self.compile_bin_op(left, right, op),
 
             Node::LetStatement {
@@ -70,6 +75,12 @@ impl Compiler {
             Node::SetVariable { target, value } => self.compile_set_variable(target, value),
 
             Node::MemberAccess { expr, member } => self.compile_member_access(expr, member),
+
+            Node::ShorthandAssignment {
+                token,
+                target,
+                value,
+            } => self.compile_shorthand_assignment(target, value, token),
 
             Node::FunctionCall { target, args } => self.compile_function_call(target, args),
 
@@ -133,11 +144,15 @@ impl Compiler {
         self.instructions.push(Inst::RANGE);
     }
 
-    pub fn compile_list(&mut self, values: &Vec<Node>) {
+    pub fn compile_list(&mut self, values: &Vec<Node>, is_tuple: bool) {
         for i in values.iter().rev() {
             self.compile_node(i);
         }
-        self.instructions.push(Inst::LIST(values.len()));
+        if is_tuple {
+            self.instructions.push(Inst::TUPLE(values.len()));
+        } else {
+            self.instructions.push(Inst::LIST(values.len()));
+        }
     }
 
     pub fn compile_dict(&mut self, values: &Vec<(Node, Node)>) {
@@ -148,16 +163,57 @@ impl Compiler {
         self.instructions.push(Inst::DICT(values.len()));
     }
 
-    pub fn compile_unary_op(&mut self, op: &TokenKind, right: &Box<Node>) {
-        self.compile_node(right);
+    pub fn compile_unary_op(&mut self, op: &TokenKind, target: &Box<Node>, is_prefix: bool) {
+        // increment/decrement
+        if matches!(op, TokenKind::INCREMENT | TokenKind::DECREMENT) {
+            let operator_inst = match op {
+                TokenKind::INCREMENT => Inst::ADD,
+                TokenKind::DECREMENT => Inst::SUB,
 
-        match op {
-            TokenKind::MINUS => self.instructions.push(Inst::NEG),
-            TokenKind::PLUS => self.instructions.push(Inst::POS),
-            TokenKind::BANG => self.instructions.push(Inst::NOT),
+                _ => unreachable!(),
+            };
+
+            if let Node::Variable(x) = &**target {
+                self.compile_node(&**target);
+                if !is_prefix {
+                    self.instructions.push(Inst::DUP);
+                }
+                self.instructions.push(Inst::PUSH(Value::Number(1.0)));
+                self.instructions.push(operator_inst);
+                if is_prefix {
+                    self.instructions.push(Inst::DUP);
+                }
+                self.instructions.push(Inst::SET_VAR(x.clone()));
+            } else if let Node::MemberAccess { expr, member } = &**target {
+                self.compile_node(&**expr);
+                if !is_prefix {
+                    self.instructions.push(Inst::DUP);
+                }
+                self.instructions.push(Inst::PUSH(Value::Number(1.0)));
+                self.instructions.push(operator_inst);
+                if !is_prefix {
+                    self.instructions.push(Inst::DUP);
+                }
+                self.compile_node(&**expr);
+                self.compile_node(&**member);
+                self.instructions.push(Inst::SET_PROP);
+            } else {
+                panic!("Cannot set equal a value to `{:?}`", **target);
+            }
+
+            return;
+        }
+
+        // minus/plus/bang
+        self.compile_node(target);
+
+        self.instructions.push(match op {
+            TokenKind::MINUS => Inst::NEG,
+            TokenKind::PLUS => Inst::POS,
+            TokenKind::BANG => Inst::NOT,
 
             _ => panic!("Tried compiling unknown unary op: {op:?}"),
-        }
+        });
     }
 
     pub fn compile_bin_op(&mut self, left: &Box<Node>, right: &Box<Node>, op: &TokenKind) {
@@ -168,6 +224,7 @@ impl Compiler {
             TokenKind::MINUS => Inst::SUB,
             TokenKind::STAR => Inst::MUL,
             TokenKind::SLASH => Inst::DIV,
+            TokenKind::MOD => Inst::MOD,
 
             TokenKind::GT => Inst::GT,
             TokenKind::LT => Inst::LT,
@@ -207,7 +264,7 @@ impl Compiler {
             }
         }
 
-        self.compile_node(values[0].as_ref().unwrap());
+        self.instructions.push(Inst::LOAD(names[0].clone()));
     }
 
     pub fn compile_block(&mut self, body: &Vec<Node>) {
@@ -273,7 +330,6 @@ impl Compiler {
             let jump_if_false = patch!(self.instructions);
 
             self.compile_node(&block);
-            self.instructions.push(Inst::POP_SCOPE);
 
             if_end_jumps.push(patch!(self.instructions));
 
@@ -295,6 +351,7 @@ impl Compiler {
         }
 
         self.instructions.push(Inst::DEFAULT_NIL);
+        self.instructions.push(Inst::POP_SCOPE);
 
         let if_end = self.instructions.len();
         for x in if_end_jumps {
@@ -308,6 +365,39 @@ impl Compiler {
             self.instructions.push(Inst::SET_VAR(x.clone()));
         } else if let Node::MemberAccess { expr, member } = &**target {
             self.compile_node(&**value);
+            self.compile_node(&**expr);
+            self.compile_node(&**member);
+            self.instructions.push(Inst::SET_PROP);
+        } else {
+            panic!("Cannot set equal a value to `{:?}`", **target);
+        }
+    }
+
+    pub fn compile_shorthand_assignment(
+        &mut self,
+        target: &Box<Node>,
+        value: &Box<Node>,
+        token: &TokenKind,
+    ) {
+        let operator_inst = match token {
+            TokenKind::ADD_SH => Inst::ADD,
+            TokenKind::SUB_SH => Inst::SUB,
+            TokenKind::MUL_SH => Inst::MUL,
+            TokenKind::DIV_SH => Inst::DIV,
+            TokenKind::MOD_SH => Inst::MOD,
+
+            _ => panic!("Unknown shorthand assignment token: {token:?}"),
+        };
+
+        if let Node::Variable(x) = &**target {
+            self.compile_node(&**target);
+            self.compile_node(&**value);
+            self.instructions.push(operator_inst);
+            self.instructions.push(Inst::SET_VAR(x.clone()));
+        } else if let Node::MemberAccess { expr, member } = &**target {
+            self.compile_node(&**value);
+            self.compile_node(&**expr);
+            self.instructions.push(operator_inst);
             self.compile_node(&**expr);
             self.compile_node(&**member);
             self.instructions.push(Inst::SET_PROP);

@@ -18,6 +18,7 @@ pub enum Node {
 
     // COLLECTIONS
     ListNode(Vec<Node>),
+    TupleNode(Vec<Node>),
     DictNode(Vec<(Node, Node)>),
 
 	// Range
@@ -37,6 +38,7 @@ pub enum Node {
     UnaryOp {
         op: TokenKind,
         right: Box<Node>,
+		is_prefix: bool,
     },
 
 	// MEMBER ACCESS
@@ -53,6 +55,11 @@ pub enum Node {
     },
 
 	SetVariable {
+		target: Box<Node>,
+		value: Box<Node>,
+	},
+	ShorthandAssignment {
+		token: TokenKind,
 		target: Box<Node>,
 		value: Box<Node>,
 	},

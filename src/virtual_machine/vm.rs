@@ -4,7 +4,7 @@ use crate::{
         builtin::*,
         chunk::Chunk,
         inst::Inst,
-        libs::{dict_lib::DictLib, lib::Library, list_lib::ListLib},
+        libs::{dict_lib::DictLib, lib::Library, list_lib::ListLib, tuple_lib::TupleLib},
         traits::member_accessible::IMemberAccessible,
         types::{dict::TDict, function::TFunction, list::TList},
         value::Value,
@@ -33,6 +33,7 @@ impl VM {
     pub fn new() -> Self {
         let mut libs: HashMap<_, Box<dyn Library>> = HashMap::new();
         libs.insert(rc!("list".to_string()), Box::new(ListLib));
+        libs.insert(rc!("tuple".to_string()), Box::new(TupleLib));
         libs.insert(rc!("dict".to_string()), Box::new(DictLib));
 
         Self {
@@ -90,6 +91,8 @@ impl VM {
     }
 
     pub fn print_instructions(&self) {
+        let mut depth = 0;
+
         for (i, v) in self.instructions.iter().enumerate() {
             if matches!(v, Inst::NOP) {
                 println!("{MAGENTA}{i:>2}\t{BLACK}NOP{RESET}");
@@ -103,6 +106,12 @@ impl VM {
             } else if let Inst::LIST(x) = v {
                 println!("{MAGENTA}{i:>2}\t{GREEN}LIST{RESET}({BLUE}{x}{RESET})");
                 continue;
+            } else if let Inst::DICT(x) = v {
+                println!("{MAGENTA}{i:>2}\t{GREEN}DICT{RESET}({BLUE}{x}{RESET})");
+                continue;
+            } else if let Inst::TUPLE(x) = v {
+                println!("{MAGENTA}{i:>2}\t{GREEN}TUPLE{RESET}({BLUE}{x}{RESET})");
+                continue;
             }
 
             let s = format!("{:?}", v);
@@ -113,21 +122,32 @@ impl VM {
             let rest = parts.next().map_or("", |r| r);
 
             if rest.is_empty() {
-                print!("{MAGENTA}{:>2}{RESET}\t{ORANGE}{}{RESET}", i, opcode);
+                print!(
+                    "{MAGENTA}{:>2}{RESET}\t{BLACK}{}{ORANGE}{}{RESET}",
+                    i,
+                    " • ".repeat(depth),
+                    opcode
+                );
             } else {
                 print!(
-                    "{MAGENTA}{:>2}{RESET}\t{ORANGE}{}{RESET}({BLUE}{}{RESET})",
+                    "{MAGENTA}{:>2}{RESET}\t{BLACK}{}{ORANGE}{}{RESET}({BLUE}{}{RESET})",
                     i,
+                    " • ".repeat(depth),
                     opcode,
                     &rest[0..rest.len() - 1]
                 );
             }
 
             if let Inst::LOAD_CONST(x) = v {
-                println!(
-                    "{BLACK}   {:>3?}{RESET}",
-                    self.constants[*x].to_string(true)
-                );
+                print!("{BLACK}   {:>3?}{RESET}", self.constants[*x]);
+            }
+            if let Inst::PUSH_SCOPE = v {
+                print!(" {{");
+                depth += 1;
+            }
+            if let Inst::POP_SCOPE = v {
+                println!(" }}");
+                depth -= 1;
             } else {
                 println!("")
             }
@@ -191,6 +211,11 @@ impl VM {
                     self.stack
                         .push(Value::List(TList::new(rc!(RefCell::new(values)))));
                 }
+                Inst::TUPLE(length) => {
+                    let values = (0..*length).map(|_| self.pop()).collect();
+                    self.stack
+                        .push(Value::Tuple(TList::new_tuple(rc!(RefCell::new(values)))));
+                }
                 Inst::DICT(length) => {
                     let values = (0..*length).map(|_| self.pop_two()).collect();
                     self.stack
@@ -249,11 +274,23 @@ impl VM {
                 }
                 Inst::DIV => {
                     if let (Value::Number(a), Value::Number(b)) = self.pop_two() {
-                        self.stack.push(Value::Number(a / b));
+                        if b == 0.0 {
+                            panic!("Cannot divide by Zero");
+                        } else {
+                            self.stack.push(Value::Number(a / b));
+                        }
                     } else {
                         panic!("DIV expects numbers");
                     }
                 }
+                Inst::MOD => {
+                    if let (Value::Number(a), Value::Number(b)) = self.pop_two() {
+                        self.stack.push(Value::Number(a % b));
+                    } else {
+                        panic!("MOD expects numbers");
+                    }
+                }
+
                 Inst::NEG => {
                     let num = self.pop().as_number();
                     self.stack.push(Value::Number(-num));
@@ -447,12 +484,15 @@ impl VM {
                 Inst::CALL_BUILTIN(name, arg_count) => match &***name {
                     "print" => builtin_print(self, *arg_count, false),
                     "println" => builtin_print(self, *arg_count, true),
+                    "typeof" => builtin_typeof(self),
                     _ => panic!("Unknown built-in: {name}"),
                 },
                 Inst::RETURN => {
                     if let Some(last) = self.call_stack.last() {
                         self.pos = *last;
                         self.call_stack.pop();
+                    } else {
+                        break;
                     }
                     if stop_at_return {
                         break;
@@ -469,6 +509,11 @@ impl VM {
                             self.stack.push(value);
                         }
 
+                        Value::Tuple(x) => {
+                            let value = x.get_member(self, &member);
+                            self.stack.push(value);
+                        }
+
                         Value::Dict(x) => {
                             let value = x.get_member(self, &member);
                             self.stack.push(value);
@@ -477,13 +522,17 @@ impl VM {
                         _ => panic!("Cannot get property on `{target:?}`"),
                     }
                 }
-				Inst::SET_PROP => {
-					let member = self.pop();
+                Inst::SET_PROP => {
+                    let member = self.pop();
                     let target = self.pop();
                     let value = self.pop();
 
                     match target {
                         Value::List(x) => {
+                            x.set_member(&member, value);
+                        }
+
+                        Value::Tuple(x) => {
                             x.set_member(&member, value);
                         }
 
@@ -512,8 +561,26 @@ impl VM {
                             self.pos = *jump_end;
                             continue;
                         }
-                    }
-                    if let Value::Range {
+                    } else if let Value::Tuple(list) = value {
+                        if *idx < list.values.borrow().len() {
+                            self.stack.push(list.values.borrow()[*idx].clone());
+                            *idx += 1;
+                        } else {
+                            self.iterators.pop();
+                            self.pos = *jump_end;
+                            continue;
+                        }
+                    } else if let Value::String(string) = value {
+                        if *idx < string.len() {
+                            self.stack
+                                .push(Value::String(rc!(string[*idx..*idx + 1].to_string())));
+                            *idx += 1;
+                        } else {
+                            self.iterators.pop();
+                            self.pos = *jump_end;
+                            continue;
+                        }
+                    } else if let Value::Range {
                         start,
                         end,
                         step,

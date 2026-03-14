@@ -4,7 +4,12 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::{
     rc,
-    virtual_machine::{libs::lib::Library, types::dict::TDict, value::Value, vm::VM},
+    virtual_machine::{
+        libs::lib::Library,
+        types::{dict::TDict, list::TList},
+        value::Value,
+        vm::VM,
+    },
 };
 
 pub struct DictLib;
@@ -17,6 +22,56 @@ impl DictLib {
             Value::Number(inner.values.borrow().len() as f32)
         } else {
             panic!("Can only use dict.len on Dicts");
+        }
+    }
+
+    fn items(vm: &mut VM) -> Value {
+        let dict = vm.pop();
+
+        if let Value::Dict(inner) = dict {
+            let new_values = inner.values.borrow();
+
+            return Value::List(TList::new(rc!(RefCell::new(
+                new_values
+                    .iter()
+                    .map(
+                        |(k, v)| Value::Tuple(TList::new_tuple(rc!(RefCell::new(vec![
+                            k.clone(),
+                            v.clone()
+                        ]))))
+                    )
+                    .collect::<Vec<_>>()
+            ))));
+        } else {
+            panic!("Can only use dict.items on Dicts")
+        }
+    }
+
+    fn keys(vm: &mut VM) -> Value {
+        let dict = vm.pop();
+
+        if let Value::Dict(inner) = dict {
+            let new_values = inner.values.borrow();
+
+            return Value::List(TList::new(rc!(RefCell::new(
+                new_values.keys().map(|x| x.clone()).collect::<Vec<_>>()
+            ))));
+        } else {
+            panic!("Can only use dict.keys on Dicts")
+        }
+    }
+
+    fn values(vm: &mut VM) -> Value {
+        let dict = vm.pop();
+
+        if let Value::Dict(inner) = dict {
+            let new_values = inner.values.borrow();
+
+            return Value::List(TList::new(rc!(RefCell::new(
+                new_values.values().map(|x| x.clone()).collect::<Vec<_>>()
+            ))));
+        } else {
+            panic!("Can only use dict.values on Dicts")
         }
     }
 
@@ -173,6 +228,9 @@ impl Library for DictLib {
     fn get_function(&self, name: Rc<String>) -> Box<dyn Fn(&mut VM) -> Value> {
         match name.as_str() {
             "len" => return Box::new(Self::len),
+            "items" => return Box::new(Self::items),
+            "keys" => return Box::new(Self::keys),
+            "values" => return Box::new(Self::values),
             "get" => return Box::new(Self::get),
             "insert" => return Box::new(Self::insert),
             "remove" => return Box::new(Self::remove),

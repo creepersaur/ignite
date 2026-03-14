@@ -66,10 +66,10 @@ pub enum TokenKind {
     SLASH,
     MOD,
     POW,
-    DOLLAR,
-    HASH,
-    AT,
-    BANG,
+    DOLLAR, // $
+    HASH, // #
+    AT, // @
+    BANG, // !
     EQUAL, // =
     EQ, // ==
     NEQ, // !=
@@ -81,15 +81,22 @@ pub enum TokenKind {
 	OR, // or, ||
 	AND, // and, &&
     COLON,
-    DOUBLECOLON,
-    SEMI,
-    QUESTION,
-    TILDA,
+    DOUBLECOLON, // ::
+    SEMI, // ;
+    QUESTION, // ?
+    TILDA, // ~
     BACKTICK,
     PIPE,
     DOT,
-    DOUBLEDOT,
+    DOUBLEDOT, // .. 
     COMMA,
-    ARROW,
-    FATARROW,
+    ARROW, // ->
+    FATARROW, // =>
+	INCREMENT, // ++
+	DECREMENT, // --
+	ADD_SH, // += shorthand
+	SUB_SH, // -= shorthand
+	MUL_SH, // *= shorthand
+	DIV_SH, // /= shorthand
+	MOD_SH, // %= shorthand
 }

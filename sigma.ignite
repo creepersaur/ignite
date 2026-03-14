@@ -1,6 +1,3 @@
-let hello = {
-	HELLO = 10,
-	WORLD = 20	
+for i in "hello" {
+	println(i)
 }
-
-println(hello.get("HELLO"))

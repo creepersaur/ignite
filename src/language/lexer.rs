@@ -7,7 +7,10 @@ use crate::language::token::{
 };
 
 const PUNCTUATION: &str = "!@#$%^&*()-+[]{}|:;,./<>?=\n";
-const DOUBLE: [&str; 10] = ["->", "||", "&&", "<=", ">=", "==", "!=", "=>", "::", ".."];
+const DOUBLE: [&str; 17] = [
+    "->", "||", "&&", "<=", ">=", "==", "!=", "=>", "::", "..", "++", "--", "+=", "-=", "*=", "/=",
+    "%=",
+];
 
 #[derive(Debug)]
 pub struct Lexer {
@@ -56,7 +59,7 @@ impl Lexer {
     pub fn get_tokens(&mut self) -> Vec<Token> {
         let mut tokens = vec![];
         let mut instr = None;
-		
+
         loop {
             if self.cur_char.is_none() {
                 break;
@@ -94,7 +97,7 @@ impl Lexer {
                             continue;
                         }
                     }
-					
+
                     if tokens.len() > 0
                         && DOUBLE
                             .contains(&format!("{}{c}", self.chars[self.pos as usize - 1]).as_str())
@@ -210,6 +213,13 @@ impl Lexer {
             "," => COMMA,
             "->" => ARROW,
             "=>" => FATARROW,
+			"++" => INCREMENT,
+			"--" => DECREMENT,
+			"+=" => ADD_SH,
+			"-=" => SUB_SH,
+			"*=" => MUL_SH,
+			"/=" => DIV_SH,
+			"%=" => MOD_SH,
 
             _ => Self::identify_other(text),
         };

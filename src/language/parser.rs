@@ -83,11 +83,27 @@ impl Parser {
             _ => {
                 let expr = self.parse_expression()?;
 
-                // SETTING VARIABLE
-                if let Ok(next) = self.current()
-                    && next.kind == TokenKind::EQUAL
-                {
-                    return self.parse_set_variable(expr);
+                // VARIABLE ASSIGNMENT
+                if let Ok(next) = self.current() {
+                    match next.kind {
+                        TokenKind::EQUAL => return self.parse_set_variable(expr),
+                        TokenKind::ADD_SH => {
+                            return self.parse_shorthand_assignment(expr, next.kind);
+                        }
+                        TokenKind::SUB_SH => {
+                            return self.parse_shorthand_assignment(expr, next.kind);
+                        }
+                        TokenKind::MUL_SH => {
+                            return self.parse_shorthand_assignment(expr, next.kind);
+                        }
+                        TokenKind::DIV_SH => {
+                            return self.parse_shorthand_assignment(expr, next.kind);
+                        }
+                        TokenKind::MOD_SH => {
+                            return self.parse_shorthand_assignment(expr, next.kind);
+                        }
+                        _ => {}
+                    }
                 }
 
                 Ok(Node::ExprStmt(Box::new(expr)))
@@ -107,6 +123,16 @@ impl Parser {
         self.advance()?;
 
         Ok(Node::SetVariable {
+            target: Box::new(expr),
+            value: Box::new(self.parse_expression()?),
+        })
+    }
+
+    fn parse_shorthand_assignment(&mut self, expr: Node, token: TokenKind) -> NodeResult {
+        self.advance()?;
+
+        Ok(Node::ShorthandAssignment {
+            token,
             target: Box::new(expr),
             value: Box::new(self.parse_expression()?),
         })
@@ -165,7 +191,11 @@ impl Parser {
         if let Ok(next) = self.current()
             && matches!(
                 next.kind,
-                TokenKind::PLUS | TokenKind::MINUS | TokenKind::BANG
+                TokenKind::PLUS
+                    | TokenKind::MINUS
+                    | TokenKind::BANG
+                    | TokenKind::INCREMENT
+                    | TokenKind::DECREMENT
             )
         {
             let op = self.advance()?.kind;
@@ -173,10 +203,25 @@ impl Parser {
             return Ok(Node::UnaryOp {
                 op,
                 right: Box::new(self.parse_exponent()?),
+                is_prefix: true,
             });
         }
 
-        Ok(self.parse_exponent()?)
+        let expr = self.parse_exponent()?;
+
+        if let Ok(next) = self.current()
+            && matches!(next.kind, TokenKind::INCREMENT | TokenKind::DECREMENT)
+        {
+            let op = self.advance()?.kind;
+
+            return Ok(Node::UnaryOp {
+                op,
+                right: Box::new(expr),
+                is_prefix: false,
+            });
+        }
+
+        Ok(expr)
     }
 
     fn parse_exponent(&mut self) -> NodeResult {
@@ -222,19 +267,7 @@ impl Parser {
             TokenKind::AT => self.parse_explicit_block(),
 
             // COLLECTIONS
-            TokenKind::LPAREN => {
-                self.advance()?;
-                self.skip_new_lines();
-
-                let expr = if self.current().is_ok() {
-                    self.parse_expression()
-                } else {
-                    return Err("Unexpected end of input inside parentheses".to_string());
-                };
-
-                // DON'T PARSE THE `RPAREN` BECAUSE WE ALREADY ADVANCE LATER
-                expr
-            }
+            TokenKind::LPAREN => self.parse_tuple(),
             TokenKind::LBRACK => self.parse_list(),
             TokenKind::LBRACE => self.parse_dict(),
 
@@ -266,6 +299,53 @@ impl Parser {
             } else {
                 break;
             }
+        }
+    }
+
+    fn parse_tuple(&mut self) -> NodeResult {
+        self.advance()?;
+        self.skip_new_lines();
+
+        let first = if self.current().is_ok() {
+            self.parse_expression()
+        } else {
+            return Err("Unexpected end of input inside parentheses".to_string());
+        };
+
+        if let Ok(x) = self.current()
+            && x.kind == TokenKind::COMMA
+        {
+            self.advance()?;
+
+            let mut values = vec![first?];
+
+            loop {
+                self.skip_new_lines();
+                if let Ok(x) = self.current()
+                    && x.kind == TokenKind::RPAREN
+                {
+                    break;
+                }
+
+                values.push(self.parse_expression()?);
+
+                self.skip_new_lines();
+
+                if let Ok(x) = self.current()
+                    && x.kind == TokenKind::COMMA
+                {
+                    self.advance()?;
+                } else {
+                    break;
+                }
+            }
+
+            self.expect_and_consume(TokenKind::RPAREN)?;
+
+            return Ok(Node::TupleNode(values));
+        } else {
+            self.expect_and_consume(TokenKind::RPAREN)?;
+            first
         }
     }
 
@@ -322,12 +402,24 @@ impl Parser {
             }
 
             let key_base = self.parse_expression()?;
-            let key = if let Ok(next) = self.current()
+            self.skip_new_lines();
+
+            let (key, value) = if let Ok(next) = self.current()
+                && (next.kind == TokenKind::COMMA || next.kind == TokenKind::RBRACE)
+            {
+                if let Node::Variable(ref x) = key_base {
+                    (Node::StringLiteral(x.to_string()), key_base)
+                } else {
+                    return Err(format!(
+                        "Can only use variables in dict field init shorthand."
+                    ));
+                }
+            } else if let Ok(next) = self.current()
                 && next.kind == TokenKind::EQUAL
             {
-				self.advance();
+                self.advance();
                 if let Node::Variable(x) = key_base {
-                    Node::StringLiteral(x.to_string())
+                    (Node::StringLiteral(x.to_string()), self.parse_expression()?)
                 } else {
                     return Err(format!(
                         "Expected identifier when parsing dict key. Have you tried using a colon (:)?"
@@ -335,10 +427,8 @@ impl Parser {
                 }
             } else {
                 self.expect_and_consume(TokenKind::COLON)?;
-                key_base
+                (key_base, self.parse_expression()?)
             };
-
-            let value = self.parse_expression()?;
 
             data.push((key, value));
 

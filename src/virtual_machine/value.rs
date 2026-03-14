@@ -19,6 +19,7 @@ pub enum Value {
 
     // Collections
     List(TList),
+    Tuple(TList),
     Dict(TDict),
 
     Range {
@@ -30,6 +31,21 @@ pub enum Value {
 }
 
 impl Value {
+    pub fn get_type(&self) -> String {
+        match self {
+            Value::NIL => "nil",
+            Value::Number(_) => "number",
+            Value::Bool(_) => "bool",
+            Value::String(_) => "string",
+            Value::Function(_) => "function",
+            Value::List(_) => "list",
+            Value::Tuple(_) => "tuple",
+            Value::Dict(_) => "dict",
+            Value::Range { .. } => "range",
+        }
+        .to_owned()
+    }
+
     pub fn to_string(&self, debug: bool) -> String {
         match self {
             Self::NIL => "nil".to_string(),
@@ -53,6 +69,23 @@ impl Value {
                     .map(|x| if let Value::List(v) = x {
                         if list.values.as_ptr() == v.values.as_ptr() {
                             String::from("[...]")
+                        } else {
+                            x.to_string(true)
+                        }
+                    } else {
+                        x.to_string(true)
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            Self::Tuple(list) => format!(
+                "({})",
+                list.values
+                    .borrow()
+                    .iter()
+                    .map(|x| if let Value::List(v) = x {
+                        if list.values.as_ptr() == v.values.as_ptr() {
+                            String::from("(...)")
                         } else {
                             x.to_string(true)
                         }
@@ -143,6 +176,9 @@ impl Hash for Value {
 
             // For Rc/RefCell types, you usually hash the pointer address
             Self::List(l) => {
+                std::ptr::hash(l.values.as_ptr(), state);
+            }
+            Self::Tuple(l) => {
                 std::ptr::hash(l.values.as_ptr(), state);
             }
             Self::Dict(d) => {

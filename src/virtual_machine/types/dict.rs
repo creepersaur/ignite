@@ -37,7 +37,10 @@ impl Debug for TDict {
 impl IMemberAccessible for TDict {
     fn get_member(&self, _vm: &mut VM, member: &Value) -> Value {
         if let Value::String(member) = member {
-            let functions = ["len", "get", "insert", "remove", "clear", "append", "concat", "count"];
+            let functions = [
+                "len", "items", "keys", "values", "get", "insert", "remove", "clear", "append",
+                "concat", "count",
+            ];
 
             if functions.contains(&member.as_str()) {
                 return lib_function!(self, "dict", member, 1, Value::Dict);

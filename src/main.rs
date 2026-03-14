@@ -13,10 +13,17 @@ mod misc;
 mod virtual_machine;
 
 fn main() -> Result<(), Box<dyn Error>> {
+    let args: Vec<_> = std::env::args().collect();
+
     let text = fs::read_to_string("sigma.ignite")?;
     let mut lex = Lexer::new(&text);
     let tokens = lex.get_tokens();
-    // println!("{:#?}", tokens);
+
+    if args.contains(&"tokens".to_string()) {
+        println!("Lexed Tokens:");
+        println!("---------------------------");
+        println!("{:#?}", tokens);
+    }
 
     /////////////////////
     // NODES
@@ -29,9 +36,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         nodes.push(parser.parse()?);
     }
 
-    // println!("Generated Nodes:");
-    // println!("---------------------------");
-    // println!("{nodes:#?}");
+    if args.contains(&"nodes".to_string()) {
+        println!("Generated Nodes:");
+        println!("---------------------------");
+        println!("{nodes:#?}");
+    }
 
     /////////////////////
     // COMPILER
@@ -46,9 +55,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     vm.constants = compiler.constants;
     vm.instructions = compiler.instructions;
 
-    // println!("\nCompiled instructions:");
-    // println!("---------------------------");
-    // vm.print_instructions();
+    if args.contains(&"inst".to_string()) {
+        println!("\nCompiled instructions:");
+        println!("---------------------------");
+        vm.print_instructions();
+    }
 
     println!("\nRunning:");
     println!("---------------------------");

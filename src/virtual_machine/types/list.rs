@@ -11,14 +11,33 @@ use crate::{
 };
 use bincode::{Decode, Encode};
 
+pub const LIST_FUNCTIONS: [&str; 16] = [
+    "len", "push", "insert", "remove", "map", "pop", "clear", "append", "concat", "copy", "count",
+    "sort", "reverse", "fill", "rep", "push_n",
+];
+
+pub const TUPLE_FUNCTIONS: [&str; 10] = [
+    "len", "insert", "map", "concat", "copy", "count", "sort", "reverse", "rep", "to_list",
+];
+
 #[derive(Encode, Decode, Clone, PartialEq, PartialOrd)]
 pub struct TList {
     pub values: Rc<RefCell<Vec<Value>>>,
+    pub is_tuple: bool,
 }
 
 impl TList {
     pub fn new(values: Rc<RefCell<Vec<Value>>>) -> Self {
-        Self { values }
+        Self {
+            values,
+            is_tuple: false,
+        }
+    }
+    pub fn new_tuple(values: Rc<RefCell<Vec<Value>>>) -> Self {
+        Self {
+            values,
+            is_tuple: true,
+        }
     }
 }
 
@@ -40,13 +59,17 @@ impl IMemberAccessible for TList {
         }
 
         if let Value::String(member) = member {
-            let functions = [
-                "len", "push", "insert", "remove", "map", "pop", "clear", "append", "concat",
-                "copy", "count", "sort", "reverse", "fill", "rep", "push_n",
-            ];
-
-            if functions.contains(&member.as_str()) {
-                return lib_function!(self, "list", member, 1, Value::List);
+            match self.is_tuple {
+                true => {
+                    if TUPLE_FUNCTIONS.contains(&member.as_str()) {
+                        return lib_function!(self, "tuple", member, 1, Value::Tuple);
+                    }
+                }
+                false => {
+                    if LIST_FUNCTIONS.contains(&member.as_str()) {
+                        return lib_function!(self, "list", member, 1, Value::List);
+                    }
+                }
             }
         }
 

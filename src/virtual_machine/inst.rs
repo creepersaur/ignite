@@ -18,6 +18,7 @@ pub enum Inst {
 
 	// Collections
     LIST(usize), // ✅
+    TUPLE(usize), // ✅
     DICT(usize), // ✅
 
     PATCH_ME(String), // ✅
@@ -26,6 +27,8 @@ pub enum Inst {
     SUB, // ✅
     MUL, // ✅
     DIV, // ✅
+    MOD, // ✅
+	
     NEG, // ✅
     POS, // ✅
 
@@ -58,7 +61,7 @@ pub enum Inst {
 
     // Get/Set property (member access)
     GET_PROP, // ✅
-    SET_PROP,      // ✅
+    SET_PROP, // ✅
 
     CALL,                            // ✅
     CALL_BUILTIN(Rc<String>, usize), // ✅
