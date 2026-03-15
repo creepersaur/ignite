@@ -1,4 +1,8 @@
-fn my_function() {}
+fn fibonacci(n) {
+	if n <= 1 => return n
+	return 100
+}
 
-my_function()
-my_function()
+println(fibonacci(10))
+println(fibonacci(1))
+println(fibonacci(0))

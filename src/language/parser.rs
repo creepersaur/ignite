@@ -74,9 +74,6 @@ impl Parser {
         self.skip_new_lines();
 
         match self.current()?.kind {
-            TokenKind::RETURN => self.parse_return(),
-            TokenKind::OUT => self.parse_out(),
-            TokenKind::CONTINUE => self.simple_parse_keyword(Node::ContinueStatement),
             TokenKind::CLASS => self.parse_class_def(),
             TokenKind::FN => self.parse_function_def(false),
 
@@ -277,8 +274,11 @@ impl Parser {
             TokenKind::LOOP => self.parse_loop(),
             TokenKind::WHILE => self.parse_while(),
             TokenKind::FOR => self.parse_for(),
-            TokenKind::IF => self.parse_if(),
+            TokenKind::RETURN => self.parse_return(),
+            TokenKind::OUT => self.parse_out(),
             TokenKind::BREAK => self.parse_break(),
+            TokenKind::CONTINUE => self.simple_parse_keyword(Node::ContinueStatement),
+			TokenKind::IF => self.parse_if(),
 
             other => Err(format!(
                 "Got unexpected token `{other:?}` while parsing primary."
