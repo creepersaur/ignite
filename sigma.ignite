@@ -1,8 +1,15 @@
-fn fibonacci(n) {
+fn fib(n) {
 	if n <= 1 => return n
-	return 100
+	else => return fib(n - 1) + fib(n - 2)
 }
 
-println(fibonacci(10))
-println(fibonacci(1))
-println(fibonacci(0))
+println("Running fibonacci:", 0)
+println(fib(0))
+println("Running fibonacci:", 1)
+println(fib(1))
+println("Running fibonacci:", 2)
+println(fib(2))
+println("Running fibonacci:", 3)
+println(fib(3))
+println("Running fibonacci:", 4)
+println(fib(4))

@@ -6,15 +6,16 @@ use crate::virtual_machine::value::Value;
 #[allow(unused, non_camel_case_types)]
 #[derive(Encode, Decode, Debug, Clone, PartialEq)]
 pub enum Inst {
-    EXIT,        // ✅
-    NOP,         // ✅
-    PRINT,       // ✅
-    DEFAULT,     // ✅
-    DEFAULT_NIL, // ✅
-    PUSH(Value), // ✅
-    DUP,         // ✅
-    RANGE,       // ✅
-    POP,         // ✅
+	COMMENT(String),// ✅
+    NOP,            // ✅
+    EXIT,           // ✅
+    PRINT,          // ✅
+    DEFAULT,        // ✅
+    DEFAULT_NIL,    // ✅
+    PUSH(Value),    // ✅
+    DUP,            // ✅
+    RANGE,          // ✅
+    POP,            // ✅
 
 	// Collections
     LIST(usize), // ✅

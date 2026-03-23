@@ -21,6 +21,7 @@ pub struct VM {
     pub instructions: Vec<Inst>,
     pub stack: Vec<Value>,
     pub call_stack: Vec<usize>,
+    pub scope_stack: Vec<usize>,
     pub constants: Vec<Value>,
     pub globals: HashMap<Rc<String>, (Value, bool)>,
     pub locals: Vec<HashMap<Rc<String>, (Value, bool)>>,
@@ -41,6 +42,7 @@ impl VM {
             instructions: vec![],
             stack: Vec::with_capacity(100),
             call_stack: Vec::with_capacity(100),
+            scope_stack: vec![],
             constants: Vec::with_capacity(100),
             globals: HashMap::new(),
             locals: vec![HashMap::new()],
@@ -86,31 +88,32 @@ impl VM {
             }
         } else {
             self.call_stack.push(self.pos);
+            self.scope_stack.push(self.locals.len());
             self.pos = f.entry;
+
+            println!(
+                "{:?}",
+                self.stack
+                    .iter()
+                    .map(|x| x.to_string(true))
+                    .collect::<Vec<_>>()
+            )
         }
     }
 
     pub fn print_instructions(&self) {
-        let mut depth = 0;
+        let mut depth: i32 = 0;
 
         for (i, v) in self.instructions.iter().enumerate() {
-            if matches!(v, Inst::NOP) {
-                println!("{MAGENTA}{i:>2}\t{BLACK}NOP{RESET}");
-                continue;
-            } else if matches!(v, Inst::EXIT) {
-                println!("{MAGENTA}{i:>2}\t{RED}EXIT{RESET}");
-                continue;
-            } else if matches!(v, Inst::RANGE) {
-                println!("{MAGENTA}{i:>2}\t{GREEN}RANGE{RESET}");
-                continue;
-            } else if let Inst::LIST(x) = v {
-                println!("{MAGENTA}{i:>2}\t{GREEN}LIST{RESET}({BLUE}{x}{RESET})");
-                continue;
-            } else if let Inst::DICT(x) = v {
-                println!("{MAGENTA}{i:>2}\t{GREEN}DICT{RESET}({BLUE}{x}{RESET})");
-                continue;
-            } else if let Inst::TUPLE(x) = v {
-                println!("{MAGENTA}{i:>2}\t{GREEN}TUPLE{RESET}({BLUE}{x}{RESET})");
+            if let Inst::COMMENT(x) = v {
+                println!(
+                    "{BLACK}  \t{}--- {x} ---{RESET}",
+                    format!(
+                        "{}{}",
+                        if depth < 0 { RED } else { DIM_BLACK },
+                        "|  ".repeat(depth.abs() as usize)
+                    ),
+                );
                 continue;
             }
 
@@ -121,21 +124,58 @@ impl VM {
             let opcode = parts.next().unwrap();
             let rest = parts.next().map_or("", |r| r);
 
+            if let Inst::POP_SCOPE = v {
+                depth -= 1;
+            }
+
             if rest.is_empty() {
                 print!(
-                    "{MAGENTA}{:>2}{RESET}\t{BLACK}{}{ORANGE}{}{RESET}",
+                    "{MAGENTA}{:>2}{RESET}\t{}",
                     i,
-                    " • ".repeat(depth),
-                    opcode
+                    format!(
+                        "{}{}",
+                        if depth < 0 { RED } else { DIM_BLACK },
+                        "|  ".repeat(depth.abs() as usize)
+                    )
                 );
+                if matches!(v, Inst::EXIT) | matches!(v, Inst::RETURN) {
+                    print!("{RED}");
+                } else if matches!(v, Inst::LIST(_))
+                    | matches!(v, Inst::TUPLE(_))
+                    | matches!(v, Inst::DICT(_))
+                    | matches!(v, Inst::RANGE)
+                {
+                    print!("{GREEN}");
+                } else if matches!(v, Inst::NOP) {
+                    print!("{BLACK}")
+                } else {
+                    print!("{ORANGE}");
+                }
+                print!("{opcode}{RESET}");
             } else {
                 print!(
-                    "{MAGENTA}{:>2}{RESET}\t{BLACK}{}{ORANGE}{}{RESET}({BLUE}{}{RESET})",
+                    "{MAGENTA}{:>2}{RESET}\t{BLACK}{}",
                     i,
-                    " • ".repeat(depth),
-                    opcode,
-                    &rest[0..rest.len() - 1]
+                    format!(
+                        "{}{}",
+                        if depth < 0 { RED } else { DIM_BLACK },
+                        "|  ".repeat(depth.abs() as usize)
+                    ),
                 );
+                if matches!(v, Inst::EXIT) | matches!(v, Inst::RETURN) {
+                    print!("{RED}");
+                } else if matches!(v, Inst::LIST(_))
+                    | matches!(v, Inst::TUPLE(_))
+                    | matches!(v, Inst::DICT(_))
+                    | matches!(v, Inst::RANGE)
+                {
+                    print!("{GREEN}");
+                } else if matches!(v, Inst::NOP) {
+                    print!("{BLACK}")
+                } else {
+                    print!("{ORANGE}");
+                }
+                print!("{opcode}{RESET}({BLUE}{}{RESET})", &rest[0..rest.len() - 1]);
             }
 
             if let Inst::LOAD_CONST(x) = v {
@@ -147,7 +187,6 @@ impl VM {
             }
             if let Inst::POP_SCOPE = v {
                 println!(" }}");
-                depth -= 1;
             } else {
                 println!("")
             }
@@ -178,6 +217,7 @@ impl VM {
             match current {
                 Inst::EXIT => return,
                 Inst::NOP => {}
+                Inst::COMMENT(_) => {}
                 Inst::PRINT => println!("{}", self.pop().to_string(false)),
                 Inst::POP => {
                     self.pop();
@@ -480,7 +520,7 @@ impl VM {
                     } else {
                         panic!("Tried calling non-function")
                     }
-					continue;
+                    continue;
                 }
                 Inst::CALL_BUILTIN(name, arg_count) => match &***name {
                     "print" => builtin_print(self, *arg_count, false),
@@ -492,6 +532,10 @@ impl VM {
                     if let Some(last) = self.call_stack.last() {
                         self.pos = *last;
                         self.call_stack.pop();
+
+                        if let Some(depth) = self.scope_stack.pop() {
+                            self.locals.truncate(depth);
+                        }
                     } else {
                         break;
                     }

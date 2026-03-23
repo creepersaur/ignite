@@ -17,9 +17,11 @@ impl Compiler {
             offset: 0,
             constants: vec![],
             instructions: vec![],
-            // functions: vec![],
-            // function_entries: HashMap::new(),
         }
+    }
+
+    pub fn comment(&mut self, data: &str) {
+        self.instructions.push(Inst::COMMENT(data.to_string()))
     }
 
     pub fn compile_node(&mut self, node: &Node) {
@@ -272,13 +274,17 @@ impl Compiler {
 
         self.instructions.push(Inst::PUSH_SCOPE);
         for i in body {
-            if let Node::OutStatement(val) = i {
-                if let Some(v) = val {
-                    self.compile_node(&**v);
+            if let Node::ExprStmt(expr) = i {
+                if let Node::OutStatement(val) = expr.as_ref() {
+                    if let Some(v) = val {
+                        self.compile_node(&*v);
+                    } else {
+                        self.instructions.push(Inst::PUSH(Value::NIL));
+                    }
+                    outs.push(patch!(self.instructions));
                 } else {
-                    self.instructions.push(Inst::PUSH(Value::NIL));
+                    self.compile_node(i);
                 }
-                outs.push(patch!(self.instructions));
             } else {
                 self.compile_node(i);
             }
@@ -323,7 +329,11 @@ impl Compiler {
     ) {
         let mut if_end_jumps = vec![];
 
+        self.comment("If statement start:");
+
         let mut handler = |condition: &Node, block: &Node| {
+            self.comment("If statement handler start:");
+
             self.instructions.push(Inst::PUSH_SCOPE);
             self.compile_node(&condition);
 
@@ -331,7 +341,11 @@ impl Compiler {
 
             self.compile_node(&block);
 
+            self.instructions.push(Inst::POP_SCOPE);
+
             if_end_jumps.push(patch!(self.instructions));
+
+            self.comment("If statement handler end");
 
             patch_execute!(
                 self.instructions,
@@ -342,8 +356,10 @@ impl Compiler {
 
         handler(&**condition, &**block);
 
-        for (condition, block) in elifs {
-            handler(&*condition, &*block);
+        if elifs.len() > 0 {
+            for (condition, block) in elifs {
+                handler(&*condition, &*block);
+            }
         }
 
         if let Some(body) = else_block {
@@ -351,7 +367,7 @@ impl Compiler {
         }
 
         self.instructions.push(Inst::DEFAULT_NIL);
-        self.instructions.push(Inst::POP_SCOPE);
+        self.comment("If statement end:");
 
         let if_end = self.instructions.len();
         for x in if_end_jumps {
@@ -422,6 +438,7 @@ impl Compiler {
         args: &Vec<(Rc<String>, Option<Rc<String>>, Option<Node>)>,
         block: &Box<Node>,
     ) {
+        self.comment("New function:");
         let func_value = patch!(self.instructions);
         if let Some(name) = name {
             self.instructions.push(Inst::STORE_LOCAL(name.clone()));
@@ -429,6 +446,10 @@ impl Compiler {
         let func_jump_to_end = patch!(self.instructions);
 
         let func_start = self.offset + self.instructions.len();
+
+        self.comment("Function def start:");
+
+        self.instructions.push(Inst::PUSH_SCOPE);
 
         for (arg_name, _, default_value) in args.iter().rev() {
             self.instructions.push(Inst::DEFAULT_NIL);
@@ -444,6 +465,9 @@ impl Compiler {
         self.compile_node(block);
 
         self.instructions.push(Inst::RETURN);
+        self.instructions.push(Inst::POP_SCOPE);
+
+        self.comment("Function def end");
 
         patch_execute!(
             self.instructions,
@@ -486,6 +510,10 @@ impl Compiler {
     }
 
     pub fn compile_for(&mut self, var_name: &Rc<String>, expr: &Box<Node>, block: &Box<Node>) {
+        self.comment("For loop start:");
+
+        self.instructions.push(Inst::PUSH_SCOPE);
+
         self.compile_node(&*expr);
         self.instructions.push(Inst::GET_ITER);
 
@@ -511,7 +539,9 @@ impl Compiler {
             loop_start_index
         );
 
+        self.instructions.push(Inst::POP_SCOPE);
         self.instructions.push(Inst::DEFAULT_NIL);
+        self.comment("For loop end");
     }
 
     pub fn compile_loop(&mut self, block: &Box<Node>) {
