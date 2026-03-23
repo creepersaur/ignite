@@ -7,7 +7,7 @@ import "./App.css"
 
 export default function App() {
 	return (
-		<BrowserRouter basename="/ignite/">
+		<BrowserRouter basename="/ignite">
 			<Routes>
 				<Route path="/" element={<Home />} />
 				<Route path="/docs" element={<Docs />} />

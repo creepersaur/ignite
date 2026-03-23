@@ -1,4 +1,6 @@
+import { Link } from 'react-router-dom'
 import TopBar from "../components/topbar/topbar";
+import icon from '../assets/IgniteIcon.svg'
 import "./styles/home.css"
 
 export default function Home() {
@@ -7,7 +9,7 @@ export default function Home() {
 
 		<div className="main">
 			<div className="title-header">
-				<img src="src/assets/IgniteIcon.svg" alt="Ignite Image" />
+				<img src={icon} alt="Ignite Image" />
 
 				<h1>
 					<span className="japanese">点火す</span>
@@ -21,8 +23,8 @@ export default function Home() {
 			</div>
 
 			<div className="button-holder">
-				<a className="primary" href="docs"> Documentation </a>
-				<a href="api"> API </a>
+				<Link className="primary" to="/docs">Documentation</Link>
+				<Link to="/api">API</Link>
 			</div>
 		</div>
 	</>;
