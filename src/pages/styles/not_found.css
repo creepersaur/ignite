@@ -1,0 +1,12 @@
+div.main {
+    flex-grow: 1;
+    align-content: center;
+    justify-content: center;
+	height: calc(100vh - 61px);
+	width: 100vw;
+	text-align: center;
+}
+
+h1 {
+	color: white;
+}
