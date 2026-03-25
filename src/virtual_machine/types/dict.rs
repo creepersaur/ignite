@@ -42,8 +42,8 @@ impl IMemberAccessible for TDict {
                 "concat", "count",
             ];
 
-            if functions.contains(&member.as_str()) {
-                return lib_function!(self, "dict", member, 1, Value::Dict);
+            if functions.contains(&member.0.borrow().as_str()) {
+                return lib_function!(self, "dict", member.0, 1, Value::Dict);
             }
         }
 

@@ -65,5 +65,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("---------------------------");
     vm.run(false, false);
 
+    if args.contains(&"stack".to_string()) {
+        println!("\nOutput VM Stack:");
+        println!("---------------------------");
+        println!("{:#?}", vm.stack);
+    }
+
     Ok(())
 }

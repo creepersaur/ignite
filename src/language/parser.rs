@@ -278,7 +278,7 @@ impl Parser {
             TokenKind::OUT => self.parse_out(),
             TokenKind::BREAK => self.parse_break(),
             TokenKind::CONTINUE => self.simple_parse_keyword(Node::ContinueStatement),
-			TokenKind::IF => self.parse_if(),
+            TokenKind::IF => self.parse_if(),
 
             other => Err(format!(
                 "Got unexpected token `{other:?}` while parsing primary."

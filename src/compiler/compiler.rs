@@ -1,9 +1,14 @@
 use crate::{
     language::{nodes::Node, token::TokenKind},
-    patch, patch_execute,
-    virtual_machine::{builtin::BUILTINS, inst::Inst, types::function::TFunction, value::Value},
+    patch, patch_execute, rc,
+    virtual_machine::{
+        builtin::BUILTINS,
+        inst::Inst,
+        types::{function::TFunction, string::TString},
+        value::Value,
+    },
 };
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 
 pub struct Compiler {
     pub constants: Vec<Value>,
@@ -31,16 +36,14 @@ impl Compiler {
             Node::NumberLiteral(x) => self.instructions.push(Inst::PUSH(Value::Number(*x))),
             Node::BooleanLiteral(x) => self.instructions.push(Inst::PUSH(Value::Bool(*x))),
             Node::StringLiteral(x) => {
-                if let Some((idx, _)) = self
-                    .constants
-                    .iter()
-                    .enumerate()
-                    .find(|(_, thing)| thing == &&Value::String(Rc::new(x.clone())))
-                {
+                if let Some((idx, _)) = self.constants.iter().enumerate().find(|(_, thing)| {
+                    thing == &&Value::String(TString(rc!(RefCell::new(x.clone()))))
+                }) {
                     self.instructions.push(Inst::LOAD_CONST(idx));
                     return;
                 }
-                self.constants.push(Value::String(Rc::new(x.to_string())));
+                self.constants
+                    .push(Value::String(TString(rc!(RefCell::new(x.to_string())))));
                 self.instructions
                     .push(Inst::LOAD_CONST(self.constants.len() - 1));
             }
@@ -281,7 +284,7 @@ impl Compiler {
                     } else {
                         self.instructions.push(Inst::PUSH(Value::NIL));
                     }
-                    outs.push(patch!(self.instructions));
+                    outs.push(patch!(self.instructions)); // Jump to scope cleanup
                 } else {
                     self.compile_node(i);
                 }
@@ -289,13 +292,15 @@ impl Compiler {
                 self.compile_node(i);
             }
         }
-        self.instructions.push(Inst::DEFAULT_NIL);
-        self.instructions.push(Inst::POP_SCOPE);
+
+        self.instructions.push(Inst::PUSH(Value::NIL));
 
         let block_end = self.instructions.len();
         for i in outs {
             patch_execute!(self.instructions, i, Inst::JUMP(block_end));
         }
+
+        self.instructions.push(Inst::POP_SCOPE);
     }
 
     pub fn compile_member_access(&mut self, expr: &Box<Node>, member: &Box<Node>) {
@@ -335,8 +340,8 @@ impl Compiler {
             self.comment("If statement handler start:");
 
             self.instructions.push(Inst::PUSH_SCOPE);
-            self.compile_node(&condition);
 
+            self.compile_node(&condition);
             let jump_if_false = patch!(self.instructions);
 
             self.compile_node(&block);
@@ -345,7 +350,7 @@ impl Compiler {
 
             if_end_jumps.push(patch!(self.instructions));
 
-            self.comment("If statement handler end");
+            self.comment("If branch end");
 
             patch_execute!(
                 self.instructions,
@@ -364,15 +369,16 @@ impl Compiler {
 
         if let Some(body) = else_block {
             self.compile_node(&**body);
+        } else {
+            self.instructions.push(Inst::PUSH(Value::NIL));
         }
-
-        self.instructions.push(Inst::DEFAULT_NIL);
-        self.comment("If statement end:");
 
         let if_end = self.instructions.len();
         for x in if_end_jumps {
             patch_execute!(self.instructions, x, Inst::JUMP(if_end));
         }
+
+        self.comment("If statement end:");
     }
 
     pub fn compile_set_variable(&mut self, target: &Box<Node>, value: &Box<Node>) {

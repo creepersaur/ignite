@@ -29,7 +29,7 @@ pub enum TokenKind {
     Identifier,
 
     // LITERALS
-	NIL,
+    NIL,
     IntLiteral(i32),
     NumberLiteral(f32),
     StringLiteral(String),
@@ -43,15 +43,15 @@ pub enum TokenKind {
     LOOP,
     WHILE,
     FOR,
-	IN,
+    IN,
     BREAK,
     CONTINUE,
     OUT,
     IF,
     ELSE,
-	CLASS,
-	// INTERFACE,
-	// STRUCT,
+    CLASS,
+    // INTERFACE,
+    // STRUCT,
 
     // Punctuation
     LPAREN, // Parenthesis ()
@@ -67,36 +67,36 @@ pub enum TokenKind {
     MOD,
     POW,
     DOLLAR, // $
-    HASH, // #
-    AT, // @
-    BANG, // !
-    EQUAL, // =
-    EQ, // ==
-    NEQ, // !=
-    GT, // >
-    LT, // <
-    GE, // >=
-    LE, // <=
-	NE, // !=
-	OR, // or, ||
-	AND, // and, &&
+    HASH,   // #
+    AT,     // @
+    BANG,   // !
+    EQUAL,  // =
+    EQ,     // ==
+    NEQ,    // !=
+    GT,     // >
+    LT,     // <
+    GE,     // >=
+    LE,     // <=
+    NE,     // !=
+    OR,     // or, ||
+    AND,    // and, &&
     COLON,
     DOUBLECOLON, // ::
-    SEMI, // ;
-    QUESTION, // ?
-    TILDA, // ~
+    SEMI,        // ;
+    QUESTION,    // ?
+    TILDA,       // ~
     BACKTICK,
     PIPE,
     DOT,
-    DOUBLEDOT, // .. 
+    DOUBLEDOT, // ..
     COMMA,
-    ARROW, // ->
-    FATARROW, // =>
-	INCREMENT, // ++
-	DECREMENT, // --
-	ADD_SH, // += shorthand
-	SUB_SH, // -= shorthand
-	MUL_SH, // *= shorthand
-	DIV_SH, // /= shorthand
-	MOD_SH, // %= shorthand
+    ARROW,     // ->
+    FATARROW,  // =>
+    INCREMENT, // ++
+    DECREMENT, // --
+    ADD_SH,    // += shorthand
+    SUB_SH,    // -= shorthand
+    MUL_SH,    // *= shorthand
+    DIV_SH,    // /= shorthand
+    MOD_SH,    // %= shorthand
 }

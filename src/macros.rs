@@ -23,9 +23,9 @@ macro_rules! lib_function {
     ($this:expr, $lib:expr, $member:expr, $args:expr, $val:expr) => {
         Value::Function(TFunction::with_lib(
             rc!($lib.to_string()),
-            $member.clone(),
+            rc!((*$member.borrow()).clone()),
             $args,
-            Some(Box::new({$val}($this.clone()))),
+            Some(Box::new({ $val }($this.clone()))),
         ))
     };
 }

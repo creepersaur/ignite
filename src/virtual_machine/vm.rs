@@ -4,9 +4,12 @@ use crate::{
         builtin::*,
         chunk::Chunk,
         inst::Inst,
-        libs::{dict_lib::DictLib, lib::Library, list_lib::ListLib, tuple_lib::TupleLib},
+        libs::{
+            dict_lib::DictLib, lib::Library, list_lib::ListLib, string_lib::StringLib,
+            tuple_lib::TupleLib,
+        },
         traits::member_accessible::IMemberAccessible,
-        types::{dict::TDict, function::TFunction, list::TList},
+        types::{dict::TDict, function::TFunction, list::TList, string::TString},
         value::Value,
     },
 };
@@ -33,6 +36,7 @@ pub struct VM {
 impl VM {
     pub fn new() -> Self {
         let mut libs: HashMap<_, Box<dyn Library>> = HashMap::new();
+        libs.insert(rc!("string".to_string()), Box::new(StringLib));
         libs.insert(rc!("list".to_string()), Box::new(ListLib));
         libs.insert(rc!("tuple".to_string()), Box::new(TupleLib));
         libs.insert(rc!("dict".to_string()), Box::new(DictLib));
@@ -66,8 +70,15 @@ impl VM {
 
     #[inline]
     pub fn pop_two(&mut self) -> (Value, Value) {
-        let right = self.stack.pop().unwrap();
-        let left = self.stack.pop().unwrap();
+        let right = self
+            .stack
+            .pop()
+            .expect("Stack underflow: missing right operand");
+        let left = self
+            .stack
+            .pop()
+            .expect("Stack underflow: missing left operand");
+
         (left, right)
     }
 
@@ -90,14 +101,6 @@ impl VM {
             self.call_stack.push(self.pos);
             self.scope_stack.push(self.locals.len());
             self.pos = f.entry;
-
-            println!(
-                "{:?}",
-                self.stack
-                    .iter()
-                    .map(|x| x.to_string(true))
-                    .collect::<Vec<_>>()
-            )
         }
     }
 
@@ -302,8 +305,9 @@ impl VM {
                     if let (Value::Number(a), Value::Number(b)) = (&a, &b) {
                         self.stack.push(Value::Number(a * b));
                     } else if let (Value::String(a), Value::Number(b)) = (&a, &b) {
-                        self.stack
-                            .push(Value::String(Rc::new(a.repeat(*b as usize))));
+                        self.stack.push(Value::String(TString(Rc::new(RefCell::new(
+                            a.0.borrow().repeat(*b as usize),
+                        )))));
                     } else {
                         panic!(
                             "Cannot multiply `{}` with `{}`",
@@ -345,7 +349,9 @@ impl VM {
                         (Value::Number(x), Value::Number(y)) => x == y,
                         (Value::Bool(x), Value::Bool(y)) => x == y,
 
-                        (Value::String(x), Value::String(y)) => Rc::ptr_eq(&x, &y) || *x == *y,
+                        (Value::String(x), Value::String(y)) => {
+                            Rc::ptr_eq(&x.0, &y.0) || *x.0.borrow() == *y.0.borrow()
+                        }
 
                         _ => false,
                     };
@@ -357,7 +363,9 @@ impl VM {
                         (Value::Number(x), Value::Number(y)) => x != y,
                         (Value::Bool(x), Value::Bool(y)) => x != y,
 
-                        (Value::String(x), Value::String(y)) => !Rc::ptr_eq(&x, &y) || *x != *y,
+                        (Value::String(x), Value::String(y)) => {
+                            !Rc::ptr_eq(&x.0, &y.0) || *x.0 != *y.0
+                        }
 
                         _ => panic!("Cannot NEQ"),
                     };
@@ -518,9 +526,8 @@ impl VM {
                     if let Value::Function(f) = func {
                         self.call_function(f);
                     } else {
-                        panic!("Tried calling non-function")
+                        panic!("Tried calling non-function: {func:?}")
                     }
-                    continue;
                 }
                 Inst::CALL_BUILTIN(name, arg_count) => match &***name {
                     "print" => builtin_print(self, *arg_count, false),
@@ -549,6 +556,11 @@ impl VM {
                     let target = self.pop();
 
                     match target {
+                        Value::String(x) => {
+                            let value = x.get_member(self, &member);
+                            self.stack.push(value);
+                        }
+
                         Value::List(x) => {
                             let value = x.get_member(self, &member);
                             self.stack.push(value);
@@ -591,7 +603,15 @@ impl VM {
 
                 Inst::GET_ITER => {
                     let value = self.pop();
-                    self.iterators.push((value, 0));
+
+                    if let Value::String(s) = &value {
+                        let chars: Vec<Value> =
+                            s.0.borrow().chars().map(|c| Value::Char(c)).collect();
+                        self.iterators
+                            .push((Value::List(TList::new_tuple(rc!(RefCell::new(chars)))), 0)); // or a dedicated variant
+                    } else {
+                        self.iterators.push((value, 0));
+                    }
                 }
                 Inst::FOR_ITER(jump_end) => {
                     let target_idx = self.iterators.len() - 1;
@@ -609,16 +629,6 @@ impl VM {
                     } else if let Value::Tuple(list) = value {
                         if *idx < list.values.borrow().len() {
                             self.stack.push(list.values.borrow()[*idx].clone());
-                            *idx += 1;
-                        } else {
-                            self.iterators.pop();
-                            self.pos = *jump_end;
-                            continue;
-                        }
-                    } else if let Value::String(string) = value {
-                        if *idx < string.len() {
-                            self.stack
-                                .push(Value::String(rc!(string[*idx..*idx + 1].to_string())));
                             *idx += 1;
                         } else {
                             self.iterators.pop();

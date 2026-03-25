@@ -5,8 +5,8 @@ use crate::language::token::TokenKind;
 #[allow(unused)]
 #[derive(Debug, Clone)]
 pub enum Node {
-	// Expressions vs Statements
-	ExprStmt(Box<Node>),
+    // Expressions vs Statements
+    ExprStmt(Box<Node>),
 
     // LITERALS
     NIL,
@@ -21,13 +21,13 @@ pub enum Node {
     TupleNode(Vec<Node>),
     DictNode(Vec<(Node, Node)>),
 
-	// Range
-	RangeNode {
-		start: Box<Node>,
-		end: Box<Node>,
-		step: Option<Box<Node>>,
-		inclusive: bool
-	},
+    // Range
+    RangeNode {
+        start: Box<Node>,
+        end: Box<Node>,
+        step: Option<Box<Node>>,
+        inclusive: bool,
+    },
 
     // OPERATORS
     BinOp {
@@ -38,31 +38,31 @@ pub enum Node {
     UnaryOp {
         op: TokenKind,
         right: Box<Node>,
-		is_prefix: bool,
+        is_prefix: bool,
     },
 
-	// MEMBER ACCESS
-	MemberAccess {
-		expr: Box<Node>,
-		member: Box<Node>,
-	},
+    // MEMBER ACCESS
+    MemberAccess {
+        expr: Box<Node>,
+        member: Box<Node>,
+    },
 
     // STATEMENTS
     LetStatement {
         names: Vec<Rc<String>>,
         values: Vec<Option<Box<Node>>>,
-		is_const: bool,
+        is_const: bool,
     },
 
-	SetVariable {
-		target: Box<Node>,
-		value: Box<Node>,
-	},
-	ShorthandAssignment {
-		token: TokenKind,
-		target: Box<Node>,
-		value: Box<Node>,
-	},
+    SetVariable {
+        target: Box<Node>,
+        value: Box<Node>,
+    },
+    ShorthandAssignment {
+        token: TokenKind,
+        target: Box<Node>,
+        value: Box<Node>,
+    },
 
     Block {
         body: Vec<Node>,
@@ -114,19 +114,19 @@ pub enum Node {
     // Class stuff
     ClassDef {
         name: String,
-		interfaces: Vec<Rc<String>>,
-		let_statements: Vec<Node>,
+        interfaces: Vec<Rc<String>>,
+        let_statements: Vec<Node>,
         functions: Vec<Node>,
     },
 
-	StructDef {
-		name: String,
-		types: Vec<(Rc<String>, Rc<String>)> // (key, type)
-	},
+    StructDef {
+        name: String,
+        types: Vec<(Rc<String>, Rc<String>)>, // (key, type)
+    },
 
-	InterfaceDef {
+    InterfaceDef {
         name: Rc<String>,
-		let_statements: Vec<Node>,
+        let_statements: Vec<Node>,
         functions: Vec<Node>,
-	}
+    },
 }

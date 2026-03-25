@@ -61,13 +61,13 @@ impl IMemberAccessible for TList {
         if let Value::String(member) = member {
             match self.is_tuple {
                 true => {
-                    if TUPLE_FUNCTIONS.contains(&member.as_str()) {
-                        return lib_function!(self, "tuple", member, 1, Value::Tuple);
+                    if TUPLE_FUNCTIONS.contains(&member.0.borrow().as_str()) {
+                        return lib_function!(self, "tuple", member.0, 1, Value::Tuple);
                     }
                 }
                 false => {
-                    if LIST_FUNCTIONS.contains(&member.as_str()) {
-                        return lib_function!(self, "list", member, 1, Value::List);
+                    if LIST_FUNCTIONS.contains(&member.0.borrow().as_str()) {
+                        return lib_function!(self, "list", member.0, 1, Value::List);
                     }
                 }
             }

@@ -1,4 +1,9 @@
-use crate::{rc, virtual_machine::{value::Value, vm::VM}};
+use std::cell::RefCell;
+
+use crate::{
+    rc,
+    virtual_machine::{types::string::TString, value::Value, vm::VM},
+};
 
 pub const BUILTINS: [&str; 3] = ["print", "println", "typeof"];
 
@@ -12,10 +17,10 @@ pub fn builtin_print(vm: &mut VM, arg_count: usize, newline: bool) {
         .join(" ");
 
     if newline {
-		println!("{string}");
-	} else {
-		print!("{string}");
-	}
+        println!("{string}");
+    } else {
+        print!("{string}");
+    }
 
     vm.stack.push(Value::NIL);
 }
@@ -23,5 +28,6 @@ pub fn builtin_print(vm: &mut VM, arg_count: usize, newline: bool) {
 pub fn builtin_typeof(vm: &mut VM) {
     let value = vm.pop();
 
-    vm.stack.push(Value::String(rc!(value.get_type())));
+    vm.stack
+        .push(Value::String(TString(rc!(RefCell::new(value.get_type())))));
 }

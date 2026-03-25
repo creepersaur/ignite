@@ -2,10 +2,11 @@ use bincode::{Decode, Encode};
 use std::{
     fmt::Debug,
     hash::{Hash, Hasher},
-    rc::Rc,
 };
 
-use crate::virtual_machine::types::{dict::TDict, function::TFunction, list::TList};
+use crate::virtual_machine::types::{
+    dict::TDict, function::TFunction, list::TList, string::TString,
+};
 
 #[allow(unused)]
 #[derive(Encode, Decode, Debug, Clone, PartialEq, PartialOrd)]
@@ -13,7 +14,8 @@ pub enum Value {
     NIL,
     Number(f32),
     Bool(bool),
-    String(Rc<String>),
+    Char(char),
+    String(TString),
 
     Function(TFunction),
 
@@ -36,6 +38,7 @@ impl Value {
             Value::NIL => "nil",
             Value::Number(_) => "number",
             Value::Bool(_) => "bool",
+            Value::Char(_) => "char",
             Value::String(_) => "string",
             Value::Function(_) => "function",
             Value::List(_) => "list",
@@ -51,11 +54,12 @@ impl Value {
             Self::NIL => "nil".to_string(),
             Self::Number(x) => x.to_string(),
             Self::Bool(x) => x.to_string(),
+            Self::Char(x) => x.to_string(),
             Self::String(x) => {
                 if debug {
-                    format!("\"{}\"", x.to_string())
+                    format!("\"{}\"", x.0.borrow().to_string())
                 } else {
-                    x.to_string()
+                    x.0.borrow().to_string()
                 }
             }
 
@@ -171,7 +175,8 @@ impl Hash for Value {
                 n.to_bits().hash(state);
             }
             Self::Bool(b) => b.hash(state),
-            Self::String(s) => s.hash(state),
+            Self::Char(b) => b.hash(state),
+            Self::String(s) => s.0.borrow().hash(state),
             Self::Function(f) => f.hash(state),
 
             // For Rc/RefCell types, you usually hash the pointer address

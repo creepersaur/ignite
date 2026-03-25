@@ -258,7 +258,7 @@ impl Library for ListLib {
 
     fn get_function(&self, name: Rc<String>) -> Box<dyn Fn(&mut VM) -> Value> {
         match name.as_str() {
-			"len" => return Box::new(Self::len),
+            "len" => return Box::new(Self::len),
             "push" => return Box::new(Self::push),
             "insert" => return Box::new(Self::insert),
             "remove" => return Box::new(Self::remove),

@@ -8,12 +8,12 @@ use crate::{
 pub struct TupleLib;
 
 impl TupleLib {
-	fn to_list(vm: &mut VM) -> Value {
+    fn to_list(vm: &mut VM) -> Value {
         let tuple = vm.pop();
 
         if let Value::Tuple(inner) = tuple {
-			let mut new_inner = inner.clone();
-			new_inner.is_tuple = true;
+            let mut new_inner = inner.clone();
+            new_inner.is_tuple = true;
             Value::List(new_inner)
         } else {
             panic!("Can only use tuple.to_list on Tuples");
@@ -158,7 +158,7 @@ impl Library for TupleLib {
 
     fn get_function(&self, name: Rc<String>) -> Box<dyn Fn(&mut VM) -> Value> {
         match name.as_str() {
-			"len" => return Box::new(Self::len),
+            "len" => return Box::new(Self::len),
             "map" => return Box::new(Self::map),
             "concat" => return Box::new(Self::concat),
             "copy" => return Box::new(Self::copy),
@@ -166,7 +166,7 @@ impl Library for TupleLib {
             "sort" => return Box::new(Self::sort),
             "reverse" => return Box::new(Self::reverse),
             "rep" => return Box::new(Self::rep),
-			"to_list" => return Box::new(Self::to_list),
+            "to_list" => return Box::new(Self::to_list),
 
             _ => panic!("Unknown function `{name}` on lib {}", self.get_name()),
         }
