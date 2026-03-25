@@ -213,8 +213,8 @@ impl VM {
     pub fn write_bytecode_file(&mut self, path: &str) {
         let chunk = Chunk::new(self.constants.clone(), self.instructions.clone());
         let encoded = bincode::encode_to_vec(chunk, config::standard()).unwrap();
-		
-		std::fs::write(path, encoded).unwrap();
+
+        std::fs::write(path, encoded).unwrap();
     }
 
     pub fn run(&mut self, debug: bool, stop_at_return: bool) {
@@ -355,6 +355,15 @@ impl VM {
                         }
                     } else {
                         panic!("Cannot divide `{}` by `{}`", a.get_type(), b.get_type());
+                    }
+                }
+                Inst::POW => {
+                    let (a, b) = &self.pop_two();
+
+                    if let (Value::Number(a), Value::Number(b)) = (a, b) {
+                        self.stack.push(Value::Number(a.powf(*b)));
+                    } else {
+                        panic!("Cannot POW `{}` and `{}`", a.get_type(), b.get_type());
                     }
                 }
                 Inst::MOD => {
@@ -567,7 +576,7 @@ impl VM {
                     "print" => builtin_print(self, *arg_count, false),
                     "println" => builtin_print(self, *arg_count, true),
                     "typeof" => builtin_typeof(self),
-					"round" => builtin_round(self),
+                    "round" => builtin_round(self),
                     _ => panic!("Unknown built-in: {name}"),
                 },
                 Inst::RETURN => {

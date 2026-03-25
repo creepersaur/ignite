@@ -229,6 +229,7 @@ impl Compiler {
             TokenKind::MINUS => Inst::SUB,
             TokenKind::STAR => Inst::MUL,
             TokenKind::SLASH => Inst::DIV,
+            TokenKind::POW => Inst::POW,
             TokenKind::MOD => Inst::MOD,
 
             TokenKind::GT => Inst::GT,
@@ -406,6 +407,7 @@ impl Compiler {
             TokenKind::SUB_SH => Inst::SUB,
             TokenKind::MUL_SH => Inst::MUL,
             TokenKind::DIV_SH => Inst::DIV,
+            TokenKind::POW_SH => Inst::POW,
             TokenKind::MOD_SH => Inst::MOD,
 
             _ => panic!("Unknown shorthand assignment token: {token:?}"),

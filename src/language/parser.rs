@@ -433,19 +433,12 @@ impl Parser {
         if let Ok(next) = self.current() {
             match next.kind {
                 TokenKind::EQUAL => return self.parse_set_variable(expr),
-                TokenKind::ADD_SH => {
-                    return self.parse_shorthand_assignment(expr, next.kind);
-                }
-                TokenKind::SUB_SH => {
-                    return self.parse_shorthand_assignment(expr, next.kind);
-                }
-                TokenKind::MUL_SH => {
-                    return self.parse_shorthand_assignment(expr, next.kind);
-                }
-                TokenKind::DIV_SH => {
-                    return self.parse_shorthand_assignment(expr, next.kind);
-                }
-                TokenKind::MOD_SH => {
+                TokenKind::ADD_SH
+                | TokenKind::SUB_SH
+                | TokenKind::MUL_SH
+                | TokenKind::DIV_SH
+                | TokenKind::MOD_SH
+                | TokenKind::POW_SH => {
                     return self.parse_shorthand_assignment(expr, next.kind);
                 }
                 _ => {}

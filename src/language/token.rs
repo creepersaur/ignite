@@ -102,5 +102,6 @@ pub enum TokenKind {
     SUB_SH,    // -= shorthand
     MUL_SH,    // *= shorthand
     DIV_SH,    // /= shorthand
+    POW_SH,    // ^= shorthand
     MOD_SH,    // %= shorthand
 }

@@ -1,11 +1,8 @@
+const sqrt5 = 5 ^ 0.5
+const phi = (1 + sqrt5) / 2
+
 fn binet_fib(n) {
-    const sqrt5 = 2.2360679775
-    const phi = 1.6180339888
-    
-    let phi_n = 1
-    for i in 0..n => phi_n = phi_n * phi
-    
-    return round(phi_n / sqrt5)
+    return round(phi ^ n / sqrt5)
 }
 
 for i in 0..=30 => println(binet_fib(i))

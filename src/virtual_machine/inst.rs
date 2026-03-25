@@ -28,6 +28,7 @@ pub enum Inst {
     SUB, // ✅
     MUL, // ✅
     DIV, // ✅
+    POW, // ✅
     MOD, // ✅
 
     NEG, // ✅
