@@ -46,14 +46,20 @@ fn main() -> Result<(), Box<dyn Error>> {
     // COMPILER
     /////////////////////
 
-    let mut compiler = Compiler::new();
-    for i in nodes.iter() {
-        compiler.compile_node(i);
-    }
-
     let mut vm = VM::new();
-    vm.constants = compiler.constants;
-    vm.instructions = compiler.instructions;
+    if args.contains(&"bc".to_string()) {
+        vm.read_bytecode_file("bytecode.igb");
+    } else if args.contains(&"bc2".to_string()) {
+        vm.read_bytecode_file("bytecode2.igb");
+    } else {
+        let mut compiler = Compiler::new();
+        for i in nodes.iter() {
+            compiler.compile_node(i);
+        }
+		
+        vm.constants = compiler.constants;
+        vm.instructions = compiler.instructions;
+    }
 
     if args.contains(&"inst".to_string()) {
         println!("\nCompiled instructions:");
@@ -61,14 +67,20 @@ fn main() -> Result<(), Box<dyn Error>> {
         vm.print_instructions();
     }
 
-    println!("\nRunning:");
-    println!("---------------------------");
-    vm.run(false, false);
-
-    if args.contains(&"stack".to_string()) {
-        println!("\nOutput VM Stack:");
+    if args.contains(&"bytecode".to_string()) {
+        vm.write_bytecode_file("bytecode.igb");
+    } else if args.contains(&"bytecode2".to_string()) {
+        vm.write_bytecode_file("bytecode2.igb");
+    } else {
+        println!("\nRunning:");
         println!("---------------------------");
-        println!("{:#?}", vm.stack);
+        vm.run(false, false);
+
+        if args.contains(&"stack".to_string()) {
+            println!("\nOutput VM Stack:");
+            println!("---------------------------");
+            println!("{:#?}", vm.stack);
+        }
     }
 
     Ok(())

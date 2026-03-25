@@ -210,6 +210,13 @@ impl VM {
         self.instructions = decoded.0.instructions;
     }
 
+    pub fn write_bytecode_file(&mut self, path: &str) {
+        let chunk = Chunk::new(self.constants.clone(), self.instructions.clone());
+        let encoded = bincode::encode_to_vec(chunk, config::standard()).unwrap();
+		
+		std::fs::write(path, encoded).unwrap();
+    }
+
     pub fn run(&mut self, debug: bool, stop_at_return: bool) {
         while self.pos < self.instructions.len() {
             if debug {

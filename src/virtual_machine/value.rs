@@ -54,7 +54,13 @@ impl Value {
             Self::NIL => "nil".to_string(),
             Self::Number(x) => x.to_string(),
             Self::Bool(x) => x.to_string(),
-            Self::Char(x) => x.to_string(),
+            Self::Char(x) => {
+                if debug {
+                    format!("'{}'", x.to_string())
+                } else {
+                    x.to_string()
+                }
+            },
             Self::String(x) => {
                 if debug {
                     format!("\"{}\"", x.0.borrow().to_string())

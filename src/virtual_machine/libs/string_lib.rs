@@ -3,7 +3,12 @@ use std::{cell::RefCell, rc::Rc};
 use crate::{
     misc::to_index::to_index,
     rc,
-    virtual_machine::{libs::lib::Library, types::string::TString, value::Value, vm::VM},
+    virtual_machine::{
+        libs::lib::Library,
+        types::{list::TList, string::TString},
+        value::Value,
+        vm::VM,
+    },
 };
 
 pub struct StringLib;
@@ -198,6 +203,40 @@ impl StringLib {
 
         Value::NIL
     }
+
+    fn bytes(vm: &mut VM) -> Value {
+        let string = vm.pop();
+
+        if let Value::String(inner) = string {
+            return Value::List(TList::new(rc!(RefCell::new(
+                inner
+                    .0
+                    .borrow()
+                    .bytes()
+                    .map(|x| Value::Number(x as f32))
+                    .collect::<Vec<_>>()
+            ))));
+        } else {
+            panic!("Can only use string.bytes on strings");
+        }
+    }
+
+    fn chars(vm: &mut VM) -> Value {
+        let string = vm.pop();
+
+        if let Value::String(inner) = string {
+            return Value::List(TList::new(rc!(RefCell::new(
+                inner
+                    .0
+                    .borrow()
+                    .chars()
+                    .map(|x| Value::Char(x))
+                    .collect::<Vec<_>>()
+            ))));
+        } else {
+            panic!("Can only use string.chars on strings");
+        }
+    }
 }
 
 // LIBRARY
@@ -221,6 +260,8 @@ impl Library for StringLib {
             "fill" => return Box::new(Self::fill),
             "rep" => return Box::new(Self::rep),
             "push_n" => return Box::new(Self::push_n),
+            "bytes" => return Box::new(Self::bytes),
+            "chars" => return Box::new(Self::chars),
 
             _ => panic!("Unknown function `{name}` on lib {}", self.get_name()),
         }

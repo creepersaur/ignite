@@ -17,8 +17,12 @@ impl Token {
         Self { kind, range }
     }
 
-    pub fn get_text<'a>(&self, source: &'a str) -> &'a str {
-        &source[self.range.start..self.range.end]
+    pub fn get_text<'a>(&self, source: &'a str) -> String {
+        source
+            .chars()
+            .skip(self.range.start)
+            .take(self.range.end - self.range.start)
+            .collect()
     }
 }
 

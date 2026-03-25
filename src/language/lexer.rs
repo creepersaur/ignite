@@ -149,7 +149,7 @@ impl Lexer {
 
     pub fn identify(text: &str, start: i32) -> Token {
         let start = start as usize;
-        let end = start + text.len();
+        let end = start + text.chars().count();
 
         let kind = match text {
             "\n" => NEWLINE,

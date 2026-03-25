@@ -11,17 +11,24 @@ use crate::{
 };
 use bincode::{Decode, Encode};
 
-pub const STRING_FUNCTIONS: [&str; 13] = [
+pub const STRING_FUNCTIONS: [&str; 15] = [
     "len", "push", "insert", "remove", "pop", "clear", "concat", "copy", "count", "reverse",
-    "fill", "rep", "push_n",
+    "fill", "rep", "push_n", "chars", "bytes"
 ];
 
-#[derive(Debug, Encode, Decode, Clone, PartialEq, PartialOrd)]
+#[derive(Encode, Decode, Clone, PartialEq, PartialOrd)]
 pub struct TString(pub Rc<RefCell<String>>);
 
 impl TString {
     pub fn to_string(&self) -> String {
         self.0.borrow().clone()
+    }
+}
+
+impl Debug for TString {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&format!("\"{}\"", self.0.borrow())).unwrap();
+        Ok(())
     }
 }
 
