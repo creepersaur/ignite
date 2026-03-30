@@ -10,7 +10,6 @@ mod compiler;
 mod language;
 mod macros;
 mod misc;
-mod standard_lib;
 mod virtual_machine;
 
 fn main() -> Result<(), Box<dyn Error>> {

@@ -2,6 +2,7 @@ use bincode::{Decode, Encode};
 use std::{
     fmt::Debug,
     hash::{Hash, Hasher},
+    rc::Rc,
 };
 
 use crate::virtual_machine::types::{
@@ -24,6 +25,9 @@ pub enum Value {
     Tuple(TList),
     Dict(TDict),
 
+    // Namespaces
+    Namespace(Rc<String>),
+
     Range {
         start: Box<Value>,
         end: Box<Value>,
@@ -44,6 +48,7 @@ impl Value {
             Value::List(_) => "list",
             Value::Tuple(_) => "tuple",
             Value::Dict(_) => "dict",
+            Value::Namespace(_) => "namespace",
             Value::Range { .. } => "range",
         }
         .to_owned()
@@ -60,7 +65,7 @@ impl Value {
                 } else {
                     x.to_string()
                 }
-            },
+            }
             Self::String(x) => {
                 if debug {
                     format!("\"{}\"", x.0.borrow().to_string())
@@ -136,6 +141,9 @@ impl Value {
                     .collect::<Vec<_>>()
                     .join(", ")
             ),
+
+            Self::Namespace(name) => format!("namespace:{name}"),
+
             Self::Range {
                 start,
                 end,
@@ -195,6 +203,8 @@ impl Hash for Value {
             Self::Dict(d) => {
                 std::ptr::hash(d.values.as_ptr(), state);
             }
+
+            Self::Namespace(name) => format!("namespace:{name}").hash(state),
 
             Self::Range {
                 start,
