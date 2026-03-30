@@ -1,6 +1,8 @@
-const separators = "!@#"
-const text = "hello!world@this_is#cool"
+let x = 10
 
-for i in separators {
-	println(text.split(i))
+@ {
+	let x = 50
+	println(x)
 }
+
+println(x)

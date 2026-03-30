@@ -3,7 +3,8 @@ use std::{cell::RefCell, collections::HashMap, fmt::Debug, rc::Rc};
 use crate::{
     lib_function, rc,
     virtual_machine::{
-        libs::dict_lib::DICT_FUNCTIONS, traits::member_accessible::IMemberAccessible, types::function::TFunction, value::Value, vm::VM
+        traits::member_accessible::IMemberAccessible, types::function::TFunction,
+        types::libs::dict_lib::DICT_FUNCTIONS, value::Value, vm::VM,
     },
 };
 use bincode::{Decode, Encode};

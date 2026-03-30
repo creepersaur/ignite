@@ -4,11 +4,11 @@ use crate::{
         builtin::*,
         chunk::Chunk,
         inst::Inst,
-        libs::{
+        traits::member_accessible::IMemberAccessible,
+        types::libs::{
             dict_lib::DictLib, lib::Library, list_lib::ListLib, string_lib::StringLib,
             tuple_lib::TupleLib,
         },
-        traits::member_accessible::IMemberAccessible,
         types::{dict::TDict, function::TFunction, list::TList, string::TString},
         value::Value,
     },
@@ -591,7 +591,7 @@ impl VM {
                     "typeof" => builtin_typeof(self),
                     "round" => builtin_round(self),
 
-					// types
+                    // types
                     "string" => builtin_string(self),
                     "number" => builtin_number(self),
                     "bool" => builtin_bool(self),

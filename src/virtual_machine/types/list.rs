@@ -5,9 +5,9 @@ use crate::{
     misc::to_index::to_index,
     rc,
     virtual_machine::{
-        libs::list_lib::LIST_FUNCTIONS, libs::tuple_lib::TUPLE_FUNCTIONS,
-        traits::member_accessible::IMemberAccessible, types::function::TFunction, value::Value,
-        vm::VM,
+        traits::member_accessible::IMemberAccessible, types::function::TFunction,
+        types::libs::list_lib::LIST_FUNCTIONS, types::libs::tuple_lib::TUPLE_FUNCTIONS,
+        value::Value, vm::VM,
     },
 };
 use bincode::{Decode, Encode};
