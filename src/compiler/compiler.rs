@@ -56,11 +56,13 @@ impl Compiler {
 
     pub fn emit_store_local(&mut self, name: &str, is_const: bool) {
         let id = self.intern(name);
-        if is_const {
-            self.instructions.push(Inst::STORE_LOCAL_CONST(id));
+        let depth = self.scopes.len() - 1;
+
+        self.instructions.push(if is_const {
+            Inst::STORE_LOCAL_CONST { id, depth }
         } else {
-            self.instructions.push(Inst::STORE_LOCAL(id));
-        }
+            Inst::STORE_LOCAL { id, depth }
+        });
 
         if let Some(current_scope) = self.scopes.last_mut() {
             current_scope.insert(name.to_string());
@@ -92,9 +94,12 @@ impl Compiler {
             Node::NumberLiteral(x) => self.instructions.push(Inst::PUSH(Value::Number(*x))),
             Node::BooleanLiteral(x) => self.instructions.push(Inst::PUSH(Value::Bool(*x))),
             Node::StringLiteral(x) => {
-                if let Some((idx, _)) = self.constants.iter().enumerate().find(|(_, thing)| {
-                    thing == &&Value::String(TString::new(x.clone()))
-                }) {
+                if let Some((idx, _)) = self
+                    .constants
+                    .iter()
+                    .enumerate()
+                    .find(|(_, thing)| thing == &&Value::String(TString::new(x.clone())))
+                {
                     self.instructions.push(Inst::LOAD_CONST(idx));
                     return;
                 }
@@ -552,8 +557,7 @@ impl Compiler {
         self.comment("New function:");
         let func_value = patch!(self.instructions);
         if let Some(name) = name {
-            self.instructions
-                .push(Inst::STORE_LOCAL(hash_u64!(name.as_str())));
+            self.emit_store_local(name.as_str(), false);
         }
         let func_jump_to_end = patch!(self.instructions);
 
@@ -571,8 +575,7 @@ impl Compiler {
                 self.instructions.push(Inst::DEFAULT);
             }
 
-            self.instructions
-                .push(Inst::STORE_LOCAL(hash_u64!(arg_name.as_str())));
+            self.emit_store_local(arg_name.as_str(), false);
         }
 
         self.compile_node(block);
@@ -633,8 +636,7 @@ impl Compiler {
         let loop_start_index = self.instructions.len();
 
         let for_iter = patch!(self.instructions);
-        self.instructions
-            .push(Inst::STORE_LOCAL(hash_u64!(var_name.as_str())));
+        self.emit_store_local(var_name.as_str(), false);
 
         self.compile_node(&*block);
 

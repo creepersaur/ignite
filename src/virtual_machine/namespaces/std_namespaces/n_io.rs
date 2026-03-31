@@ -11,6 +11,7 @@ pub fn std_io() -> Value {
 
 	// Input
     namespace_lib_function!(namespace, "io", "read_line", 1, Value::String);
+    namespace_lib_function!(namespace, "io", "read_line_raw", 1, Value::String);
 
     Value::Namespace(rc!(RefCell::new(namespace)))
 }

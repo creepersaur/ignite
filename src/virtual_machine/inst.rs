@@ -50,11 +50,11 @@ pub enum Inst {
     STORE_GLOBAL(u64), // ✅
     SET_VAR(u64),      // ✅
 
-    PUSH_SCOPE,                           // ✅
-    POP_SCOPE,                            // ✅
-    LOAD_LOCAL { id: u64, depth: usize }, // ✅
-    STORE_LOCAL(u64),                     // ✅
-    STORE_LOCAL_CONST(u64),               // ✅
+    PUSH_SCOPE,                                  // ✅
+    POP_SCOPE,                                   // ✅
+    LOAD_LOCAL { id: u64, depth: usize },        // ✅
+    STORE_LOCAL { id: u64, depth: usize },       // ✅
+    STORE_LOCAL_CONST { id: u64, depth: usize }, // ✅
 
     // Load from local or global
     LOAD(u64), // ✅
@@ -67,6 +67,7 @@ pub enum Inst {
     SET_PROP, // ✅
 
     CALL,                                 // ✅
+    CALL_VOID,                            // ✅
     CALL_BUILTIN(Rc<String>, usize),      // ✅
     CALL_BUILTIN_VOID(Rc<String>, usize), // ✅
     RETURN,                               // ✅

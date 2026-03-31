@@ -166,10 +166,16 @@ impl VM {
                     depth
                 )),
                 Inst::LOAD_GLOBAL(id) => Some(format!("LOAD_GLOBAL({})", self.lookup_intern(*id))),
-                Inst::STORE_LOCAL(id) => Some(format!("STORE_LOCAL({})", self.lookup_intern(*id))),
-                Inst::STORE_LOCAL_CONST(id) => {
-                    Some(format!("STORE_LOCAL_CONST({})", self.lookup_intern(*id)))
-                }
+                Inst::STORE_LOCAL { id, depth } => Some(format!(
+                    "STORE_LOCAL({}, depth: {})",
+                    self.lookup_intern(*id),
+                    depth
+                )),
+                Inst::STORE_LOCAL_CONST { id, depth } => Some(format!(
+                    "STORE_LOCAL_CONST({}, depth: {})",
+                    self.lookup_intern(*id),
+                    depth
+                )),
                 Inst::STORE_GLOBAL(id) => {
                     Some(format!("STORE_GLOBAL({})", self.lookup_intern(*id)))
                 }
@@ -518,10 +524,11 @@ impl VM {
                 Inst::POP_SCOPE => {
                     self.locals.pop();
                 }
-                Inst::STORE_LOCAL(id) => {
+                Inst::STORE_LOCAL { id, depth } => {
                     let id = *id;
+                    let depth = *depth;
                     let value = self.pop();
-                    self.locals.last_mut().unwrap().insert(id, (value, false));
+                    self.locals[depth].insert(id, (value, false));
                 }
                 Inst::LOAD_LOCAL { id, depth } => {
                     if let Some((val, _)) = self.locals[*depth].get(id) {
@@ -530,10 +537,11 @@ impl VM {
                         panic!("Unknown local variable: {}", self.lookup_intern(*id));
                     }
                 }
-                Inst::STORE_LOCAL_CONST(name) => {
-                    let name = name.clone();
+                Inst::STORE_LOCAL_CONST { id, depth } => {
+                    let id = *id;
+                    let depth = *depth;
                     let value = self.pop();
-                    self.locals.last_mut().unwrap().insert(name, (value, true));
+                    self.locals[depth].insert(id, (value, true));
                 }
 
                 Inst::LOAD(name) => {
@@ -605,6 +613,16 @@ impl VM {
                         self.call_function(f);
                     } else {
                         panic!("Tried calling non-function: {func:?}")
+                    }
+                }
+                Inst::CALL_VOID => {
+                    let func = self.pop();
+
+                    if let Value::Function(f) = func {
+                        self.call_function(f);
+						self.stack.pop();
+                    } else {
+                        panic!("Tried calling (void) non-function: {func:?}")
                     }
                 }
                 Inst::CALL_BUILTIN_VOID(name, arg_count) => match &***name {
