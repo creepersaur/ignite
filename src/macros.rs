@@ -36,8 +36,8 @@ macro_rules! hashmap {
 macro_rules! lib_function {
     ($this:expr, $lib:expr, $member:expr, $args:expr, $val:expr) => {
         Value::Function(TFunction::with_lib(
-            rc!($lib.to_string()),
-            rc!((*$member.borrow()).clone()),
+            rc!($lib),
+            $member,
             $args,
             Some(Box::new({ $val }($this.clone()))),
         ))
@@ -45,8 +45,8 @@ macro_rules! lib_function {
 
     ($lib:expr, $member:expr, $args:expr, $val:expr) => {
         Value::Function(TFunction::with_lib(
-            rc!($lib.to_string()),
-            rc!($member.to_string()).clone(),
+            rc!($lib),
+            rc!($member),
             $args,
             None,
         ))

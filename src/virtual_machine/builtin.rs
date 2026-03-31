@@ -58,7 +58,7 @@ pub fn builtin_char(vm: &mut VM) {
         vm.stack.push(value);
     } else if let Value::String(v) = value {
         vm.stack
-            .push(Value::Char(v.0.borrow().chars().nth(0).unwrap()));
+            .push(Value::Char(v.0.chars().nth(0).unwrap()));
     } else {
         panic!("Cannot convert {value:?} to char");
     }

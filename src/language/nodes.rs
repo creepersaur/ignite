@@ -53,7 +53,7 @@ pub enum Node {
         values: Vec<Option<Box<Node>>>,
         is_const: bool,
     },
-    UsingStatement { sequence: Vec<String>, wildcard: bool },
+    UsingStatement { sequence: Vec<String>, imports: Vec<String>, wildcard: bool },
 
     SetVariable {
         target: Box<Node>,

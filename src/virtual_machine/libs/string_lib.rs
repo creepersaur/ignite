@@ -1,6 +1,5 @@
 use crate::{
     hash_u64,
-    misc::to_index::to_index,
     rc,
     virtual_machine::{
         libs::lib::Library,
@@ -11,9 +10,9 @@ use crate::{
 };
 use std::cell::RefCell;
 
-pub const STRING_FUNCTIONS: [&str; 16] = [
-    "len", "push", "insert", "remove", "pop", "clear", "concat", "copy", "count", "reverse",
-    "fill", "rep", "push_n", "chars", "bytes", "split",
+pub const STRING_FUNCTIONS: [&str; 9] = [
+    "len", "concat", "copy", "count", "reverse",
+    "rep", "chars", "bytes", "split",
 ];
 
 pub struct StringLib;
@@ -23,94 +22,9 @@ impl StringLib {
         let string = vm.pop();
 
         if let Value::String(inner) = string {
-            Value::Number(inner.0.borrow().len() as f64)
+            Value::Number(inner.0.len() as f64)
         } else {
             panic!("Can only use string.len on strings");
-        }
-    }
-
-    fn push(vm: &mut VM) -> Value {
-        let string = vm.pop();
-        let new_value = vm.pop();
-
-        if let Value::String(inner) = string {
-            if let Value::String(value) = new_value {
-                inner.0.borrow_mut().push_str(&value.0.borrow());
-            } else {
-                panic!("Can only push() a string value onto a string")
-            }
-        } else {
-            panic!("Can only use string.push on strings")
-        }
-
-        Value::NIL
-    }
-
-    fn insert(vm: &mut VM) -> Value {
-        let string = vm.pop();
-        let new_value = vm.pop();
-        let index = vm.pop();
-
-        if let Value::String(inner) = string {
-            if let Value::String(value) = new_value {
-                if let Value::Number(idx) = index {
-                    let target_index = to_index(idx, inner.0.borrow().len());
-                    inner
-                        .0
-                        .borrow_mut()
-                        .insert_str(target_index, &value.0.borrow());
-                } else {
-                    panic!("Expected number as index in string.insert");
-                }
-            } else {
-                panic!("Can only insert() a string value onto a string")
-            }
-        } else {
-            panic!("Can only use string.insert on strings");
-        }
-
-        Value::NIL
-    }
-
-    fn remove(vm: &mut VM) -> Value {
-        let (index, string) = vm.pop_two();
-
-        if let Value::String(inner) = string {
-            if let Value::Number(idx) = index {
-                let target_index = to_index(idx, inner.0.borrow().len());
-                let ch = inner.0.borrow_mut().remove(target_index);
-                return Value::String(TString(rc!(RefCell::new(ch.to_string()))));
-            } else {
-                panic!("Expected number as index in string.remove");
-            }
-        } else {
-            panic!("Can only use string.remove on strings");
-        }
-    }
-
-    fn pop(vm: &mut VM) -> Value {
-        let string = vm.pop();
-
-        if let Value::String(inner) = string {
-            let popped = inner.0.borrow_mut().pop();
-            if let Some(new_char) = popped {
-                return Value::String(TString(rc!(RefCell::new(new_char.to_string()))));
-            } else {
-                return Value::NIL;
-            }
-        } else {
-            panic!("Can only use string.pop on strings");
-        }
-    }
-
-    fn clear(vm: &mut VM) -> Value {
-        let string = vm.pop();
-
-        if let Value::String(inner) = string {
-            inner.0.borrow_mut().clear();
-            return Value::NIL;
-        } else {
-            panic!("Can only use string.clear on strings");
         }
     }
 
@@ -118,11 +32,11 @@ impl StringLib {
         let (other, string) = vm.pop_two();
 
         if let Value::String(inner) = string {
-            return Value::String(TString(rc!(RefCell::new(format!(
+            return Value::String(TString::new(format!(
                 "{}{}",
-                inner.0.borrow(),
+                inner.0,
                 other.to_string(false)
-            )))));
+            )));
         } else {
             panic!("Can only use string.concat on strings");
         }
@@ -132,7 +46,7 @@ impl StringLib {
         let string = vm.pop();
 
         if let Value::String(inner) = string {
-            Value::String(TString(rc!(RefCell::new(inner.0.borrow().clone()))))
+            Value::String(TString(std::rc::Rc::from(&*inner.0)))
         } else {
             panic!("Can only use string.copy on strings");
         }
@@ -142,7 +56,7 @@ impl StringLib {
         let (item, string) = vm.pop_two();
 
         if let Value::String(inner) = string {
-            let count = inner.0.borrow().matches(&*item.to_string(false)).count();
+            let count = inner.0.matches(&*item.to_string(false)).count();
             Value::Number(count as f64)
         } else {
             panic!("Can only use string.count on strings");
@@ -153,25 +67,10 @@ impl StringLib {
         let string = vm.pop();
 
         if let Value::String(inner) = string {
-            Value::String(TString(rc!(RefCell::new(
-                inner.0.borrow().chars().rev().collect::<String>(),
-            ))))
+            Value::String(TString::new(inner.0.chars().rev().collect::<String>()))
         } else {
             panic!("Can only use string.reverse on strings");
         }
-    }
-
-    fn fill(vm: &mut VM) -> Value {
-        let (value, string) = vm.pop_two();
-
-        if let Value::String(inner) = string {
-            let len = inner.0.borrow().len();
-            *inner.0.borrow_mut() = value.to_string(false).repeat(len);
-        } else {
-            panic!("Can only use string.fill on strings");
-        }
-
-        Value::NIL
     }
 
     fn rep(vm: &mut VM) -> Value {
@@ -179,34 +78,13 @@ impl StringLib {
 
         if let Value::String(inner) = string {
             if let Value::Number(n) = value {
-                return Value::String(TString(rc!(RefCell::new(
-                    inner.0.borrow().repeat(n as usize),
-                ))));
+                return Value::String(TString::new(inner.0.repeat(n as usize)));
             } else {
                 panic!("Can only string.repeat with a number")
             }
         } else {
             panic!("Can only use string.repeat on strings");
         }
-    }
-
-    fn push_n(vm: &mut VM) -> Value {
-        let string = vm.pop();
-        let value = vm.pop();
-        let num = vm.pop();
-
-        if let Value::String(inner) = string {
-            if let Value::Number(n) = num {
-                let repeated = value.to_string(false).repeat(n as usize);
-                inner.0.borrow_mut().push_str(&repeated);
-            } else {
-                panic!("string.push_n requires a `number` of times as first argument")
-            }
-        } else {
-            panic!("Can only use string.push_n on strings");
-        }
-
-        Value::NIL
     }
 
     fn bytes(vm: &mut VM) -> Value {
@@ -216,7 +94,6 @@ impl StringLib {
             return Value::List(TList::new(rc!(RefCell::new(
                 inner
                     .0
-                    .borrow()
                     .bytes()
                     .map(|x| Value::Number(x as f64))
                     .collect::<Vec<_>>()
@@ -231,12 +108,7 @@ impl StringLib {
 
         if let Value::String(inner) = string {
             return Value::List(TList::new(rc!(RefCell::new(
-                inner
-                    .0
-                    .borrow()
-                    .chars()
-                    .map(|x| Value::Char(x))
-                    .collect::<Vec<_>>()
+                inner.0.chars().map(|x| Value::Char(x)).collect::<Vec<_>>()
             ))));
         } else {
             panic!("Can only use string.chars on strings");
@@ -252,8 +124,7 @@ impl StringLib {
                 Value::List(TList::new(rc!(RefCell::new(
                     inner
                         .0
-                        .borrow_mut()
-                        .split(&*value.0.borrow())
+                        .split(&*value.0)
                         .map(|x: &str| Value::String(TString::new(x.to_string())))
                         .collect::<Vec<_>>()
                 ))))
@@ -261,7 +132,6 @@ impl StringLib {
                 Value::List(TList::new(rc!(RefCell::new(
                     inner
                         .0
-                        .borrow_mut()
                         .split(c)
                         .map(|x: &str| Value::String(TString::new(x.to_string())))
                         .collect::<Vec<_>>()
@@ -270,7 +140,6 @@ impl StringLib {
                 Value::List(TList::new(rc!(RefCell::new(
                     inner
                         .0
-                        .borrow_mut()
                         .split(" ")
                         .map(|x: &str| Value::String(TString::new(x.to_string())))
                         .collect::<Vec<_>>()
@@ -293,18 +162,11 @@ impl Library for StringLib {
     fn get_function(&self, name: u64) -> Box<dyn Fn(&mut VM) -> Value> {
         match name {
             x if x == hash_u64!("len") => return Box::new(Self::len),
-            x if x == hash_u64!("push") => return Box::new(Self::push),
-            x if x == hash_u64!("insert") => return Box::new(Self::insert),
-            x if x == hash_u64!("remove") => return Box::new(Self::remove),
-            x if x == hash_u64!("pop") => return Box::new(Self::pop),
-            x if x == hash_u64!("clear") => return Box::new(Self::clear),
             x if x == hash_u64!("concat") => return Box::new(Self::concat),
             x if x == hash_u64!("copy") => return Box::new(Self::copy),
             x if x == hash_u64!("count") => return Box::new(Self::count),
             x if x == hash_u64!("reverse") => return Box::new(Self::reverse),
-            x if x == hash_u64!("fill") => return Box::new(Self::fill),
             x if x == hash_u64!("rep") => return Box::new(Self::rep),
-            x if x == hash_u64!("push_n") => return Box::new(Self::push_n),
             x if x == hash_u64!("bytes") => return Box::new(Self::bytes),
             x if x == hash_u64!("chars") => return Box::new(Self::chars),
             x if x == hash_u64!("split") => return Box::new(Self::split),

@@ -153,7 +153,7 @@ impl VM {
             let display = match v {
                 Inst::LOAD(id) => Some(format!("LOAD({})", self.lookup_intern(*id))),
                 Inst::LOAD_LOCAL { id, depth } => Some(format!(
-                    "LOAD_LOCAL(`{}`, depth: {})",
+                    "LOAD_LOCAL({}, depth: {})",
                     self.lookup_intern(*id),
                     depth
                 )),
@@ -323,25 +323,25 @@ impl VM {
                         self.stack.push(Value::Number(a + b));
                     } else if let (Value::String(a), Value::String(b)) = (a, b) {
                         self.stack
-                            .push(Value::String(TString(rc!(RefCell::new(format!(
+                            .push(Value::String(TString::new(format!(
                                 "{}{}",
                                 a.to_string(),
                                 b.to_string()
-                            ))))));
+                            ))));
                     } else if let (Value::String(a), Value::Char(b)) = (a, b) {
                         self.stack
-                            .push(Value::String(TString(rc!(RefCell::new(format!(
+                            .push(Value::String(TString::new(format!(
                                 "{}{}",
                                 a.to_string(),
                                 b
-                            ))))));
+                            ))));
                     } else if let (Value::Char(a), Value::String(b)) = (a, b) {
                         self.stack
-                            .push(Value::String(TString(rc!(RefCell::new(format!(
+                            .push(Value::String(TString::new(format!(
                                 "{}{}",
                                 a,
                                 b.to_string()
-                            ))))));
+                            ))));
                     } else {
                         panic!("Cannot add {} and {}", a.get_type(), b.get_type());
                     }
@@ -361,9 +361,9 @@ impl VM {
                     if let (Value::Number(a), Value::Number(b)) = (a, b) {
                         self.stack.push(Value::Number(a * b));
                     } else if let (Value::String(a), Value::Number(b)) = (a, b) {
-                        self.stack.push(Value::String(TString(Rc::new(RefCell::new(
-                            a.0.borrow().repeat(*b as usize),
-                        )))));
+                        self.stack.push(Value::String(TString::new(
+                            a.0.repeat(*b as usize),
+                        )));
                     } else {
                         panic!("Cannot multiply `{}` with `{}`", a.get_type(), b.get_type());
                     }
@@ -417,11 +417,11 @@ impl VM {
                         (Value::Char(x), Value::Char(y)) => x == y,
 
                         (Value::String(x), Value::String(y)) => {
-                            Rc::ptr_eq(&x.0, &y.0) || *x.0.borrow() == *y.0.borrow()
+                            Rc::ptr_eq(&x.0, &y.0) || *x.0 == *y.0
                         }
 
-                        (Value::Char(x), Value::String(y)) => x.to_string() == *y.0.borrow(),
-                        (Value::String(y), Value::Char(x)) => x.to_string() == *y.0.borrow(),
+                        (Value::Char(x), Value::String(y)) => x.to_string() == *y.0,
+                        (Value::String(y), Value::Char(x)) => x.to_string() == *y.0,
 
                         (a, b) => a == b,
                     };
@@ -439,8 +439,8 @@ impl VM {
                             !Rc::ptr_eq(&x.0, &y.0) || *x.0 != *y.0
                         }
 
-                        (Value::Char(x), Value::String(y)) => x.to_string() == *y.0.borrow(),
-                        (Value::String(y), Value::Char(x)) => x.to_string() == *y.0.borrow(),
+                        (Value::Char(x), Value::String(y)) => x.to_string() == *y.0,
+                        (Value::String(y), Value::Char(x)) => x.to_string() == *y.0,
 
                         (a, b) => a != b,
                     };
@@ -701,7 +701,7 @@ impl VM {
 
                     if let Value::String(s) = &value {
                         let chars: Vec<Value> =
-                            s.0.borrow().chars().map(|c| Value::Char(c)).collect();
+                            s.0.chars().map(|c| Value::Char(c)).collect();
                         self.iterators
                             .push((Value::List(TList::new_tuple(rc!(RefCell::new(chars)))), 0)); // or a dedicated variant
                     } else {
@@ -779,11 +779,11 @@ impl VM {
                         (Value::Char(x), Value::Char(y)) => x == y,
 
                         (Value::String(x), Value::String(y)) => {
-                            Rc::ptr_eq(&x.0, &y.0) || *x.0.borrow() == *y.0.borrow()
+                            Rc::ptr_eq(&x.0, &y.0) || *x.0 == *y.0
                         }
 
-                        (Value::Char(x), Value::String(y)) => x.to_string() == *y.0.borrow(),
-                        (Value::String(y), Value::Char(x)) => x.to_string() == *y.0.borrow(),
+                        (Value::Char(x), Value::String(y)) => x.to_string() == *y.0,
+                        (Value::String(y), Value::Char(x)) => x.to_string() == *y.0,
 
                         (a, b) => a == b,
                     };

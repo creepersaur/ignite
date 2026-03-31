@@ -1,9 +1,5 @@
+use crate::virtual_machine::{traits::member_accessible::IMemberAccessible, value::Value, vm::VM};
 use bincode::{Decode, Encode};
-
-use crate::{
-    rc,
-    virtual_machine::{traits::member_accessible::IMemberAccessible, value::Value, vm::VM},
-};
 use std::{
     collections::HashMap,
     hash::{Hash, Hasher},
@@ -14,7 +10,7 @@ use std::{
 pub struct TNamespace {
     pub name: String,
     pub locked: bool,
-    pub env: HashMap<Rc<String>, (Value, bool)>,
+    pub env: HashMap<Rc<str>, (Value, bool)>,
 }
 
 impl TNamespace {
@@ -26,13 +22,13 @@ impl TNamespace {
         }
     }
 
-	#[allow(unused)]
+    #[allow(unused)]
     pub fn set(&mut self, name: &str, value: Value) {
-        self.env.insert(rc!(name.to_string()), (value, false));
+        self.env.insert(Rc::from(name), (value, false));
     }
 
     pub fn set_const(&mut self, name: &str, value: Value) {
-        self.env.insert(rc!(name.to_string()), (value, true));
+        self.env.insert(Rc::from(name), (value, true));
     }
 }
 
@@ -57,7 +53,7 @@ impl Hash for TNamespace {
 impl IMemberAccessible for TNamespace {
     fn get_member(&self, _vm: &mut VM, member: &Value) -> Value {
         if let Value::String(t) = member {
-            if let Some((value, _)) = self.env.get(&*t.0.borrow()) {
+            if let Some((value, _)) = self.env.get(&*t.0) {
                 return value.clone();
             } else {
                 panic!(
@@ -77,9 +73,9 @@ impl IMemberAccessible for TNamespace {
         }
 
         if let Value::String(t) = member {
-            if let Some((_, is_const)) = self.env.get(&*t.0.borrow()) {
+            if let Some((_, is_const)) = self.env.get(&*t.0) {
                 if !*is_const {
-                    self.env.insert(rc!(t.0.borrow().clone()), (value, false));
+                    self.env.insert(t.0.clone(), (value, false));
                 } else {
                     panic!(
                         "Cannot set a constant member `{}` of namespace:{}.",
@@ -100,7 +96,7 @@ impl IMemberAccessible for TNamespace {
 macro_rules! namespace_lib_function {
     ($namespace:expr, $lib:expr, $func:expr, $args:expr, $return_type:expr) => {
         $namespace.env.insert(
-            rc!($func.to_string()),
+            std::rc::Rc::from($func),
             (lib_function!($lib, $func, $args, $return_type), true),
         );
     };

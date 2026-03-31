@@ -18,22 +18,22 @@ impl Compiler {
         let mut i = 0;
         while i < self.instructions.len().saturating_sub(1) {
             match (&self.instructions[i], &self.instructions[i + 1]) {
-                (Inst::LOAD(_), Inst::POP) => {
+                (Inst::LOAD(_), Inst::POP | Inst::TRY_POP) => {
                     self.instructions[i] = Inst::COMMENT("optimized away LOAD".to_string());
                     self.instructions[i + 1] = Inst::COMMENT("optimized away POP".to_string());
                     i += 2;
                 }
-                (Inst::LOAD_CONST(_), Inst::POP) => {
+                (Inst::LOAD_CONST(_), Inst::POP | Inst::TRY_POP) => {
                     self.instructions[i] = Inst::COMMENT("optimized away LOAD_CONST".to_string());
                     self.instructions[i + 1] = Inst::COMMENT("optimized away POP".to_string());
                     i += 2;
                 }
-                (Inst::LOAD_LOCAL { .. }, Inst::POP) => {
+                (Inst::LOAD_LOCAL { .. }, Inst::POP | Inst::TRY_POP) => {
                     self.instructions[i] = Inst::COMMENT("optimized away LOAD_LOCAL".to_string());
                     self.instructions[i + 1] = Inst::COMMENT("optimized away POP".to_string());
                     i += 2;
                 }
-                (Inst::LOAD_GLOBAL(_), Inst::POP) => {
+                (Inst::LOAD_GLOBAL(_), Inst::POP | Inst::TRY_POP) => {
                     self.instructions[i] = Inst::COMMENT("optimized away LOAD_GLOBAL".to_string());
                     self.instructions[i + 1] = Inst::COMMENT("optimized away POP".to_string());
                     i += 2;

@@ -710,10 +710,30 @@ impl Parser {
 
         let mut sequence = vec![];
         let mut wildcard = false;
+        let mut imports = vec![];
 
         loop {
-            let token = self.expect_and_consume(TokenKind::Identifier)?;
-            sequence.push(token.get_text(&self.source));
+            if let Ok(next) = self.current()
+                && next.kind == TokenKind::LBRACE
+            {
+                self.advance()?;
+                loop {
+                    let token = self.expect_and_consume(TokenKind::Identifier)?;
+                    imports.push(token.get_text(&self.source));
+
+                    if let Ok(next) = self.current()
+                        && next.kind == TokenKind::COMMA
+                    {
+						self.expect_and_consume(TokenKind::COMMA)?;
+					} else {
+						break;
+					}
+                }
+				self.expect_and_consume(TokenKind::RBRACE)?;
+            } else {
+                let token = self.expect_and_consume(TokenKind::Identifier)?;
+                sequence.push(token.get_text(&self.source));
+            }
 
             if let Ok(next) = self.current() {
                 if matches!(next.kind, TokenKind::NEWLINE | TokenKind::SEMI) {
@@ -731,11 +751,11 @@ impl Parser {
                     continue;
                 }
             }
-			
+
             break;
         }
 
-        Ok(Node::UsingStatement { sequence, wildcard })
+        Ok(Node::UsingStatement { sequence, imports, wildcard })
     }
 
     fn parse_block(&mut self) -> NodeResult {

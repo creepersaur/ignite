@@ -37,8 +37,8 @@ impl Debug for TDict {
 impl IMemberAccessible for TDict {
     fn get_member(&self, _vm: &mut VM, member: &Value) -> Value {
         if let Value::String(member) = member {
-            if DICT_FUNCTIONS.contains(&member.0.borrow().as_str()) {
-                return lib_function!(self, "dict", member.0, 1, Value::Dict);
+            if DICT_FUNCTIONS.contains(&&*member.0) {
+                return lib_function!(self, "dict", member.0.clone(), 1, Value::Dict);
             }
         }
 

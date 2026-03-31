@@ -12,7 +12,7 @@ pub fn load_standard_namespace() -> Value {
 
     namespace
         .env
-        .insert(rc!("Math".to_string()), (std_math(), true));
+        .insert(rc!("Math"), (std_math(), true));
 
     return Value::Namespace(rc!(RefCell::new(namespace)));
 }

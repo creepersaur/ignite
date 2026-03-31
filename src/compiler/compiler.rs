@@ -5,7 +5,7 @@ use crate::{
     virtual_machine::{
         builtin::{BUILTIN_VOIDS, BUILTINS},
         inst::Inst,
-        types::{function::TFunction, string::TString},
+        types::{function::TFunction, list::TList, string::TString},
         value::Value,
     },
 };
@@ -93,13 +93,13 @@ impl Compiler {
             Node::BooleanLiteral(x) => self.instructions.push(Inst::PUSH(Value::Bool(*x))),
             Node::StringLiteral(x) => {
                 if let Some((idx, _)) = self.constants.iter().enumerate().find(|(_, thing)| {
-                    thing == &&Value::String(TString(rc!(RefCell::new(x.clone()))))
+                    thing == &&Value::String(TString::new(x.clone()))
                 }) {
                     self.instructions.push(Inst::LOAD_CONST(idx));
                     return;
                 }
                 self.constants
-                    .push(Value::String(TString(rc!(RefCell::new(x.to_string())))));
+                    .push(Value::String(TString::new(x.to_string())));
                 self.instructions
                     .push(Inst::LOAD_CONST(self.constants.len() - 1));
             }
@@ -138,7 +138,11 @@ impl Compiler {
                 is_const,
             } => self.compile_let(names, &mut values.clone(), *is_const),
 
-            Node::UsingStatement { sequence, wildcard } => self.compile_using(sequence, *wildcard),
+            Node::UsingStatement {
+                sequence,
+                imports,
+                wildcard,
+            } => self.compile_using(sequence, imports, *wildcard),
 
             Node::SetVariable { target, value } => self.compile_set_variable(target, value),
 
@@ -215,14 +219,39 @@ impl Compiler {
     }
 
     pub fn compile_list(&mut self, values: &Vec<Node>, is_tuple: bool) {
-        for i in values.iter().rev() {
-            self.compile_node(i);
+        let mut folded_values = Vec::with_capacity(values.len());
+        let mut all_literals = true;
+
+        for node in values {
+            match node {
+                Node::NumberLiteral(n) => folded_values.push(Value::Number(*n)),
+                Node::BooleanLiteral(b) => folded_values.push(Value::Bool(*b)),
+                Node::StringLiteral(s) => {
+                    folded_values.push(Value::String(TString::new(s.clone())))
+                }
+                Node::NIL => folded_values.push(Value::NIL),
+
+                _ => {
+                    all_literals = false;
+                    break;
+                }
+            }
         }
-        if is_tuple {
-            self.instructions.push(Inst::TUPLE(values.len()));
+
+        if all_literals && !values.is_empty() {
+            self.instructions
+                .push(Inst::PUSH(Value::List(TList::new(rc!(RefCell::new(
+                    folded_values
+                ))))));
+            return;
+        }
+
+        values.iter().rev().for_each(|node| self.compile_node(node));
+        self.instructions.push(if is_tuple {
+            Inst::TUPLE(values.len())
         } else {
-            self.instructions.push(Inst::LIST(values.len()));
-        }
+            Inst::LIST(values.len())
+        });
     }
 
     pub fn compile_dict(&mut self, values: &Vec<(Node, Node)>) {
@@ -280,7 +309,8 @@ impl Compiler {
 
         match op {
             TokenKind::MINUS => {
-                if let Inst::PUSH(Value::Number(x)) = self.instructions[self.instructions.len() - 1] {
+                if let Inst::PUSH(Value::Number(x)) = self.instructions[self.instructions.len() - 1]
+                {
                     self.instructions.pop();
                     self.instructions.push(Inst::PUSH(Value::Number(-x)));
                 } else {
@@ -678,7 +708,12 @@ impl Compiler {
         self.instructions.push(Inst::DEFAULT_NIL);
     }
 
-    pub fn compile_using(&mut self, sequence: &Vec<String>, _wildcard: bool) {
+    pub fn compile_using(
+        &mut self,
+        sequence: &Vec<String>,
+        imports: &Vec<String>,
+        _wildcard: bool,
+    ) {
         for (index, item) in sequence.iter().enumerate() {
             if index == 0 {
                 let id = self.intern(item);
@@ -688,10 +723,20 @@ impl Compiler {
                     .push(Inst::PUSH(Value::String(TString::new(item.clone()))));
                 self.instructions.push(Inst::GET_PROP);
             }
+        }
 
-            if index == sequence.len() - 1 {
+        if imports.len() > 0 {
+            for (idx, item) in imports.iter().enumerate() {
+                if idx < imports.len() - 1 {
+                    self.instructions.push(Inst::DUP)
+                }
+                self.instructions
+                    .push(Inst::PUSH(Value::String(TString::new(item.clone()))));
+                self.instructions.push(Inst::GET_PROP);
                 self.emit_store_local(item, false);
             }
+        } else {
+            self.emit_store_local(&sequence[sequence.len() - 1], false);
         }
     }
 }

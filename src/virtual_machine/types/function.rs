@@ -25,8 +25,8 @@ impl TFunction {
         }
     }
     pub fn with_lib(
-        lib: Rc<String>,
-        method: Rc<String>,
+        lib: Rc<str>,
+        method: Rc<str>,
         args: usize,
         this: Option<Box<Value>>,
     ) -> Self {

@@ -70,9 +70,9 @@ impl Value {
             }
             Self::String(x) => {
                 if debug {
-                    format!("\"{}\"", x.0.borrow().to_string())
+                    format!("\"{}\"", x.0)
                 } else {
-                    x.0.borrow().to_string()
+                    x.0.to_string()
                 }
             }
 
@@ -192,7 +192,7 @@ impl Hash for Value {
             }
             Self::Bool(b) => b.hash(state),
             Self::Char(b) => b.hash(state),
-            Self::String(s) => s.0.borrow().hash(state),
+            Self::String(s) => s.0.hash(state),
             Self::Function(f) => f.hash(state),
 
             // For Rc/RefCell types, you usually hash the pointer address
