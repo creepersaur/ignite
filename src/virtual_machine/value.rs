@@ -76,7 +76,10 @@ impl Value {
                 }
             }
 
-            Self::Function(f) => format!("<function: {:p}>", f as *const TFunction),
+            Self::Function(f) => {
+                let id = f.handler.map(|(a, b)| a ^ b).unwrap_or(f.entry as u64);
+                format!("<fn: 0x{:x}>", id)
+            }
 
             Self::List(list) => format!(
                 "[{}]",

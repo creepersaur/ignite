@@ -1,5 +1,4 @@
 use bincode::{Decode, Encode};
-use std::rc::Rc;
 
 use crate::virtual_machine::value::Value;
 

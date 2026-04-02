@@ -1,5 +1,6 @@
 use crate::{
-    hash_u64, lib_function, rc, virtual_machine::{
+    hash_u64, lib_function, rc,
+    virtual_machine::{
         chunk::Chunk,
         inst::Inst,
         libs::{
@@ -10,7 +11,7 @@ use crate::{
         traits::member_accessible::IMemberAccessible,
         types::{dict::TDict, function::TFunction, list::TList, string::TString},
         value::Value,
-    }
+    },
 };
 use simply_colored::*;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
@@ -53,23 +54,19 @@ impl VM {
         let mut globals = HashMap::new();
         globals.insert(hash_u64!("Std"), (load_standard_namespace(), true));
 
+		// Global Builtins
         globals.insert(
             hash_u64!("println"),
-            (
-                lib_function!("io", "write_line"),
-                false,
-            ),
+            (lib_function!("io", "write_line"), false),
         );
+        globals.insert(hash_u64!("print"), (lib_function!("io", "write"), false));
+        globals.insert(hash_u64!("typeof"), (lib_function!("type", "typeof"), false));
+        globals.insert(hash_u64!("number"), (lib_function!("type", "number"), false));
+        globals.insert(hash_u64!("char"), (lib_function!("type", "char"), false));
+        globals.insert(hash_u64!("bool"), (lib_function!("type", "bool"), false));
+        globals.insert(hash_u64!("string"), (lib_function!("type", "typeof"), false));
 
-        globals.insert(
-            hash_u64!("print"),
-            (
-                lib_function!("io", "write"),
-                false,
-            ),
-        );
-
-        globals
+        return globals;
     }
 
     pub fn initialize_libs() -> HashMap<u64, Box<dyn Library>> {
@@ -251,15 +248,14 @@ impl VM {
             }
         }
     }
+}
 
-    pub fn to_chunk(&self) -> Chunk {
-        Chunk::new(self.constants.clone(), self.instructions.clone())
-    }
-
+// BYTECODE
+impl VM {
     pub fn read_bytecode_file(&mut self, path: &str) {
         let bytecode_file = std::fs::read(path).unwrap();
 
-        let mut config = bincode::config::standard().with_variable_int_encoding();
+        let config = bincode::config::standard().with_variable_int_encoding();
         let decoded: (Chunk, _) = bincode::decode_from_slice(&bytecode_file, config).unwrap();
 
         self.constants = decoded.0.constants;
@@ -268,12 +264,15 @@ impl VM {
 
     pub fn write_bytecode_file(&mut self, path: &str) {
         let chunk = Chunk::new(self.constants.clone(), self.instructions.clone());
-        let mut config = bincode::config::standard().with_variable_int_encoding();
+        let config = bincode::config::standard().with_variable_int_encoding();
         let encoded = bincode::encode_to_vec(chunk, config).unwrap();
 
         std::fs::write(path, encoded).unwrap();
     }
+}
 
+// RUNNING
+impl VM {
     pub fn run(&mut self, debug: bool, stop_at_return: bool) {
         while self.pos < self.instructions.len() {
             if debug {
@@ -715,7 +714,7 @@ impl VM {
                             x.set_member(&member, value);
                         }
 
-                        Value::Namespace(mut x) => {
+                        Value::Namespace(x) => {
                             x.borrow_mut().set_member(&member, value);
                         }
 
@@ -821,7 +820,7 @@ impl VM {
                 }
 
                 Inst::CONCAT_STR(n) => {
-                    let mut values = (0..*n)
+                    let values = (0..*n)
                         .map(|_| self.pop().to_string(false))
                         .collect::<String>();
                     self.stack.push(Value::String(TString::new(values)))
