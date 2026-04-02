@@ -77,8 +77,16 @@ impl Value {
             }
 
             Self::Function(f) => {
-                let id = f.handler.map(|(a, b)| a ^ b).unwrap_or(f.entry as u64);
-                format!("<fn: 0x{:x}>", id)
+                let id = match f.handler {
+                    Some((lib, method)) => lib ^ method,
+                    None => {
+                        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+                        use std::hash::Hash;
+                        f.entry.hash(&mut hasher);
+                        std::hash::Hasher::finish(&hasher)
+                    }
+                };
+                format!("<function: 0x{:x}>", id)
             }
 
             Self::List(list) => format!(

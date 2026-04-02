@@ -1,2 +1,2 @@
-println(print)
 println(println)
+println(print)
