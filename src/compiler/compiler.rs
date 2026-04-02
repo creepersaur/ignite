@@ -3,7 +3,7 @@ use crate::{
     language::{nodes::Node, token::TokenKind},
     patch, patch_execute, rc,
     virtual_machine::{
-        builtin::{BUILTIN_VOIDS, BUILTINS},
+        builtin::BUILTINS,
         inst::Inst,
         types::{function::TFunction, list::TList, string::TString},
         value::Value,
@@ -108,7 +108,7 @@ impl Compiler {
                 self.instructions
                     .push(Inst::LOAD_CONST(self.constants.len() - 1));
             }
-			Node::FString(values) => self.compile_fstring(values),
+            Node::FString(values) => self.compile_fstring(values),
 
             Node::ListNode(values) => self.compile_list(values, false),
             Node::TupleNode(values) => self.compile_list(values, true),
@@ -123,12 +123,6 @@ impl Compiler {
 
             Node::ExprStmt(x) => {
                 self.compile_node(&*x);
-                if !matches!(
-                    self.instructions[self.instructions.len() - 1],
-                    Inst::CALL_BUILTIN_VOID(..)
-                ) {
-                    self.instructions.push(Inst::TRY_POP)
-                }
             }
 
             Node::UnaryOp {
@@ -206,12 +200,12 @@ impl Compiler {
 }
 
 impl Compiler {
-	pub fn compile_fstring(&mut self, values: &Vec<Node>) {
-		for i in values.iter().rev() {
-			self.compile_node(i);
-		}
-		self.instructions.push(Inst::CONCAT_STR(values.len()));
-	}
+    pub fn compile_fstring(&mut self, values: &Vec<Node>) {
+        for i in values.iter().rev() {
+            self.compile_node(i);
+        }
+        self.instructions.push(Inst::CONCAT_STR(values.len()));
+    }
 
     pub fn compile_range(
         &mut self,
@@ -431,11 +425,6 @@ impl Compiler {
         {
             self.instructions
                 .push(Inst::CALL_BUILTIN(x.clone(), args.len()));
-        } else if let Node::Variable(x) = &**target
-            && BUILTIN_VOIDS.contains(&&***x)
-        {
-            self.instructions
-                .push(Inst::CALL_BUILTIN_VOID(x.clone(), args.len()));
         } else {
             self.compile_node(&**target);
             self.instructions.push(Inst::CALL(args.len()));
@@ -501,11 +490,11 @@ impl Compiler {
     pub fn compile_set_variable(&mut self, target: &Box<Node>, value: &Box<Node>) {
         if let Node::Variable(x) = &**target {
             self.compile_node(&**value);
-			self.instructions.push(Inst::DUP);
+            self.instructions.push(Inst::DUP);
             self.instructions.push(Inst::SET_VAR(hash_u64!(x.as_str())));
         } else if let Node::MemberAccess { expr, member } = &**target {
             self.compile_node(&**value);
-			self.instructions.push(Inst::DUP);
+            self.instructions.push(Inst::DUP);
             self.compile_node(&**expr);
             self.compile_node(&**member);
             self.instructions.push(Inst::SET_PROP);

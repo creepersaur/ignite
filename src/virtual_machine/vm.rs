@@ -15,7 +15,7 @@ use crate::{
     },
 };
 use simply_colored::*;
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, panic::UnwindSafe, rc::Rc};
 
 const ORANGE: &str = "\x1b[38;2;255;150;60m";
 
@@ -32,6 +32,8 @@ pub struct VM {
     pub iterators: Vec<(Value, usize)>,
     pub intern_table: HashMap<u64, Rc<str>>,
 }
+
+impl UnwindSafe for VM {}
 
 #[allow(unused)]
 impl VM {
@@ -628,16 +630,6 @@ impl VM {
                     } else {
                         panic!("Tried calling (void) non-function: {func:?}")
                     }
-                }
-                Inst::CALL_BUILTIN_VOID(name, arg_count) => {
-                    match &***name {
-                        "print" => builtin_print(self, *arg_count, false),
-                        "println" => builtin_print(self, *arg_count, true),
-
-                        _ => panic!("Unknown void built-in: {name}"),
-                    }
-
-                    self.stack.pop();
                 }
                 Inst::CALL_BUILTIN(name, arg_count) => match &***name {
                     // types

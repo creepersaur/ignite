@@ -1,26 +1,6 @@
-use std::io::{Write, stdout};
-
 use crate::virtual_machine::{types::string::TString, value::Value, vm::VM};
 
-pub const BUILTIN_VOIDS: [&str; 2] = ["print", "println"];
-pub const BUILTINS: [&str; 6] = ["typeof", "round", "string", "number", "bool", "char"];
-
-pub fn builtin_print(vm: &mut VM, arg_count: usize, newline: bool) {
-    let args = (0..arg_count).map(|_| vm.pop()).collect::<Vec<_>>();
-    let string = args
-        .iter()
-        .rev()
-        .map(|x| x.to_string(false))
-        .collect::<Vec<_>>()
-        .join(" ");
-
-    if newline {
-        println!("{string}");
-    } else {
-        print!("{string}");
-        let _ = stdout().flush();
-    }
-}
+pub const BUILTINS: [&str; 8] = ["typeof", "round", "string", "number", "bool", "char", "print", "println"];
 
 pub fn builtin_typeof(vm: &mut VM) {
     let value = vm.pop();

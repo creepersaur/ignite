@@ -13,6 +13,7 @@ impl IOLib {
         let msg = args
             .iter()
             .map(|x| x.to_string(false))
+			.rev()
             .collect::<Vec<_>>()
             .join(" ");
 
@@ -31,6 +32,7 @@ impl IOLib {
         let msg = args
             .iter()
             .map(|x| x.to_string(false))
+			.rev()
             .collect::<Vec<_>>()
             .join(" ");
 
@@ -44,6 +46,33 @@ impl IOLib {
 
         Value::String(TString::new(buf))
     }
+
+	fn write(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let msg = args
+            .iter()
+            .map(|x| x.to_string(false))
+			.rev()
+            .collect::<Vec<_>>()
+            .join(" ");
+
+        print!("{msg}");
+        let _ = stdout().flush();
+
+		Value::NIL
+	}
+
+	fn write_line(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let msg = args
+            .iter()
+            .map(|x| x.to_string(false))
+			.rev()
+            .collect::<Vec<_>>()
+            .join(" ");
+
+        println!("{msg}");
+
+		Value::NIL
+	}
 }
 
 // LIBRARY
@@ -57,6 +86,10 @@ impl Library for IOLib {
             // INPUT
             x if x == hash_u64!("read_line") => Box::new(Self::read_line),
             x if x == hash_u64!("read_line_raw") => Box::new(Self::read_line_raw),
+
+            // OUTPUT
+            x if x == hash_u64!("write") => Box::new(Self::write),
+            x if x == hash_u64!("write_line") => Box::new(Self::write_line),
 
             _ => panic!("Unknown function `{name}` on lib {}", self.get_name()),
         }

@@ -3,6 +3,7 @@ use crate::{
     language::{ast::AST, lexer::Lexer, parser::Parser},
     virtual_machine::vm::VM,
 };
+use std::panic::{catch_unwind, AssertUnwindSafe};
 #[allow(unused)]
 use std::{error::Error, fs, rc::Rc};
 
@@ -95,7 +96,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     } else {
         println!("\nRunning:");
         println!("---------------------------");
-        vm.run(false, false);
+		let _ = catch_unwind(AssertUnwindSafe(|| vm.run(false, false)));
 
         if args.contains(&"stack".to_string()) {
             println!("\nOutput VM Stack:");

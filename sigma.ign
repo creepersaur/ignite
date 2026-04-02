@@ -1,1 +1,1 @@
-println("hello".replace("ell"))
+Std::IO::write_line("hello", "world")
