@@ -13,8 +13,9 @@ pub enum Node {
     Variable(Rc<String>),
 
     NumberLiteral(f64),
-    StringLiteral(String),
     BooleanLiteral(bool),
+    StringLiteral(String),
+    FString(Vec<Node>),
 
     // COLLECTIONS
     ListNode(Vec<Node>),

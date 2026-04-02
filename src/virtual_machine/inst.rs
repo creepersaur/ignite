@@ -66,8 +66,8 @@ pub enum Inst {
     GET_PROP, // ✅
     SET_PROP, // ✅
 
-    CALL,                                 // ✅
-    CALL_VOID,                            // ✅
+    CALL(usize),                          // ✅
+    CALL_VOID(usize),                     // ✅
     CALL_BUILTIN(Rc<String>, usize),      // ✅
     CALL_BUILTIN_VOID(Rc<String>, usize), // ✅
     RETURN,                               // ✅
@@ -78,4 +78,7 @@ pub enum Inst {
 
     // Match statement
     MATCH,
+
+    // FString concatenation
+    CONCAT_STR(usize),
 }

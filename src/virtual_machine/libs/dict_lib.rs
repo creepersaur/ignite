@@ -3,7 +3,7 @@
 use std::{cell::RefCell, collections::HashMap};
 
 use crate::{
-    hash_u64, rc, virtual_machine::{
+    get_args, hash_u64, rc, virtual_machine::{
         libs::lib::Library,
         types::{dict::TDict, list::TList},
         value::Value,
@@ -19,8 +19,8 @@ pub const DICT_FUNCTIONS: [&str; 11] = [
 pub struct DictLib;
 
 impl DictLib {
-    fn len(vm: &mut VM) -> Value {
-        let dict = vm.pop();
+    fn len(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let dict = get_args!(args);
 
         if let Value::Dict(inner) = dict {
             Value::Number(inner.values.borrow().len() as f64)
@@ -29,8 +29,8 @@ impl DictLib {
         }
     }
 
-    fn items(vm: &mut VM) -> Value {
-        let dict = vm.pop();
+    fn items(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let dict = get_args!(args);
 
         if let Value::Dict(inner) = dict {
             let new_values = inner.values.borrow();
@@ -51,8 +51,8 @@ impl DictLib {
         }
     }
 
-    fn keys(vm: &mut VM) -> Value {
-        let dict = vm.pop();
+    fn keys(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let dict = get_args!(args);
 
         if let Value::Dict(inner) = dict {
             let new_values = inner.values.borrow();
@@ -65,8 +65,8 @@ impl DictLib {
         }
     }
 
-    fn values(vm: &mut VM) -> Value {
-        let dict = vm.pop();
+    fn values(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let dict = get_args!(args);
 
         if let Value::Dict(inner) = dict {
             let new_values = inner.values.borrow();
@@ -79,9 +79,9 @@ impl DictLib {
         }
     }
 
-    fn get(vm: &mut VM) -> Value {
-        let dict = vm.pop();
-        let key = vm.pop();
+    fn get(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let dict = get_args!(args);
+        let key = &args[1];
 
         if let Value::Dict(inner) = dict {
             return inner
@@ -95,10 +95,8 @@ impl DictLib {
         }
     }
 
-    fn insert(vm: &mut VM) -> Value {
-        let dict = vm.pop();
-        let new_value = vm.pop();
-        let key = vm.pop();
+    fn insert(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [dict, new_value, key] = get_args!(args, 3);
 
         if let Value::Dict(x) = dict {
             let values = x.values;
@@ -110,8 +108,8 @@ impl DictLib {
         Value::NIL
     }
 
-    fn remove(vm: &mut VM) -> Value {
-        let (key, dict) = vm.pop_two();
+    fn remove(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [dict, key] = get_args!(args, 2);
 
         if let Value::Dict(inner) = dict {
             return inner.values.borrow_mut().remove(&key).unwrap_or(Value::NIL);
@@ -120,10 +118,10 @@ impl DictLib {
         }
     }
 
-    fn clear(vm: &mut VM) -> Value {
-        let list = vm.pop();
+    fn clear(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let dict = get_args!(args);
 
-        if let Value::Dict(inner) = list {
+        if let Value::Dict(inner) = dict {
             inner.values.borrow_mut().clear();
             return Value::NIL;
         } else {
@@ -131,8 +129,9 @@ impl DictLib {
         }
     }
 
-    fn map(vm: &mut VM) -> Value {
-        let (func, dict) = vm.pop_two();
+    fn map(vm: &mut VM, args: Vec<Value>) -> Value {
+        let dict = get_args!(args);
+        let func = &args[1];
         let mut new_map = HashMap::new();
 
         if let Value::Dict(inner) = dict {
@@ -140,7 +139,7 @@ impl DictLib {
                 for (key, value) in inner.values.borrow().iter() {
                     vm.stack.push(value.clone());
                     vm.stack.push(key.clone());
-                    vm.call_function(f.clone());
+                    vm.call_function(f.clone(), 2);
                     vm.run(false, true);
                     let new_value = vm.pop();
                     new_map.insert(key.clone(), new_value);
@@ -155,8 +154,9 @@ impl DictLib {
         }
     }
 
-    fn append(vm: &mut VM) -> Value {
-        let (other, dict) = vm.pop_two();
+    fn append(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let dict = get_args!(args);
+        let other = &args[1];
 
         if let Value::Dict(inner) = dict {
             if let Value::Dict(other_inner) = other {
@@ -174,8 +174,9 @@ impl DictLib {
         Value::NIL
     }
 
-    fn concat(vm: &mut VM) -> Value {
-        let (other, dict) = vm.pop_two();
+    fn concat(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let dict = get_args!(args);
+        let other = &args[1];
 
         if let Value::Dict(inner) = dict {
             if let Value::Dict(other_inner) = other {
@@ -196,8 +197,8 @@ impl DictLib {
         }
     }
 
-    fn copy(vm: &mut VM) -> Value {
-        let dict = vm.pop();
+    fn copy(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let dict = get_args!(args);
 
         if let Value::Dict(inner) = dict {
             Value::Dict(inner.clone())
@@ -206,15 +207,16 @@ impl DictLib {
         }
     }
 
-    fn count(vm: &mut VM) -> Value {
-        let (item, dict) = vm.pop_two();
+    fn count(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let dict = get_args!(args);
+        let item = &args[1];
 
         if let Value::Dict(inner) = dict {
             let count = inner
                 .values
                 .borrow()
                 .iter()
-                .filter(|(_, x)| x == &&item)
+                .filter(|(_, x)| *x == item)
                 .count();
             Value::Number(count as f64)
         } else {
@@ -229,7 +231,7 @@ impl Library for DictLib {
         "dict"
     }
 
-    fn get_function(&self, name: u64) -> Box<dyn Fn(&mut VM) -> Value> {
+    fn get_function(&self, name: u64) -> Box<dyn Fn(&mut VM, Vec<Value>) -> Value> {
         match name {
             x if x == hash_u64!("len") => return Box::new(Self::len),
             x if x == hash_u64!("items") => return Box::new(Self::items),

@@ -79,8 +79,8 @@ impl Compiler {
                     self.instructions[i + 1] = Inst::COMMENT("optimized away POP".to_string());
                     i += 2;
                 }
-                (Inst::CALL, Inst::TRY_POP | Inst::POP) => {
-                    self.instructions[i] = Inst::CALL_VOID;
+                (Inst::CALL(args), Inst::TRY_POP | Inst::POP) => {
+                    self.instructions[i] = Inst::CALL_VOID(*args);
                     self.instructions[i + 1] = Inst::NOP;
                     i += 2;
                 }

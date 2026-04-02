@@ -1,8 +1,5 @@
 use crate::{
-    hash_u64,
-    misc::to_index::to_index,
-    rc,
-    virtual_machine::{libs::lib::Library, types::list::TList, value::Value, vm::VM},
+    get_args, hash_u64, misc::to_index::to_index, rc, virtual_machine::{libs::lib::Library, types::list::TList, value::Value, vm::VM}
 };
 use std::{cell::RefCell, cmp::Ordering};
 
@@ -14,8 +11,8 @@ pub const LIST_FUNCTIONS: [&str; 16] = [
 pub struct ListLib;
 
 impl ListLib {
-    fn len(vm: &mut VM) -> Value {
-        let list = vm.pop();
+    fn len(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let list = get_args!(args);
 
         if let Value::List(inner) = list {
             Value::Number(inner.values.borrow().len() as f64)
@@ -24,13 +21,11 @@ impl ListLib {
         }
     }
 
-    fn push(vm: &mut VM) -> Value {
-        let list = vm.pop();
-        let new_value = vm.pop();
+    fn push(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [list, new_value] = get_args!(args, 2);
 
         if let Value::List(x) = list {
-            let values = x.values;
-            values.borrow_mut().push(new_value);
+            x.values.borrow_mut().push(new_value);
         } else {
             panic!("Can only use list.push on Lists")
         }
@@ -38,14 +33,11 @@ impl ListLib {
         Value::NIL
     }
 
-    fn insert(vm: &mut VM) -> Value {
-        let list = vm.pop();
-        let new_value = vm.pop();
-        let index = vm.pop();
+    fn insert(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [list, new_value, index] = get_args!(args, 3);
 
         if let Value::List(x) = list {
-            let values = x.values;
-            values
+            x.values
                 .borrow_mut()
                 .insert(index.as_number() as usize, new_value);
         } else {
@@ -55,8 +47,8 @@ impl ListLib {
         Value::NIL
     }
 
-    fn remove(vm: &mut VM) -> Value {
-        let (index, list) = vm.pop_two();
+    fn remove(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [index, list] = get_args!(args, 2);
 
         if let Value::List(inner) = list {
             if let Value::Number(idx) = index {
@@ -70,36 +62,37 @@ impl ListLib {
         }
     }
 
-    fn pop(vm: &mut VM) -> Value {
-        let list = vm.pop();
+    fn pop(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let list = get_args!(args);
 
         if let Value::List(inner) = list {
-            return inner.values.borrow_mut().pop().unwrap_or(Value::NIL);
+            inner.values.borrow_mut().pop().unwrap_or(Value::NIL)
         } else {
             panic!("Can only use list.pop on Lists");
         }
     }
 
-    fn clear(vm: &mut VM) -> Value {
-        let list = vm.pop();
+    fn clear(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let list = get_args!(args);
 
         if let Value::List(inner) = list {
             inner.values.borrow_mut().clear();
-            return Value::NIL;
         } else {
             panic!("Can only use list.clear on Lists");
         }
+
+        Value::NIL
     }
 
-    fn map(vm: &mut VM) -> Value {
-        let (func, list) = vm.pop_two();
+    fn map(vm: &mut VM, args: Vec<Value>) -> Value {
+        let [func, list] = get_args!(args, 2);
         let mut new_array = vec![];
 
         if let Value::List(inner) = list {
             if let Value::Function(f) = func {
                 for i in inner.values.borrow().iter() {
                     vm.stack.push(i.clone());
-                    vm.call_function(f.clone());
+                    vm.call_function(f.clone(), 1);
                     vm.run(false, true);
                     let new_value = vm.pop();
                     new_array.push(new_value);
@@ -114,8 +107,8 @@ impl ListLib {
         }
     }
 
-    fn append(vm: &mut VM) -> Value {
-        let (other, list) = vm.pop_two();
+    fn append(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [other, list] = get_args!(args, 2);
 
         if let Value::List(inner) = list {
             if let Value::List(other_inner) = other {
@@ -133,8 +126,8 @@ impl ListLib {
         Value::NIL
     }
 
-    fn concat(vm: &mut VM) -> Value {
-        let (other, list) = vm.pop_two();
+    fn concat(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [other, list] = get_args!(args, 2);
 
         if let Value::List(inner) = list {
             if let Value::List(other_inner) = other {
@@ -153,8 +146,8 @@ impl ListLib {
         }
     }
 
-    fn copy(vm: &mut VM) -> Value {
-        let list = vm.pop();
+    fn copy(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let list = get_args!(args);
 
         if let Value::List(inner) = list {
             Value::List(inner.clone())
@@ -163,8 +156,8 @@ impl ListLib {
         }
     }
 
-    fn count(vm: &mut VM) -> Value {
-        let (item, list) = vm.pop_two();
+    fn count(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [item, list] = get_args!(args, 2);
 
         if let Value::List(inner) = list {
             let count = inner.values.borrow().iter().filter(|x| x == &&item).count();
@@ -174,8 +167,8 @@ impl ListLib {
         }
     }
 
-    fn sort(vm: &mut VM) -> Value {
-        let list = vm.pop();
+    fn sort(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let list = get_args!(args);
 
         if let Value::List(inner) = list {
             inner
@@ -189,8 +182,8 @@ impl ListLib {
         Value::NIL
     }
 
-    fn reverse(vm: &mut VM) -> Value {
-        let list = vm.pop();
+    fn reverse(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let list = get_args!(args);
 
         if let Value::List(inner) = list {
             inner.values.borrow_mut().reverse();
@@ -201,20 +194,20 @@ impl ListLib {
         Value::NIL
     }
 
-    fn fill(vm: &mut VM) -> Value {
-        let (value, list) = vm.pop_two();
+    fn fill(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [value, list] = get_args!(args, 2);
 
         if let Value::List(inner) = list {
             inner.values.borrow_mut().fill(value);
         } else {
-            panic!("Can only use list.reverse on Lists");
+            panic!("Can only use list.fill on Lists");
         }
 
         Value::NIL
     }
 
-    fn rep(vm: &mut VM) -> Value {
-        let (value, list) = vm.pop_two();
+    fn rep(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [value, list] = get_args!(args, 2);
 
         if let Value::List(inner) = list {
             if let Value::Number(n) = value {
@@ -233,10 +226,8 @@ impl ListLib {
         }
     }
 
-    fn push_n(vm: &mut VM) -> Value {
-        let list = vm.pop();
-        let value = vm.pop();
-        let num = vm.pop();
+    fn push_n(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [list, value, num] = get_args!(args, 3);
 
         if let Value::List(inner) = list {
             if let Value::Number(n) = num {
@@ -261,7 +252,7 @@ impl Library for ListLib {
         "list"
     }
 
-    fn get_function(&self, name: u64) -> Box<dyn Fn(&mut VM) -> Value> {
+    fn get_function(&self, name: u64) -> Box<dyn Fn(&mut VM, Vec<Value>) -> Value> {
         match name {
             x if x == hash_u64!("len") => return Box::new(Self::len),
             x if x == hash_u64!("push") => return Box::new(Self::push),

@@ -1,14 +1,1 @@
-using Std::IO::read_line
-
-let a = number(read_line("Enter first number: "))
-let b = number(read_line("Enter second number: "))
-let op = read_line("Enter operator: ")
-
-let answer = match op {
-	"+" => a + b,
-	"-" => a - b,
-	"*" => a * b,
-	"/" => a / b,
-}
-
-println("The answer is:", answer)
+println("hello".replace("ell"))

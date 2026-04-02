@@ -1,215 +1,250 @@
-use crate::{hash_u64, virtual_machine::{libs::lib::Library, value::Value, vm::VM}};
+use crate::{
+    get_args, hash_u64, virtual_machine::{libs::lib::Library, value::Value, vm::VM}
+};
 
 pub struct MathLib;
 
 impl MathLib {
-    fn pop_num(vm: &mut VM, fn_name: &str) -> f64 {
-        match vm.pop() {
-            Value::Number(x) => x,
+    fn num(v: &Value, fn_name: &str) -> f64 {
+        match v {
+            Value::Number(x) => *x,
             _ => panic!("math.{fn_name} expects a number"),
         }
     }
 
     // Basic
-    fn abs(vm: &mut VM) -> Value {
-        Value::Number(Self::pop_num(vm, "abs").abs())
+    fn abs(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Number(Self::num(&x, "abs").abs())
     }
-    fn ceil(vm: &mut VM) -> Value {
-        Value::Number(Self::pop_num(vm, "ceil").ceil())
+    fn ceil(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Number(Self::num(&x, "ceil").ceil())
     }
-    fn floor(vm: &mut VM) -> Value {
-        Value::Number(Self::pop_num(vm, "floor").floor())
+    fn floor(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Number(Self::num(&x, "floor").floor())
     }
-    fn round(vm: &mut VM) -> Value {
-        Value::Number(Self::pop_num(vm, "round").round())
+    fn round(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Number(Self::num(&x, "round").round())
     }
-    fn trunc(vm: &mut VM) -> Value {
-        Value::Number(Self::pop_num(vm, "trunc").trunc())
+    fn trunc(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Number(Self::num(&x, "trunc").trunc())
     }
-    fn fract(vm: &mut VM) -> Value {
-        Value::Number(Self::pop_num(vm, "fract").fract())
+    fn fract(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Number(Self::num(&x, "fract").fract())
     }
-    fn sign(vm: &mut VM) -> Value {
-        Value::Number(Self::pop_num(vm, "sign").signum())
+    fn sign(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Number(Self::num(&x, "sign").signum())
     }
-    fn sqrt(vm: &mut VM) -> Value {
-        Value::Number(Self::pop_num(vm, "sqrt").sqrt())
+    fn sqrt(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Number(Self::num(&x, "sqrt").sqrt())
     }
-    fn cbrt(vm: &mut VM) -> Value {
-        Value::Number(Self::pop_num(vm, "cbrt").cbrt())
+    fn cbrt(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Number(Self::num(&x, "cbrt").cbrt())
     }
-    fn exp(vm: &mut VM) -> Value {
-        Value::Number(Self::pop_num(vm, "exp").exp())
+    fn exp(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Number(Self::num(&x, "exp").exp())
     }
-    fn exp2(vm: &mut VM) -> Value {
-        Value::Number(Self::pop_num(vm, "exp2").exp2())
+    fn exp2(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Number(Self::num(&x, "exp2").exp2())
     }
-    fn ln(vm: &mut VM) -> Value {
-        Value::Number(Self::pop_num(vm, "ln").ln())
+    fn ln(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Number(Self::num(&x, "ln").ln())
     }
-    fn log2(vm: &mut VM) -> Value {
-        Value::Number(Self::pop_num(vm, "log2").log2())
+    fn log2(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Number(Self::num(&x, "log2").log2())
     }
-    fn log10(vm: &mut VM) -> Value {
-        Value::Number(Self::pop_num(vm, "log10").log10())
+    fn log10(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Number(Self::num(&x, "log10").log10())
     }
-    fn recip(vm: &mut VM) -> Value {
-        Value::Number(Self::pop_num(vm, "recip").recip())
+    fn recip(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Number(Self::num(&x, "recip").recip())
     }
 
-    // Two-argument (note: args are popped in reverse — second arg first)
-    fn pow(vm: &mut VM) -> Value {
-        let exp = Self::pop_num(vm, "pow");
-        let base = Self::pop_num(vm, "pow");
-        Value::Number(base.powf(exp))
+    // Two-argument
+    fn pow(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [base, exp] = get_args!(args, 2);
+        Value::Number(Self::num(&base, "pow").powf(Self::num(&exp, "pow")))
     }
-    fn log(vm: &mut VM) -> Value {
-        let base = Self::pop_num(vm, "log");
-        let x = Self::pop_num(vm, "log");
-        Value::Number(x.log(base))
+    fn log(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [x, base] = get_args!(args, 2);
+        Value::Number(Self::num(&x, "log").log(Self::num(&base, "log")))
     }
-    fn hypot(vm: &mut VM) -> Value {
-        let b = Self::pop_num(vm, "hypot");
-        let a = Self::pop_num(vm, "hypot");
-        Value::Number(a.hypot(b))
+    fn hypot(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [a, b] = get_args!(args, 2);
+        Value::Number(Self::num(&a, "hypot").hypot(Self::num(&b, "hypot")))
     }
-    fn atan2(vm: &mut VM) -> Value {
-        let x = Self::pop_num(vm, "atan2");
-        let y = Self::pop_num(vm, "atan2");
-        Value::Number(y.atan2(x))
+    fn atan2(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [y, x] = get_args!(args, 2);
+        Value::Number(Self::num(&y, "atan2").atan2(Self::num(&x, "atan2")))
     }
-    fn min(vm: &mut VM) -> Value {
-        let b = Self::pop_num(vm, "min");
-        let a = Self::pop_num(vm, "min");
-        Value::Number(a.min(b))
+    fn min(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [a, b] = get_args!(args, 2);
+        Value::Number(Self::num(&a, "min").min(Self::num(&b, "min")))
     }
-    fn max(vm: &mut VM) -> Value {
-        let b = Self::pop_num(vm, "max");
-        let a = Self::pop_num(vm, "max");
-        Value::Number(a.max(b))
+    fn max(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [a, b] = get_args!(args, 2);
+        Value::Number(Self::num(&a, "max").max(Self::num(&b, "max")))
     }
-    fn clamp(vm: &mut VM) -> Value {
-        let max = Self::pop_num(vm, "clamp");
-        let min = Self::pop_num(vm, "clamp");
-        let x = Self::pop_num(vm, "clamp");
-        Value::Number(x.clamp(min, max))
+    fn clamp(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [x, min, max] = get_args!(args, 3);
+        Value::Number(Self::num(&x, "clamp").clamp(Self::num(&min, "clamp"), Self::num(&max, "clamp")))
     }
-    fn copysign(vm: &mut VM) -> Value {
-        let sign = Self::pop_num(vm, "copysign");
-        let x = Self::pop_num(vm, "copysign");
-        Value::Number(x.copysign(sign))
+    fn copysign(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [x, sign] = get_args!(args, 2);
+        Value::Number(Self::num(&x, "copysign").copysign(Self::num(&sign, "copysign")))
     }
 
     // Trig
-    fn sin(vm: &mut VM) -> Value {
-        Value::Number(Self::pop_num(vm, "sin").sin())
+    fn sin(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Number(Self::num(&x, "sin").sin())
     }
-    fn cos(vm: &mut VM) -> Value {
-        Value::Number(Self::pop_num(vm, "cos").cos())
+    fn cos(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Number(Self::num(&x, "cos").cos())
     }
-    fn tan(vm: &mut VM) -> Value {
-        Value::Number(Self::pop_num(vm, "tan").tan())
+    fn tan(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Number(Self::num(&x, "tan").tan())
     }
-    fn sinh(vm: &mut VM) -> Value {
-        Value::Number(Self::pop_num(vm, "sinh").sinh())
+    fn sinh(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Number(Self::num(&x, "sinh").sinh())
     }
-    fn cosh(vm: &mut VM) -> Value {
-        Value::Number(Self::pop_num(vm, "cosh").cosh())
+    fn cosh(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Number(Self::num(&x, "cosh").cosh())
     }
-    fn tanh(vm: &mut VM) -> Value {
-        Value::Number(Self::pop_num(vm, "tanh").tanh())
+    fn tanh(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Number(Self::num(&x, "tanh").tanh())
     }
 
     // Inverse trig
-    fn asin(vm: &mut VM) -> Value {
-        Value::Number(Self::pop_num(vm, "asin").asin())
+    fn asin(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Number(Self::num(&x, "asin").asin())
     }
-    fn acos(vm: &mut VM) -> Value {
-        Value::Number(Self::pop_num(vm, "acos").acos())
+    fn acos(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Number(Self::num(&x, "acos").acos())
     }
-    fn atan(vm: &mut VM) -> Value {
-        Value::Number(Self::pop_num(vm, "atan").atan())
+    fn atan(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Number(Self::num(&x, "atan").atan())
     }
-    fn asinh(vm: &mut VM) -> Value {
-        Value::Number(Self::pop_num(vm, "asinh").asinh())
+    fn asinh(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Number(Self::num(&x, "asinh").asinh())
     }
-    fn acosh(vm: &mut VM) -> Value {
-        Value::Number(Self::pop_num(vm, "acosh").acosh())
+    fn acosh(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Number(Self::num(&x, "acosh").acosh())
     }
-    fn atanh(vm: &mut VM) -> Value {
-        Value::Number(Self::pop_num(vm, "atanh").atanh())
+    fn atanh(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Number(Self::num(&x, "atanh").atanh())
     }
 
     // Conversion
-    fn to_radians(vm: &mut VM) -> Value {
-        Value::Number(Self::pop_num(vm, "to_radians").to_radians())
+    fn to_radians(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Number(Self::num(&x, "to_radians").to_radians())
     }
-    fn to_degrees(vm: &mut VM) -> Value {
-        Value::Number(Self::pop_num(vm, "to_degrees").to_degrees())
+    fn to_degrees(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Number(Self::num(&x, "to_degrees").to_degrees())
     }
-    fn to_celsius(vm: &mut VM) -> Value {
-        let f = Self::pop_num(vm, "to_celsius");
-        Value::Number((f - 32.0) * 5.0 / 9.0)
+    fn to_celsius(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Number((Self::num(&x, "to_celsius") - 32.0) * 5.0 / 9.0)
     }
-
-    fn to_fahrenheit(vm: &mut VM) -> Value {
-        let c = Self::pop_num(vm, "to_fahrenheit");
-        Value::Number((c * 9.0 / 5.0) + 32.0)
+    fn to_fahrenheit(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Number((Self::num(&x, "to_fahrenheit") * 9.0 / 5.0) + 32.0)
     }
 
     // Predicates
-    fn is_nan(vm: &mut VM) -> Value {
-        Value::Bool(Self::pop_num(vm, "is_nan").is_nan())
+    fn is_nan(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Bool(Self::num(&x, "is_nan").is_nan())
     }
-    fn is_infinite(vm: &mut VM) -> Value {
-        Value::Bool(Self::pop_num(vm, "is_infinite").is_infinite())
+    fn is_infinite(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Bool(Self::num(&x, "is_infinite").is_infinite())
     }
-    fn is_finite(vm: &mut VM) -> Value {
-        Value::Bool(Self::pop_num(vm, "is_finite").is_finite())
+    fn is_finite(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let x = get_args!(args);
+        Value::Bool(Self::num(&x, "is_finite").is_finite())
     }
 
     // Rounding
-    fn round_to(vm: &mut VM) -> Value {
-        let decimals = Self::pop_num(vm, "round_to");
-        let x = Self::pop_num(vm, "round_to");
-        let factor = 10f64.powi(decimals as i32);
-        Value::Number((x * factor).round() / factor)
+    fn round_to(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [x, decimals] = get_args!(args, 2);
+        let factor = 10f64.powi(Self::num(&decimals, "round_to") as i32);
+        Value::Number((Self::num(&x, "round_to") * factor).round() / factor)
     }
 
     // Interpolation
-    fn lerp(vm: &mut VM) -> Value {
-        let t = Self::pop_num(vm, "lerp");
-        let b = Self::pop_num(vm, "lerp");
-        let a = Self::pop_num(vm, "lerp");
+    fn lerp(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [a, b, t] = get_args!(args, 3);
+        let (a, b, t) = (
+            Self::num(&a, "lerp"),
+            Self::num(&b, "lerp"),
+            Self::num(&t, "lerp"),
+        );
         Value::Number(a + (b - a) * t)
     }
-    fn inv_lerp(vm: &mut VM) -> Value {
-        let x = Self::pop_num(vm, "inv_lerp");
-        let b = Self::pop_num(vm, "inv_lerp");
-        let a = Self::pop_num(vm, "inv_lerp");
+    fn inv_lerp(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [a, b, x] = get_args!(args, 3);
+        let (a, b, x) = (
+            Self::num(&a, "inv_lerp"),
+            Self::num(&b, "inv_lerp"),
+            Self::num(&x, "inv_lerp"),
+        );
         Value::Number((x - a) / (b - a))
     }
-    fn remap(vm: &mut VM) -> Value {
-        let out_max = Self::pop_num(vm, "remap");
-        let out_min = Self::pop_num(vm, "remap");
-        let in_max = Self::pop_num(vm, "remap");
-        let in_min = Self::pop_num(vm, "remap");
-        let x = Self::pop_num(vm, "remap");
+    fn remap(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [x, in_min, in_max, out_min, out_max] = get_args!(args, 5);
+        let (x, in_min, in_max, out_min, out_max) = (
+            Self::num(&x, "remap"),
+            Self::num(&in_min, "remap"),
+            Self::num(&in_max, "remap"),
+            Self::num(&out_min, "remap"),
+            Self::num(&out_max, "remap"),
+        );
         let t = (x - in_min) / (in_max - in_min);
         Value::Number(out_min + t * (out_max - out_min))
     }
-    fn smoothstep(vm: &mut VM) -> Value {
-        let x = Self::pop_num(vm, "smoothstep");
-        let edge1 = Self::pop_num(vm, "smoothstep");
-        let edge0 = Self::pop_num(vm, "smoothstep");
+    fn smoothstep(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [edge0, edge1, x] = get_args!(args, 3);
+        let (edge0, edge1, x) = (
+            Self::num(&edge0, "smoothstep"),
+            Self::num(&edge1, "smoothstep"),
+            Self::num(&x, "smoothstep"),
+        );
         let t = ((x - edge0) / (edge1 - edge0)).clamp(0.0, 1.0);
         Value::Number(t * t * (3.0 - 2.0 * t))
     }
 
     // Number theory
-    fn gcd(vm: &mut VM) -> Value {
-        let mut b = Self::pop_num(vm, "gcd") as u64;
-        let mut a = Self::pop_num(vm, "gcd") as u64;
+    fn gcd(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [a, b] = get_args!(args, 2);
+        let (mut a, mut b) = (Self::num(&a, "gcd") as u64, Self::num(&b, "gcd") as u64);
         while b != 0 {
             let t = b;
             b = a % b;
@@ -217,11 +252,10 @@ impl MathLib {
         }
         Value::Number(a as f64)
     }
-    fn lcm(vm: &mut VM) -> Value {
-        let b = Self::pop_num(vm, "lcm") as u64;
-        let a = Self::pop_num(vm, "lcm") as u64;
-        let mut tb = b;
-        let mut ta = a;
+    fn lcm(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [a, b] = get_args!(args, 2);
+        let (a, b) = (Self::num(&a, "lcm") as u64, Self::num(&b, "lcm") as u64);
+        let (mut ta, mut tb) = (a, b);
         while tb != 0 {
             let t = tb;
             tb = ta % tb;
@@ -229,12 +263,14 @@ impl MathLib {
         }
         Value::Number((a / ta * b) as f64)
     }
-    fn factorial(vm: &mut VM) -> Value {
-        let n = Self::pop_num(vm, "factorial") as u64;
+    fn factorial(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let n = get_args!(args);
+        let n = Self::num(&n, "factorial") as u64;
         Value::Number((1..=n).product::<u64>() as f64)
     }
-    fn is_prime(vm: &mut VM) -> Value {
-        let n = Self::pop_num(vm, "is_prime") as u64;
+    fn is_prime(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let n = get_args!(args);
+        let n = Self::num(&n, "is_prime") as u64;
         if n < 2 {
             return Value::Bool(false);
         }
@@ -249,42 +285,46 @@ impl MathLib {
     }
 
     // Numeric utilities
-    fn fma(vm: &mut VM) -> Value {
-        let c = Self::pop_num(vm, "fma");
-        let b = Self::pop_num(vm, "fma");
-        let a = Self::pop_num(vm, "fma");
-        Value::Number(a.mul_add(b, c))
+    fn fma(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [a, b, c] = get_args!(args, 3);
+        Value::Number(Self::num(&a, "fma").mul_add(Self::num(&b, "fma"), Self::num(&c, "fma")))
     }
-    fn mid(vm: &mut VM) -> Value {
-        let b = Self::pop_num(vm, "mid");
-        let a = Self::pop_num(vm, "mid");
-        Value::Number((a + b) / 2.0)
+    fn mid(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [a, b] = get_args!(args, 2);
+        Value::Number((Self::num(&a, "mid") + Self::num(&b, "mid")) / 2.0)
     }
-    fn wrap(vm: &mut VM) -> Value {
-        let max = Self::pop_num(vm, "wrap");
-        let min = Self::pop_num(vm, "wrap");
-        let x = Self::pop_num(vm, "wrap");
+    fn wrap(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [x, min, max] = get_args!(args, 3);
+        let (x, min, max) = (
+            Self::num(&x, "wrap"),
+            Self::num(&min, "wrap"),
+            Self::num(&max, "wrap"),
+        );
         let range = max - min;
         Value::Number(min + ((x - min) % range + range) % range)
     }
-    fn snap(vm: &mut VM) -> Value {
-        let step = Self::pop_num(vm, "snap");
-        let x = Self::pop_num(vm, "snap");
-        Value::Number((x / step).round() * step)
+    fn snap(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [x, step] = get_args!(args, 2);
+        Value::Number(
+            (Self::num(&x, "snap") / Self::num(&&step, "snap")).round() * Self::num(&step, "snap"),
+        )
     }
-    fn ping_pong(vm: &mut VM) -> Value {
-        let length = Self::pop_num(vm, "ping_pong");
-        let x = Self::pop_num(vm, "ping_pong");
+    fn ping_pong(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [x, length] = get_args!(args, 2);
+        let (x, length) = (Self::num(&x, "ping_pong"), Self::num(&length, "ping_pong"));
         let t = x % (length * 2.0);
         Value::Number(if t > length { length * 2.0 - t } else { t })
     }
 
     // Geometry
-    fn dist(vm: &mut VM) -> Value {
-        let y2 = Self::pop_num(vm, "dist");
-        let x2 = Self::pop_num(vm, "dist");
-        let y1 = Self::pop_num(vm, "dist");
-        let x1 = Self::pop_num(vm, "dist");
+    fn dist(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [x1, y1, x2, y2] = get_args!(args, 4);
+        let (x1, y1, x2, y2) = (
+            Self::num(&x1, "dist"),
+            Self::num(&y1, "dist"),
+            Self::num(&x2, "dist"),
+            Self::num(&y2, "dist"),
+        );
         Value::Number((x2 - x1).hypot(y2 - y1))
     }
 }
@@ -295,7 +335,7 @@ impl Library for MathLib {
         "math"
     }
 
-    fn get_function(&self, name: u64) -> Box<dyn Fn(&mut VM) -> Value> {
+    fn get_function(&self, name: u64) -> Box<dyn Fn(&mut VM, Vec<Value>) -> Value> {
         match name {
             // Basic
             x if x == hash_u64!("abs") => Box::new(Self::abs),

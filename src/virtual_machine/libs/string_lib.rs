@@ -1,15 +1,14 @@
 use crate::{
-    hash_u64, rc,
-    virtual_machine::{
+    get_args, hash_u64, rc, virtual_machine::{
         libs::lib::Library,
         types::{list::TList, string::TString},
         value::Value,
         vm::VM,
-    },
+    }
 };
 use std::cell::RefCell;
 
-pub const STRING_FUNCTIONS: [&str; 30] = [
+pub const STRING_FUNCTIONS: [&str; 31] = [
     "len",
     "concat",
     "copy",
@@ -40,13 +39,14 @@ pub const STRING_FUNCTIONS: [&str; 30] = [
     "is_ascii",
     "is_empty",
     "is_whitespace",
+    "join",
 ];
 
 pub struct StringLib;
 
 impl StringLib {
-    fn len(vm: &mut VM) -> Value {
-        let string = vm.pop();
+    fn len(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let string = get_args!(args);
 
         if let Value::String(inner) = string {
             Value::Number(inner.0.len() as f64)
@@ -55,8 +55,30 @@ impl StringLib {
         }
     }
 
-    fn concat(vm: &mut VM) -> Value {
-        let (other, string) = vm.pop_two();
+    fn join(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [string, list] = get_args!(args, 2);
+
+        if let Value::List(inner) = list {
+            if let Value::String(t) = string {
+                Value::String(TString::new(
+                    inner
+                        .values
+                        .borrow()
+                        .iter()
+                        .map(|x| x.to_string(false))
+                        .collect::<Vec<_>>()
+                        .join(&t.0),
+                ))
+            } else {
+                panic!("Expected string for separator");
+            }
+        } else {
+            panic!("Can only use string.concat on a list");
+        }
+    }
+
+    fn concat(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [string, other] = get_args!(args, 2);
 
         if let Value::String(inner) = string {
             return Value::String(TString::new(format!(
@@ -69,8 +91,8 @@ impl StringLib {
         }
     }
 
-    fn copy(vm: &mut VM) -> Value {
-        let string = vm.pop();
+    fn copy(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let string = get_args!(args);
 
         if let Value::String(inner) = string {
             Value::String(TString(std::rc::Rc::from(&*inner.0)))
@@ -79,8 +101,8 @@ impl StringLib {
         }
     }
 
-    fn count(vm: &mut VM) -> Value {
-        let (item, string) = vm.pop_two();
+    fn count(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [string, item] = get_args!(args, 2);
 
         if let Value::String(inner) = string {
             let count = inner.0.matches(&*item.to_string(false)).count();
@@ -90,8 +112,8 @@ impl StringLib {
         }
     }
 
-    fn reverse(vm: &mut VM) -> Value {
-        let string = vm.pop();
+    fn reverse(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let string = get_args!(args);
 
         if let Value::String(inner) = string {
             Value::String(TString::new(inner.0.chars().rev().collect::<String>()))
@@ -100,8 +122,8 @@ impl StringLib {
         }
     }
 
-    fn rep(vm: &mut VM) -> Value {
-        let (value, string) = vm.pop_two();
+    fn rep(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [string, value] = get_args!(args, 2);
 
         if let Value::String(inner) = string {
             if let Value::Number(n) = value {
@@ -114,8 +136,8 @@ impl StringLib {
         }
     }
 
-    fn bytes(vm: &mut VM) -> Value {
-        let string = vm.pop();
+    fn bytes(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let string = get_args!(args);
 
         if let Value::String(inner) = string {
             return Value::List(TList::new(rc!(RefCell::new(
@@ -130,8 +152,8 @@ impl StringLib {
         }
     }
 
-    fn chars(vm: &mut VM) -> Value {
-        let string = vm.pop();
+    fn chars(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let string = get_args!(args);
 
         if let Value::String(inner) = string {
             return Value::List(TList::new(rc!(RefCell::new(
@@ -142,9 +164,9 @@ impl StringLib {
         }
     }
 
-    fn split(vm: &mut VM) -> Value {
-        let string = vm.pop();
-        let new_value = vm.pop_or_nil();
+    fn split(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let string = get_args!(args);
+        let new_value = args.get(1).unwrap_or(&Value::NIL);
 
         if let Value::String(inner) = string {
             if let Value::String(value) = new_value {
@@ -159,11 +181,11 @@ impl StringLib {
                 Value::List(TList::new(rc!(RefCell::new(
                     inner
                         .0
-                        .split(c)
+                        .split(*c)
                         .map(|x: &str| Value::String(TString::from_str(x)))
                         .collect::<Vec<_>>()
                 ))))
-            } else if Value::NIL == new_value {
+            } else if Value::NIL == *new_value {
                 Value::List(TList::new(rc!(RefCell::new(
                     inner
                         .0
@@ -179,8 +201,8 @@ impl StringLib {
         }
     }
 
-    fn upper(vm: &mut VM) -> Value {
-        let string = vm.pop();
+    fn upper(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let string = get_args!(args);
 
         if let Value::String(inner) = string {
             Value::String(TString::new(inner.0.to_uppercase()))
@@ -189,8 +211,8 @@ impl StringLib {
         }
     }
 
-    fn lower(vm: &mut VM) -> Value {
-        let string = vm.pop();
+    fn lower(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let string = get_args!(args);
 
         if let Value::String(inner) = string {
             Value::String(TString::new(inner.0.to_lowercase()))
@@ -201,8 +223,8 @@ impl StringLib {
 
     // --- Trim ---
 
-    fn trim(vm: &mut VM) -> Value {
-        let string = vm.pop();
+    fn trim(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let string = get_args!(args);
 
         if let Value::String(inner) = string {
             Value::String(TString::new(inner.0.trim().to_string()))
@@ -211,8 +233,8 @@ impl StringLib {
         }
     }
 
-    fn ltrim(vm: &mut VM) -> Value {
-        let string = vm.pop();
+    fn ltrim(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let string = get_args!(args);
 
         if let Value::String(inner) = string {
             Value::String(TString::new(inner.0.trim_start().to_string()))
@@ -221,8 +243,8 @@ impl StringLib {
         }
     }
 
-    fn rtrim(vm: &mut VM) -> Value {
-        let string = vm.pop();
+    fn rtrim(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let string = get_args!(args);
 
         if let Value::String(inner) = string {
             Value::String(TString::new(inner.0.trim_end().to_string()))
@@ -234,10 +256,8 @@ impl StringLib {
     // --- Search & Replace ---
 
     /// replace(old, new) -> string
-    fn replace(vm: &mut VM) -> Value {
-        let new_val = vm.pop();
-        let old_val = vm.pop();
-        let string = vm.pop();
+    fn replace(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [string, new_val, old_val] = get_args!(args, 3);
 
         if let Value::String(inner) = string {
             let old = old_val.to_string(false);
@@ -249,8 +269,8 @@ impl StringLib {
     }
 
     /// find(sub) -> number (index) or nil if not found
-    fn find(vm: &mut VM) -> Value {
-        let (sub, string) = vm.pop_two();
+    fn find(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [string, sub] = get_args!(args, 2);
 
         if let Value::String(inner) = string {
             let needle = sub.to_string(false);
@@ -264,8 +284,8 @@ impl StringLib {
     }
 
     /// starts_with(prefix) -> bool
-    fn starts_with(vm: &mut VM) -> Value {
-        let (prefix, string) = vm.pop_two();
+    fn starts_with(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [string, prefix] = get_args!(args, 2);
 
         if let Value::String(inner) = string {
             let p = prefix.to_string(false);
@@ -276,8 +296,8 @@ impl StringLib {
     }
 
     /// ends_with(suffix) -> bool
-    fn ends_with(vm: &mut VM) -> Value {
-        let (suffix, string) = vm.pop_two();
+    fn ends_with(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [string, suffix] = get_args!(args, 2);
 
         if let Value::String(inner) = string {
             let s = suffix.to_string(false);
@@ -290,8 +310,8 @@ impl StringLib {
     // --- Case Conversion ---
 
     /// title() -> string  (Title Case Every Word)
-    fn title(vm: &mut VM) -> Value {
-        let string = vm.pop();
+    fn title(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let string = get_args!(args);
 
         if let Value::String(inner) = string {
             let titled = inner
@@ -318,10 +338,8 @@ impl StringLib {
     // --- Padding / Alignment ---
 
     /// center(width) or center(width, fill_char) -> string
-    fn center(vm: &mut VM) -> Value {
-        let width_val = vm.pop();
-        let fill_val = vm.pop_or_nil();
-        let string = vm.pop();
+    fn center(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [string, fill_val, width_val] = get_args!(args, 3);
 
         if let Value::String(inner) = string {
             let width = if let Value::Number(n) = width_val {
@@ -356,10 +374,8 @@ impl StringLib {
     }
 
     /// ljust(width) or ljust(width, fill_char) -> string
-    fn ljust(vm: &mut VM) -> Value {
-        let width_val = vm.pop();
-        let fill_val = vm.pop_or_nil();
-        let string = vm.pop();
+    fn ljust(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [string, fill_val, width_val] = get_args!(args, 3);
 
         if let Value::String(inner) = string {
             let width = if let Value::Number(n) = width_val {
@@ -386,10 +402,8 @@ impl StringLib {
     }
 
     /// rjust(width) or rjust(width, fill_char) -> string
-    fn rjust(vm: &mut VM) -> Value {
-        let width_val = vm.pop();
-        let fill_val = vm.pop_or_nil();
-        let string = vm.pop();
+    fn rjust(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [string, fill_val, width_val] = get_args!(args, 3);
 
         if let Value::String(inner) = string {
             let width = if let Value::Number(n) = width_val {
@@ -418,8 +432,8 @@ impl StringLib {
     // --- Predicate / is_* ---
 
     /// is_upper() -> bool  (non-empty and all cased chars are uppercase)
-    fn is_upper(vm: &mut VM) -> Value {
-        let string = vm.pop();
+    fn is_upper(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let string = get_args!(args);
 
         if let Value::String(inner) = string {
             let has_cased = inner.0.chars().any(|c| c.is_alphabetic());
@@ -430,8 +444,8 @@ impl StringLib {
     }
 
     /// is_lower() -> bool  (non-empty and all cased chars are lowercase)
-    fn is_lower(vm: &mut VM) -> Value {
-        let string = vm.pop();
+    fn is_lower(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let string = get_args!(args);
 
         if let Value::String(inner) = string {
             let has_cased = inner.0.chars().any(|c| c.is_alphabetic());
@@ -442,8 +456,8 @@ impl StringLib {
     }
 
     /// is_numeric() -> bool  (all chars are numeric / digit)
-    fn is_numeric(vm: &mut VM) -> Value {
-        let string = vm.pop();
+    fn is_numeric(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let string = get_args!(args);
 
         if let Value::String(inner) = string {
             Value::Bool(!inner.0.is_empty() && inner.0.chars().all(|c| c.is_numeric()))
@@ -453,8 +467,8 @@ impl StringLib {
     }
 
     /// is_alphanumeric() -> bool
-    fn is_alphanumeric(vm: &mut VM) -> Value {
-        let string = vm.pop();
+    fn is_alphanumeric(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let string = get_args!(args);
 
         if let Value::String(inner) = string {
             Value::Bool(!inner.0.is_empty() && inner.0.chars().all(|c| c.is_alphanumeric()))
@@ -464,8 +478,8 @@ impl StringLib {
     }
 
     /// is_alpha() -> bool  (all chars are alphabetic)
-    fn is_alpha(vm: &mut VM) -> Value {
-        let string = vm.pop();
+    fn is_alpha(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let string = get_args!(args);
 
         if let Value::String(inner) = string {
             Value::Bool(!inner.0.is_empty() && inner.0.chars().all(|c| c.is_alphabetic()))
@@ -475,8 +489,8 @@ impl StringLib {
     }
 
     /// is_ascii() -> bool  (all chars are ASCII)
-    fn is_ascii(vm: &mut VM) -> Value {
-        let string = vm.pop();
+    fn is_ascii(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let string = get_args!(args);
 
         if let Value::String(inner) = string {
             Value::Bool(inner.0.is_ascii())
@@ -486,8 +500,8 @@ impl StringLib {
     }
 
     /// is_empty() -> bool
-    fn is_empty(vm: &mut VM) -> Value {
-        let string = vm.pop();
+    fn is_empty(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let string = get_args!(args);
 
         if let Value::String(inner) = string {
             Value::Bool(inner.0.is_empty())
@@ -497,8 +511,8 @@ impl StringLib {
     }
 
     /// is_whitespace() -> bool  (non-empty and all chars are whitespace)
-    fn is_whitespace(vm: &mut VM) -> Value {
-        let string = vm.pop();
+    fn is_whitespace(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let string = get_args!(args);
 
         if let Value::String(inner) = string {
             Value::Bool(!inner.0.is_empty() && inner.0.chars().all(|c| c.is_whitespace()))
@@ -514,7 +528,7 @@ impl Library for StringLib {
         "string"
     }
 
-    fn get_function(&self, name: u64) -> Box<dyn Fn(&mut VM) -> Value> {
+    fn get_function(&self, name: u64) -> Box<dyn Fn(&mut VM, Vec<Value>) -> Value> {
         match name {
             // Original
             x if x == hash_u64!("len") => Box::new(Self::len),
@@ -537,6 +551,7 @@ impl Library for StringLib {
             x if x == hash_u64!("find") => Box::new(Self::find),
             x if x == hash_u64!("starts_with") => Box::new(Self::starts_with),
             x if x == hash_u64!("ends_with") => Box::new(Self::ends_with),
+            x if x == hash_u64!("join") => Box::new(Self::join),
             // Case
             x if x == hash_u64!("title") => Box::new(Self::title),
             // Padding

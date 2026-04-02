@@ -1,8 +1,7 @@
 use std::{cell::RefCell, cmp::Ordering};
 
 use crate::{
-    hash_u64, rc,
-    virtual_machine::{libs::lib::Library, types::list::TList, value::Value, vm::VM},
+    get_args, hash_u64, rc, virtual_machine::{libs::lib::Library, types::list::TList, value::Value, vm::VM}
 };
 
 pub const TUPLE_FUNCTIONS: [&str; 10] = [
@@ -12,8 +11,8 @@ pub const TUPLE_FUNCTIONS: [&str; 10] = [
 pub struct TupleLib;
 
 impl TupleLib {
-    fn to_list(vm: &mut VM) -> Value {
-        let tuple = vm.pop();
+    fn to_list(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let tuple = get_args!(args);
 
         if let Value::Tuple(inner) = tuple {
             let mut new_inner = inner.clone();
@@ -24,8 +23,8 @@ impl TupleLib {
         }
     }
 
-    fn len(vm: &mut VM) -> Value {
-        let tuple = vm.pop();
+    fn len(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let tuple = get_args!(args);
 
         if let Value::Tuple(inner) = tuple {
             Value::Number(inner.values.borrow().len() as f64)
@@ -34,15 +33,15 @@ impl TupleLib {
         }
     }
 
-    fn map(vm: &mut VM) -> Value {
-        let (func, tuple) = vm.pop_two();
+    fn map(vm: &mut VM, args: Vec<Value>) -> Value {
+		let [tuple, func] = get_args!(args, 2);
         let mut new_array = vec![];
 
         if let Value::Tuple(inner) = tuple {
             if let Value::Function(f) = func {
                 for i in inner.values.borrow().iter() {
                     vm.stack.push(i.clone());
-                    vm.call_function(f.clone());
+                    vm.call_function(f.clone(), 1);
                     vm.run(false, true);
                     let new_value = vm.pop();
                     new_array.push(new_value);
@@ -57,8 +56,8 @@ impl TupleLib {
         }
     }
 
-    fn concat(vm: &mut VM) -> Value {
-        let (other, tuple) = vm.pop_two();
+    fn concat(_vm: &mut VM, args: Vec<Value>) -> Value {
+		let [tuple, other] = get_args!(args, 2);
 
         if let Value::Tuple(inner) = tuple {
             if let Value::Tuple(other_inner) = other {
@@ -85,8 +84,8 @@ impl TupleLib {
         }
     }
 
-    fn copy(vm: &mut VM) -> Value {
-        let tuple = vm.pop();
+    fn copy(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let tuple = get_args!(args);
 
         if let Value::Tuple(inner) = tuple {
             Value::Tuple(inner.clone())
@@ -95,8 +94,8 @@ impl TupleLib {
         }
     }
 
-    fn count(vm: &mut VM) -> Value {
-        let (item, tuple) = vm.pop_two();
+    fn count(_vm: &mut VM, args: Vec<Value>) -> Value {
+		let [tuple, item] = get_args!(args, 2);
 
         if let Value::Tuple(inner) = tuple {
             let count = inner.values.borrow().iter().filter(|x| x == &&item).count();
@@ -106,8 +105,8 @@ impl TupleLib {
         }
     }
 
-    fn sort(vm: &mut VM) -> Value {
-        let tuple = vm.pop();
+    fn sort(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let tuple = get_args!(args);
 
         if let Value::Tuple(inner) = tuple {
             inner
@@ -121,8 +120,8 @@ impl TupleLib {
         Value::NIL
     }
 
-    fn reverse(vm: &mut VM) -> Value {
-        let tuple = vm.pop();
+    fn reverse(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let tuple = get_args!(args);
 
         if let Value::Tuple(inner) = tuple {
             inner.values.borrow_mut().reverse();
@@ -133,8 +132,8 @@ impl TupleLib {
         Value::NIL
     }
 
-    fn rep(vm: &mut VM) -> Value {
-        let (value, tuple) = vm.pop_two();
+    fn rep(_vm: &mut VM, args: Vec<Value>) -> Value {
+		let [tuple, value] = get_args!(args, 2);
 
         if let Value::Tuple(inner) = tuple {
             if let Value::Number(n) = value {
@@ -160,7 +159,7 @@ impl Library for TupleLib {
         "tuple"
     }
 
-    fn get_function(&self, name: u64) -> Box<dyn Fn(&mut VM) -> Value> {
+    fn get_function(&self, name: u64) -> Box<dyn Fn(&mut VM, Vec<Value>) -> Value> {
         match name {
             x if x == hash_u64!("len") => return Box::new(Self::len),
             x if x == hash_u64!("map") => return Box::new(Self::map),

@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 use crate::{
     language::{
+        lexer::Lexer,
         nodes::Node,
         token::{Token, TokenKind},
     },
@@ -177,12 +178,12 @@ impl Parser {
 
             return Ok(Node::UnaryOp {
                 op,
-                right: Box::new(self.parse_exponent()?),
+                right: Box::new(self.parse_fstring()?),
                 is_prefix: true,
             });
         }
 
-        let expr = self.parse_exponent()?;
+        let expr = self.parse_fstring()?;
 
         if let Ok(next) = self.current()
             && matches!(next.kind, TokenKind::INCREMENT | TokenKind::DECREMENT)
@@ -197,6 +198,88 @@ impl Parser {
         }
 
         Ok(expr)
+    }
+
+    fn parse_fstring(&mut self) -> NodeResult {
+        self.skip_new_lines();
+
+        if let Ok(next) = self.current()
+            && matches!(next.kind, TokenKind::DOLLAR)
+        {
+            self.advance()?;
+
+            let expr = self.parse_exponent()?;
+            if let Node::StringLiteral(s) = expr {
+                let chars = s.chars().collect::<Vec<char>>();
+                let mut idx = 0;
+                let mut current_value = String::new();
+                let mut values = vec![];
+                let mut depth: i32 = 0;
+
+                while idx < chars.len() {
+                    let ch = chars[idx];
+
+                    // Handle escape sequences for braces
+                    if ch == '\\'
+                        && idx + 1 < chars.len()
+                        && (chars[idx + 1] == '{' || chars[idx + 1] == '}')
+                    {
+                        current_value.push(chars[idx + 1]);
+                        idx += 2;
+                        continue;
+                    }
+
+                    if ch == '{' {
+                        if depth == 0 {
+                            // Flush accumulated string before the interpolation
+                            if !current_value.is_empty() {
+                                values.push(Node::StringLiteral(current_value.clone()));
+                                current_value.clear();
+                            }
+                        } else {
+                            // Nested brace — keep it as part of the expression
+                            current_value.push(ch);
+                        }
+                        depth += 1;
+                    } else if ch == '}' {
+                        depth -= 1;
+                        if depth == 0 {
+                            // Parse whatever was inside ${ ... }
+                            values.push(
+                                Parser::new(
+                                    current_value.clone(),
+                                    Lexer::new(&current_value).get_tokens(),
+                                )
+                                .parse_expression()?,
+                            );
+                            current_value.clear();
+                        } else {
+                            // Still inside a nested expression
+                            current_value.push(ch);
+                        }
+                    } else {
+                        current_value.push(ch);
+                    }
+
+                    idx += 1;
+                }
+
+                if depth != 0 {
+                    return Err("Unclosed `{` in f-string interpolation.".to_string());
+                }
+
+                // Flush any trailing string literal after the last `}`
+                if !current_value.is_empty() {
+                    values.push(Node::StringLiteral(current_value));
+                }
+
+                return Ok(Node::FString(values));
+            } else {
+                panic!("`$` can only be applied to string literals")
+            }
+        } else {
+            self.parse_exponent()
+        }
     }
 
     fn parse_exponent(&mut self) -> NodeResult {
@@ -724,12 +807,12 @@ impl Parser {
                     if let Ok(next) = self.current()
                         && next.kind == TokenKind::COMMA
                     {
-						self.expect_and_consume(TokenKind::COMMA)?;
-					} else {
-						break;
-					}
+                        self.expect_and_consume(TokenKind::COMMA)?;
+                    } else {
+                        break;
+                    }
                 }
-				self.expect_and_consume(TokenKind::RBRACE)?;
+                self.expect_and_consume(TokenKind::RBRACE)?;
             } else {
                 let token = self.expect_and_consume(TokenKind::Identifier)?;
                 sequence.push(token.get_text(&self.source));
@@ -755,7 +838,11 @@ impl Parser {
             break;
         }
 
-        Ok(Node::UsingStatement { sequence, imports, wildcard })
+        Ok(Node::UsingStatement {
+            sequence,
+            imports,
+            wildcard,
+        })
     }
 
     fn parse_block(&mut self) -> NodeResult {

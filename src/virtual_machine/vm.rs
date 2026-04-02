@@ -107,14 +107,16 @@ impl VM {
         self.constants.extend(constants);
     }
 
-    pub fn call_function(&mut self, f: TFunction) {
+    pub fn call_function(&mut self, f: TFunction, mut args_count: usize) {
+        if let Some(this) = f.this {
+            self.stack.push(*this);
+			args_count += 1;
+        }
+        let mut args: Vec<_> = (0..args_count).map(|_| self.pop()).collect();
+
         if let Some((library, method)) = f.handler {
             if let Some(lib) = self.libraries.get(&library) {
-                if let Some(this) = f.this {
-                    self.stack.push(*this);
-                }
-
-                let value = lib.get_function(method)(self);
+                let value = lib.get_function(method)(self, args);
                 self.stack.push(value);
             }
         } else {
@@ -606,31 +608,37 @@ impl VM {
                     }
                 }
 
-                Inst::CALL => {
+                Inst::CALL(args) => {
+					let arg_count = *args;
                     let func = self.pop();
 
                     if let Value::Function(f) = func {
-                        self.call_function(f);
+                        self.call_function(f, arg_count);
                     } else {
                         panic!("Tried calling non-function: {func:?}")
                     }
                 }
-                Inst::CALL_VOID => {
+                Inst::CALL_VOID(args) => {
+					let arg_count = *args;
                     let func = self.pop();
 
                     if let Value::Function(f) = func {
-                        self.call_function(f);
-						self.stack.pop();
+                        self.call_function(f, arg_count);
+                        self.stack.pop();
                     } else {
                         panic!("Tried calling (void) non-function: {func:?}")
                     }
                 }
-                Inst::CALL_BUILTIN_VOID(name, arg_count) => match &***name {
-                    "print" => builtin_print(self, *arg_count, false),
-                    "println" => builtin_print(self, *arg_count, true),
+                Inst::CALL_BUILTIN_VOID(name, arg_count) => {
+                    match &***name {
+                        "print" => builtin_print(self, *arg_count, false),
+                        "println" => builtin_print(self, *arg_count, true),
 
-                    _ => panic!("Unknown void built-in: {name}"),
-                },
+                        _ => panic!("Unknown void built-in: {name}"),
+                    }
+
+                    self.stack.pop();
+                }
                 Inst::CALL_BUILTIN(name, arg_count) => match &***name {
                     // types
                     "typeof" => builtin_typeof(self),
@@ -811,6 +819,13 @@ impl VM {
                     };
 
                     self.stack.push(Value::Bool(result));
+                }
+
+                Inst::CONCAT_STR(n) => {
+                    let mut values = (0..*n)
+                        .map(|_| self.pop().to_string(false))
+                        .collect::<String>();
+                    self.stack.push(Value::String(TString::new(values)))
                 }
 
                 _ => panic!("Unimplemented instruction: {current:?}"),

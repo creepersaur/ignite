@@ -1,35 +1,46 @@
 use std::io::{Write, stdin, stdout};
 
-use crate::{hash_u64, virtual_machine::{libs::lib::Library, types::string::TString, value::Value, vm::VM}};
+use crate::{
+    hash_u64,
+    virtual_machine::{libs::lib::Library, types::string::TString, value::Value, vm::VM},
+};
 
 pub struct IOLib;
 
 impl IOLib {
     // Geometry
-    fn read_line(vm: &mut VM) -> Value {
-		let msg = vm.pop_or_nil();
+    fn read_line(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let msg = args
+            .iter()
+            .map(|x| x.to_string(false))
+            .collect::<Vec<_>>()
+            .join(" ");
 
-		if !matches!(msg, Value::NIL) {
-			print!("{}", msg.to_string(false));
-			let _ = stdout().flush();
-		}
+        print!("{}", msg);
+        let _ = stdout().flush();
 
-		let mut buf = String::new();
-		stdin().read_line(&mut buf).expect("Couldn't read_line() from console");
+        let mut buf = String::new();
+        stdin()
+            .read_line(&mut buf)
+            .expect("Couldn't read_line() from console");
 
         Value::String(TString::from_str(buf.trim()))
     }
 
-    fn read_line_raw(vm: &mut VM) -> Value {
-		let msg = vm.pop_or_nil();
+    fn read_line_raw(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let msg = args
+            .iter()
+            .map(|x| x.to_string(false))
+            .collect::<Vec<_>>()
+            .join(" ");
 
-		if !matches!(msg, Value::NIL) {
-			print!("{}", msg.to_string(false));
-			let _ = stdout().flush();
-		}
+        print!("{}", msg);
+        let _ = stdout().flush();
 
-		let mut buf = String::new();
-		stdin().read_line(&mut buf).expect("Couldn't read_line_raw() from console");
+        let mut buf = String::new();
+        stdin()
+            .read_line(&mut buf)
+            .expect("Couldn't read_line_raw() from console");
 
         Value::String(TString::new(buf))
     }
@@ -41,9 +52,9 @@ impl Library for IOLib {
         "io"
     }
 
-    fn get_function(&self, name: u64) -> Box<dyn Fn(&mut VM) -> Value> {
+    fn get_function(&self, name: u64) -> Box<dyn Fn(&mut VM, Vec<Value>) -> Value> {
         match name {
-			// INPUT
+            // INPUT
             x if x == hash_u64!("read_line") => Box::new(Self::read_line),
             x if x == hash_u64!("read_line_raw") => Box::new(Self::read_line_raw),
 
