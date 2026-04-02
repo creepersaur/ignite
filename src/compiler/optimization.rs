@@ -37,6 +37,8 @@ impl Compiler {
             match inst {
                 Inst::JUMP(target) => *target = old_to_new[*target],
                 Inst::JUMP_IF_FALSE(target) => *target = old_to_new[*target],
+                Inst::JUMP_IF_TRUE(target) => *target = old_to_new[*target],
+                Inst::JUMP_IF_NOT_NIL(target) => *target = old_to_new[*target],
                 Inst::FOR_ITER(target) => *target = old_to_new[*target],
 
                 // Functions
