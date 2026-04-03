@@ -1,3 +1,9 @@
-let name = false ? "hello" : "guest"
+fn ig_create_vector(x, y) {
+	println(x)
+	println(y)
 
-println(name)
+	return (x ?? 0, y ?? 0)
+}
+
+println(ig_create_vector(1, 2))
+println(ig_create_vector(2))
