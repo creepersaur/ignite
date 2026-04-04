@@ -133,13 +133,13 @@ impl VM {
     }
 
     pub fn call_function(&mut self, f: TFunction, mut args_count: usize) {
-        if let Some(this) = f.this {
-            self.stack.push(*this);
-            args_count += 1;
-        }
-        let mut args: Vec<_> = (0..args_count).map(|_| self.pop()).collect();
-
         if let Some((library, method)) = f.handler {
+            if let Some(this) = f.this {
+                self.stack.push(*this);
+                args_count += 1;
+            }
+            let mut args: Vec<_> = (0..args_count).map(|_| self.pop()).collect();
+
             if let Some(lib) = self.libraries.get(&library) {
                 let value = lib.get_function(method)(self, args);
                 self.stack.push(value);
@@ -557,7 +557,7 @@ impl VM {
                     let id = *id;
                     let depth = *depth;
                     let value = self.pop();
-					self.locals[depth].insert(id, (value, false));
+                    self.locals[depth].insert(id, (value, false));
                 }
                 Inst::LOAD_LOCAL { id, depth } => {
                     if let Some((val, _)) = self.locals[*depth].get(id) {

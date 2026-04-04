@@ -1,3 +1,7 @@
-let name = false ? "hello" : "guest"
+fn hello(x, y) {
+	println(x)
+	println(y)
+}
 
-println(name)
+hello(10, 20)
+hello(10)

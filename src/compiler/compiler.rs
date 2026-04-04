@@ -486,7 +486,7 @@ impl Compiler {
     }
 
     pub fn compile_function_call(&mut self, target: &Box<Node>, args: &Vec<Node>) {
-        for i in args.iter().rev() {
+        for i in args.iter() {
             self.compile_node(i);
         }
 
@@ -629,12 +629,12 @@ impl Compiler {
 
         self.push_scope();
 
-        for (arg_name, _, default_value) in args.iter().rev() {
-            self.instructions.push(Inst::DEFAULT_NIL);
-
+        for (arg_name, _, default_value) in args.iter() {
             if let Some(def) = default_value {
                 self.compile_node(def);
                 self.instructions.push(Inst::DEFAULT);
+            } else {
+                self.instructions.push(Inst::DEFAULT_NIL);
             }
 
             self.emit_store_local(arg_name.as_str(), false);
