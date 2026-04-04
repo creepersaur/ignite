@@ -139,7 +139,7 @@ impl DictLib {
                 for (key, value) in inner.values.borrow().iter() {
                     vm.stack.push(value.clone());
                     vm.stack.push(key.clone());
-                    vm.call_function(f, 2);
+                    vm.call_function(f.clone(), 2);
                     vm.run(false, true);
                     let new_value = vm.pop();
                     new_map.insert(key.clone(), new_value);

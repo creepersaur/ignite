@@ -41,7 +41,7 @@ impl TupleLib {
             if let Value::Function(f) = func {
                 for i in inner.values.borrow().iter() {
                     vm.stack.push(i.clone());
-                    vm.call_function(&f, 1);
+                    vm.call_function(f.clone(), 1);
                     vm.run(false, true);
                     let new_value = vm.pop();
                     new_array.push(new_value);

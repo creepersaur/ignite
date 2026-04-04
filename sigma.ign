@@ -1,1 +1,3 @@
-println("hello")
+let name = false ? "hello" : "guest"
+
+println(name)

@@ -132,14 +132,14 @@ impl VM {
         self.constants.extend(constants);
     }
 
-    pub fn call_function(&mut self, f: &TFunction, mut args_count: usize) {
-        if let Some((library, method)) = f.handler {
-            if let Some(this) = &f.this {
-                self.stack.push(*this.clone());
-                args_count += 1;
-            }
-            let mut args: Vec<_> = (0..args_count).map(|_| self.pop()).collect();
+    pub fn call_function(&mut self, f: TFunction, mut args_count: usize) {
+        if let Some(this) = f.this {
+            self.stack.push(*this);
+            args_count += 1;
+        }
+        let mut args: Vec<_> = (0..args_count).map(|_| self.pop()).collect();
 
+        if let Some((library, method)) = f.handler {
             if let Some(lib) = self.libraries.get(&library) {
                 let value = lib.get_function(method)(self, args);
                 self.stack.push(value);
@@ -654,7 +654,7 @@ impl VM {
                     let func = self.pop();
 
                     if let Value::Function(f) = func {
-                        self.call_function(&f, arg_count);
+                        self.call_function(f, arg_count);
                     } else {
                         panic!("Tried calling non-function: {func:?}")
                     }

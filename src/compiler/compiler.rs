@@ -629,12 +629,12 @@ impl Compiler {
 
         self.push_scope();
 
-        for (arg_name, _, default_value) in args.iter() {
+        for (arg_name, _, default_value) in args.iter().rev() {
+            self.instructions.push(Inst::DEFAULT_NIL);
+
             if let Some(def) = default_value {
                 self.compile_node(def);
                 self.instructions.push(Inst::DEFAULT);
-            } else {
-                self.instructions.push(Inst::DEFAULT_NIL);
             }
 
             self.emit_store_local(arg_name.as_str(), false);
