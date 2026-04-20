@@ -151,6 +151,11 @@ pub enum Node {
         functions: Vec<Node>,
     },
 
+    EnumDef {
+		name: String,
+        items: Vec<(String, Node)>,
+    },
+
     MatchStatement {
         expr: Box<Node>,
         branches: Vec<(Node, Node)>,

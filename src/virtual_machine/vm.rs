@@ -3,14 +3,17 @@ use crate::{
     virtual_machine::{
         chunk::Chunk,
         inst::Inst,
-        libs::namespaces::{io_lib::IOLib, math_lib::MathLib},
-        libs::types::{
-            dict_lib::DictLib, list_lib::ListLib, string_lib::StringLib, tuple_lib::TupleLib,
+        libs::{
+            lib::Library,
+            namespaces::{io_lib::IOLib, math_lib::MathLib},
+            type_lib::TypeLib,
+            types::{
+                dict_lib::DictLib, list_lib::ListLib, string_lib::StringLib, tuple_lib::TupleLib,
+            },
         },
-        libs::{lib::Library, type_lib::TypeLib},
         namespaces::standard_namespace::load_standard_namespace,
         traits::member_accessible::IMemberAccessible,
-        types::{dict::TDict, function::TFunction, list::TList, string::TString},
+        types::{dict::TDict, r#enum::TEnum, function::TFunction, list::TList, string::TString},
         value::Value,
     },
 };
@@ -224,7 +227,7 @@ impl VM {
                 RED
             } else if matches!(
                 v,
-                Inst::LIST(_) | Inst::TUPLE(_) | Inst::DICT(_) | Inst::RANGE
+                Inst::LIST(_) | Inst::TUPLE(_) | Inst::DICT(_) | Inst::ENUM(..) | Inst::RANGE
             ) {
                 GREEN
             } else if matches!(v, Inst::NOP) {
@@ -284,11 +287,13 @@ impl VM {
 // RUNNING
 impl VM {
     pub fn run(&mut self, debug: bool, stop_at_return: bool) {
-        while self.pos < self.instructions.len() {
+        let instructions = std::mem::take(&mut self.instructions);
+
+        while self.pos < instructions.len() {
             if debug {
                 println!("{BLACK}{} ...{RESET}", self.pos);
             }
-            let current = &self.instructions[self.pos];
+            let current = &instructions[self.pos];
 
             match current {
                 Inst::EXIT => return,
@@ -339,6 +344,16 @@ impl VM {
                     let values = (0..*length).map(|_| self.pop_two()).collect();
                     self.stack
                         .push(Value::Dict(TDict::new(rc!(RefCell::new(values)))));
+                }
+                Inst::ENUM(name, name_vec) => {
+                    let map = name_vec
+                        .iter()
+                        .rev()
+                        .map(|x| (x.clone(), self.pop()))
+                        .collect::<HashMap<_, _>>();
+
+                    self.stack
+                        .push(Value::Enum(TEnum::new(name.clone(), rc!(map))));
                 }
 
                 Inst::RANGE => {
@@ -606,7 +621,6 @@ impl VM {
                         }
                     }
                     if let Some(scope) = found_idx {
-                        let name = name.clone();
                         let value = self.pop();
                         if let Some(slot) = self.locals[scope].get_mut(&name) {
                             slot.0 = value;
@@ -615,7 +629,6 @@ impl VM {
                         if *is_const {
                             panic!("Cannot set a global constant `{name}`");
                         } else {
-                            let name = name.clone();
                             let value = self.pop();
                             if let Some(slot) = self.globals.get_mut(&name) {
                                 slot.0 = value;
@@ -703,6 +716,11 @@ impl VM {
 
                         Value::Namespace(x) => {
                             let value = x.borrow().get_member(self, &member);
+                            self.stack.push(value);
+                        }
+
+                        Value::Enum(x) => {
+                            let value = x.get_member(self, &member);
                             self.stack.push(value);
                         }
 

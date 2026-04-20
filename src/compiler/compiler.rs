@@ -201,6 +201,8 @@ impl Compiler {
 
             Node::MatchStatement { expr, branches } => self.compile_match(expr, branches),
 
+            Node::EnumDef {name, items} => self.compile_enum_def(name, items),
+
             _ => panic!("Unknown node: `{node:?}`"),
         }
     }
@@ -803,6 +805,17 @@ impl Compiler {
             self.emit_store_local(&sequence[sequence.len() - 1], false);
         }
     }
+
+	pub fn compile_enum_def(&mut self, name: &String, items: &Vec<(String, Node)>) {
+		let mut name_vec = vec![];
+
+		for (name, value) in items {
+			name_vec.push(Value::String(TString::new(name.into())));
+			self.compile_node(value);
+		}
+		self.instructions.push(Inst::ENUM(name.clone(), name_vec));
+		self.emit_store_local(name, false);
+	}
 }
 
 #[macro_export]

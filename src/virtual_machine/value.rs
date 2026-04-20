@@ -8,7 +8,7 @@ use std::{
 
 use crate::virtual_machine::{
     namespaces::namespace::TNamespace,
-    types::{dict::TDict, function::TFunction, list::TList, string::TString},
+    types::{dict::TDict, r#enum::TEnum, function::TFunction, list::TList, string::TString},
 };
 
 #[allow(unused)]
@@ -29,6 +29,7 @@ pub enum Value {
 
     // Namespaces
     Namespace(Rc<RefCell<TNamespace>>),
+    Enum(TEnum),
 
     Range {
         start: Box<Value>,
@@ -51,6 +52,7 @@ impl Value {
             Value::Tuple(_) => "tuple",
             Value::Dict(_) => "dict",
             Value::Namespace(_) => "namespace",
+            Value::Enum(_) => "enum",
             Value::Range { .. } => "range",
         }
         .to_owned()
@@ -157,6 +159,8 @@ impl Value {
 
             Self::Namespace(space) => format!("namespace:{}", space.borrow().name),
 
+            Self::Enum(e) => format!("enum:{}", e.name),
+
             Self::Range {
                 start,
                 end,
@@ -218,6 +222,8 @@ impl Hash for Value {
             }
 
             Self::Namespace(space) => space.borrow().hash(state),
+
+            Self::Enum(e) => std::ptr::hash(e.values.as_ref(), state),
 
             Self::Range {
                 start,

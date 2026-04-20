@@ -78,6 +78,7 @@ impl Parser {
             TokenKind::CLASS => self.parse_class_def(),
             TokenKind::FN => self.parse_function_def(false),
             TokenKind::USING => self.parse_using(),
+            TokenKind::ENUM => self.parse_enum(),
 
             _ => {
                 let expr = self.parse_expression()?;
@@ -313,10 +314,7 @@ impl Parser {
             TokenKind::NIL => Ok(Node::NIL),
             TokenKind::NumberLiteral(x) => Ok(Node::NumberLiteral(x)),
             TokenKind::BooleanLiteral(x) => Ok(Node::BooleanLiteral(x)),
-            TokenKind::StringLiteral(_) => Ok(Node::StringLiteral({
-                let text = current.get_text(&self.source);
-                text[1..text.len() - 1].to_string()
-            })),
+            TokenKind::StringLiteral(x) => Ok(Node::StringLiteral(x)),
 
             TokenKind::Identifier => Ok(Node::Variable(rc!(current
                 .get_text(&self.source)
@@ -1338,5 +1336,56 @@ impl Parser {
             expr: Box::new(expr),
             branches,
         })
+    }
+
+    fn parse_enum(&mut self) -> NodeResult {
+        self.advance()?;
+
+        let name = self
+            .expect_and_consume(TokenKind::Identifier)?
+            .get_text(&self.source);
+
+        self.expect_and_consume(TokenKind::LBRACE)?;
+
+        let mut items = vec![];
+        let mut id = 0;
+
+        loop {
+			self.skip_new_lines();
+            if let Ok(next) = self.current()
+                && next.kind == TokenKind::RBRACE
+            {
+                break;
+            }
+
+            let item_name = self
+                .expect_and_consume(TokenKind::Identifier)?
+                .get_text(&self.source);
+
+            let item_value = if let Ok(next) = self.current()
+                && next.kind == TokenKind::EQUAL
+            {
+                self.advance()?;
+                self.parse_expression()?
+            } else {
+                let v = Node::NumberLiteral(id as f64);
+                id += 1;
+                v
+            };
+
+            items.push((item_name, item_value));
+
+            if let Ok(next) = self.current()
+                && next.kind == TokenKind::COMMA
+            {
+                self.advance()?;
+            } else {
+                break;
+            }
+        }
+
+        self.expect_and_consume(TokenKind::RBRACE)?;
+
+        Ok(Node::EnumDef { name, items })
     }
 }

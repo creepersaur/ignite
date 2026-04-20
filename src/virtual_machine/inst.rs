@@ -21,6 +21,7 @@ pub enum Inst {
     LIST(usize),  // ✅
     TUPLE(usize), // ✅
     DICT(usize),  // ✅
+    ENUM(String, Vec<Value>),  // ✅
 
     PATCH_ME(String), // ✅
 

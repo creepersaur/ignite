@@ -9,7 +9,7 @@ use crate::language::token::{
 const PUNCTUATION: &str = "!@#$%^&*()-+[]{}|:;,./<>?=\n";
 const DOUBLE: [&str; 21] = [
     "->", "||", "&&", "<=", ">=", "==", "!=", "=>", "::", "..", "++", "--", "+=", "-=", "*=", "/=",
-    "%=", "^=", "//", "??", "?:"
+    "%=", "^=", "//", "??", "?:",
 ];
 
 #[derive(Debug)]
@@ -65,7 +65,11 @@ impl Lexer {
 
             while let Some(c) = self.cur_char {
                 if in_comment {
-                    break;
+                    if c == '\n' {
+                        in_comment = false;
+                    } else {
+                        break;
+                    }
                 }
 
                 if instr.is_none() && (c == '\t' || c == ' ') {
@@ -73,10 +77,6 @@ impl Lexer {
                 }
 
                 if instr.is_none() && PUNCTUATION.contains(c) {
-                    if c == '\n' {
-                        in_comment = false;
-                    }
-
                     if c == '.' && current_token.parse::<i32>().is_ok() {
                         let next_char = self.chars.get((self.pos + 1) as usize);
 
@@ -102,7 +102,7 @@ impl Lexer {
                         if current_token == "//" {
                             current_token.clear();
                             in_comment = true;
-							break;
+                            break;
                         }
 
                         tokens.push(Self::identify(&current_token, start_pos - 1));
@@ -172,6 +172,7 @@ impl Lexer {
             "class" => CLASS,
             "match" => MATCH,
             "using" => USING,
+            "enum" => ENUM,
             // "struct" => STRUCT,
             // "interface" => INTERFACE,
 
@@ -233,6 +234,27 @@ impl Lexer {
     }
 
     pub fn identify_other(text: &str) -> TokenKind {
+        // Hex: 0x1F, 0xFF, etc.
+        if let Some(hex) = text.strip_prefix("0x").or(text.strip_prefix("0X")) {
+            if let Ok(n) = u64::from_str_radix(hex, 16) {
+                return NumberLiteral(n as f64);
+            }
+        }
+
+        // Octal: 0o17
+        if let Some(oct) = text.strip_prefix("0o").or(text.strip_prefix("0O")) {
+            if let Ok(n) = u64::from_str_radix(oct, 8) {
+                return NumberLiteral(n as f64);
+            }
+        }
+
+        // Binary: 0b1010
+        if let Some(bin) = text.strip_prefix("0b").or(text.strip_prefix("0B")) {
+            if let Ok(n) = u64::from_str_radix(bin, 2) {
+                return NumberLiteral(n as f64);
+            }
+        }
+
         if let Ok(x) = text.parse::<f64>() {
             if x.is_finite() {
                 return NumberLiteral(x);
@@ -242,13 +264,66 @@ impl Lexer {
         if let Ok(x) = text.parse::<bool>() {
             return BooleanLiteral(x);
         } else if text.starts_with('"') && text.ends_with('"') {
-            return StringLiteral(text[1..text.len() - 1].to_string());
+            return StringLiteral(process_escapes(&text[1..text.len() - 1]));
         } else if text.starts_with('\'') && text.ends_with('\'') {
-            return StringLiteral(text[1..text.len() - 1].to_string());
+            return StringLiteral(process_escapes(&text[1..text.len() - 1]));
         } else if text.starts_with('`') && text.ends_with('`') {
-            return StringLiteral(text[1..text.len() - 1].to_string());
+            return StringLiteral(process_escapes(&text[1..text.len() - 1]));
         }
 
         Identifier
     }
+}
+
+pub fn process_escapes(s: &str) -> String {
+    let mut result = String::new();
+    let mut chars = s.chars().peekable();
+
+    while let Some(c) = chars.next() {
+        if c != '\\' {
+            result.push(c);
+            continue;
+        }
+
+        match chars.next() {
+            Some('n') => result.push('\n'),
+            Some('t') => result.push('\t'),
+            Some('r') => result.push('\r'),
+            Some('\\') => result.push('\\'),
+            Some('"') => result.push('"'),
+            Some('e') => result.push('\x1B'), // ESC — for ANSI colors
+
+            // \u{1F600} — unicode codepoint
+            Some('u') => {
+                if chars.next() == Some('{') {
+                    let hex: String = chars.by_ref().take_while(|&c| c != '}').collect();
+                    if let Ok(n) = u32::from_str_radix(&hex, 16) {
+                        if let Some(ch) = char::from_u32(n) {
+                            result.push(ch);
+                            continue;
+                        }
+                    }
+                    panic!("Invalid unicode escape: \\u{{{hex}}}");
+                }
+            }
+
+            // \x1B — hex byte escape
+            Some('x') => {
+                let hex: String = chars.by_ref().take(2).collect();
+                if let Ok(n) = u8::from_str_radix(&hex, 16) {
+                    result.push(n as char);
+                } else {
+                    panic!("Invalid hex escape: \\x{hex}");
+                }
+            }
+
+            Some(c) => {
+                result.push('\\');
+                result.push(c);
+            }
+            None => result.push('\\'),
+        }
+    }
+
+    result
 }
