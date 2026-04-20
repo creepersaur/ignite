@@ -1,10 +1,12 @@
 use crate::{
     compiler::compiler::Compiler,
+    hash_u64,
     virtual_machine::{inst::Inst, value::Value},
 };
 
 impl Compiler {
     pub fn optimize(&mut self) {
+        self.replace_tostring();
         self.remove_load_pops();
     }
 
@@ -15,11 +17,78 @@ impl Compiler {
             }
         }
 
-		self.remove_nops();
+        self.remove_nops();
 
-		// remove last POP
+        // remove last POP
         if matches!(self.instructions.last(), Some(Inst::TRY_POP | Inst::POP)) {
             self.instructions.pop();
+        }
+    }
+
+    pub fn replace_tostring(&mut self) {
+        self.replace_pattern_2(
+            Inst::LOAD_GLOBAL(hash_u64!("string")),
+            Inst::CALL(1),
+            Inst::TO_STRING,
+        );
+
+        self.replace(Inst::CONCAT_STR(1), Inst::TO_STRING);
+
+        self.replace_pattern_2_with(|a, b| {
+            if *b == Inst::TO_STRING {
+                if let Inst::PUSH(value) = a {
+                    match value {
+                        Value::NIL => Some(Inst::PUSH(Value::string("nil"))),
+                        Value::Bool(x) => Some(Inst::PUSH(Value::string(x))),
+                        Value::Number(x) => Some(Inst::PUSH(Value::string(x))),
+                        Value::Char(x) => Some(Inst::PUSH(Value::string(x))),
+                        Value::String(x) => Some(Inst::PUSH(Value::String(x.clone()))),
+
+                        _ => None,
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+    }
+
+    pub fn replace(&mut self, old: Inst, new_value: Inst) {
+        self.instructions.iter_mut().for_each(|x| {
+            if *x == old {
+                *x = new_value.clone()
+            }
+        });
+    }
+
+    fn replace_pattern_2(&mut self, a: Inst, b: Inst, replacement: Inst) {
+        let indices: Vec<usize> = self
+            .instructions
+            .windows(2)
+            .enumerate()
+            .filter(|(_, w)| w[0] == a && w[1] == b)
+            .map(|(i, _)| i)
+            .collect();
+
+        for i in indices {
+            self.instructions[i] = replacement.clone();
+            self.instructions.remove(i + 1);
+        }
+    }
+
+    fn replace_pattern_2_with(&mut self, replacer: impl Fn(&Inst, &Inst) -> Option<Inst>) {
+        let indices: Vec<_> = self
+            .instructions
+            .windows(2)
+            .enumerate()
+            .filter_map(|(i, w)| replacer(&w[0], &w[1]).map(|r| (i, r)))
+            .collect();
+
+        for (i, replacement) in indices {
+            self.instructions[i] = replacement;
+            self.instructions.remove(i + 1);
         }
     }
 

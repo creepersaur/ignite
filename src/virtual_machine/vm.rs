@@ -76,7 +76,7 @@ impl VM {
         globals.insert(hash_u64!("bool"), (lib_function!("type", "bool"), false));
         globals.insert(
             hash_u64!("string"),
-            (lib_function!("type", "typeof"), false),
+            (lib_function!("type", "string"), false),
         );
 
         return globals;
@@ -300,6 +300,10 @@ impl VM {
                 Inst::NOP => {}
                 Inst::COMMENT(_) => {}
                 Inst::PRINT => println!("{}", self.pop().to_string(false)),
+                Inst::TO_STRING => {
+                    let s = self.pop();
+                    self.stack.push(Value::string(s))
+                }
                 Inst::POP => {
                     self.pop();
                 }

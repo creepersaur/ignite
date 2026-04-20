@@ -9,19 +9,20 @@ pub enum Inst {
     NOP,             // ✅
     EXIT,            // ✅
     PRINT,           // ✅
+    TO_STRING,       // ✅
     DEFAULT,         // ✅
     DEFAULT_NIL,     // ✅
     PUSH(Value),     // ✅
     DUP,             // ✅
-    RANGE,           // ✅
     POP,             // ✅
     TRY_POP,         // ✅
 
     // Collections
-    LIST(usize),  // ✅
-    TUPLE(usize), // ✅
-    DICT(usize),  // ✅
-    ENUM(String, Vec<Value>),  // ✅
+    RANGE,                    // ✅
+    LIST(usize),              // ✅
+    TUPLE(usize),             // ✅
+    DICT(usize),              // ✅
+    ENUM(String, Vec<Value>), // ✅
 
     PATCH_ME(String), // ✅
 

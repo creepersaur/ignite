@@ -20,7 +20,7 @@ impl TypeLib {
         if matches!(value, Value::String(_)) {
             value.clone()
         } else {
-            Value::String(TString::new(value.to_string(false)))
+            Value::string(value)
         }
     }
 

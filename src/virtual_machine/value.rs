@@ -39,7 +39,23 @@ pub enum Value {
     },
 }
 
+impl ToString for Value {
+	fn to_string(&self) -> String {
+		self.to_string(false)
+	}
+}
+
+impl ToString for &Value {
+	fn to_string(&self) -> String {
+		(*self).to_string(false)
+	}
+}
+
 impl Value {
+	pub fn string(x: impl ToString) -> Value {
+		Value::String(TString::new(x.to_string()))
+	}
+
     pub fn get_type(&self) -> String {
         match self {
             Value::NIL => "nil",

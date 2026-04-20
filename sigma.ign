@@ -1,15 +1,3 @@
-enum Foreground {
-    // Standard
-    BLACK   = "\e[30m",
-    RED     = "\e[31m",
-    GREEN   = "\e[32m",
-    YELLOW  = "\e[33m",
-    BLUE    = "\e[34m",
-    MAGENTA = "\e[35m",
-    CYAN    = "\e[36m",
-    WHITE   = "\e[37m",
-
-    RESET = "\e[0m",
+for i in 0..10 {
+	println(string(100))
 }
-
-println($"Hello {Foreground::RED}World{Foreground::RESET}")

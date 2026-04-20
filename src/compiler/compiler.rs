@@ -4,7 +4,7 @@ use crate::{
     patch, patch_execute, rc,
     virtual_machine::{
         inst::Inst,
-        types::{function::TFunction, list::TList, string::TString},
+        types::{function::TFunction, list::TList},
         value::Value,
     },
 };
@@ -97,13 +97,12 @@ impl Compiler {
                     .constants
                     .iter()
                     .enumerate()
-                    .find(|(_, thing)| thing == &&Value::String(TString::new(x.clone())))
+                    .find(|(_, thing)| thing == &&Value::string(x))
                 {
                     self.instructions.push(Inst::LOAD_CONST(idx));
                     return;
                 }
-                self.constants
-                    .push(Value::String(TString::new(x.to_string())));
+                self.constants.push(Value::string(x));
                 self.instructions
                     .push(Inst::LOAD_CONST(self.constants.len() - 1));
             }
@@ -201,7 +200,7 @@ impl Compiler {
 
             Node::MatchStatement { expr, branches } => self.compile_match(expr, branches),
 
-            Node::EnumDef {name, items} => self.compile_enum_def(name, items),
+            Node::EnumDef { name, items } => self.compile_enum_def(name, items),
 
             _ => panic!("Unknown node: `{node:?}`"),
         }
@@ -242,9 +241,7 @@ impl Compiler {
             match node {
                 Node::NumberLiteral(n) => folded_values.push(Value::Number(*n)),
                 Node::BooleanLiteral(b) => folded_values.push(Value::Bool(*b)),
-                Node::StringLiteral(s) => {
-                    folded_values.push(Value::String(TString::new(s.clone())))
-                }
+                Node::StringLiteral(s) => folded_values.push(Value::string(s)),
                 Node::NIL => folded_values.push(Value::NIL),
 
                 _ => {
@@ -786,7 +783,7 @@ impl Compiler {
                 self.instructions.push(Inst::LOAD(id));
             } else {
                 self.instructions
-                    .push(Inst::PUSH(Value::String(TString::new(item.clone()))));
+                    .push(Inst::PUSH(Value::string(item.clone())));
                 self.instructions.push(Inst::GET_PROP);
             }
         }
@@ -797,7 +794,7 @@ impl Compiler {
                     self.instructions.push(Inst::DUP)
                 }
                 self.instructions
-                    .push(Inst::PUSH(Value::String(TString::new(item.clone()))));
+                    .push(Inst::PUSH(Value::string(item.clone())));
                 self.instructions.push(Inst::GET_PROP);
                 self.emit_store_local(item, false);
             }
@@ -806,16 +803,16 @@ impl Compiler {
         }
     }
 
-	pub fn compile_enum_def(&mut self, name: &String, items: &Vec<(String, Node)>) {
-		let mut name_vec = vec![];
+    pub fn compile_enum_def(&mut self, name: &String, items: &Vec<(String, Node)>) {
+        let mut name_vec = vec![];
 
-		for (name, value) in items {
-			name_vec.push(Value::String(TString::new(name.into())));
-			self.compile_node(value);
-		}
-		self.instructions.push(Inst::ENUM(name.clone(), name_vec));
-		self.emit_store_local(name, false);
-	}
+        for (name, value) in items {
+            name_vec.push(Value::string(name));
+            self.compile_node(value);
+        }
+        self.instructions.push(Inst::ENUM(name.clone(), name_vec));
+        self.emit_store_local(name, false);
+    }
 }
 
 #[macro_export]
