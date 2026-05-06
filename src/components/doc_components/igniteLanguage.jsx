@@ -33,5 +33,6 @@ Prism.languages.ignite = {
 
 	number: /\b\d+(\.\d+)?\b/,
 	operator: /[+\-*/=<>!?$]\b/,
+	"double-semi": /;;/,
 	punctuation: /[{}[\]();,-:.]/,
 };

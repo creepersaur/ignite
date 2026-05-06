@@ -47,15 +47,15 @@ struct Point {
 ```ignite
 class Vehicle {
 	let name: string
-
-    constructor(self, name) {
-        // Set values on the object
-        self.name = name
-    }
-
-    // Make sure to add the `self` parameter as the first one
-    fn honk(self) {
-        println(self.name, "just honked!")
-    }
+	;;
+	constructor(self, name) {
+		// Set values on the object
+		self.name = name
+	}
+	;;
+	// Make sure to add the `self` parameter as the first one
+	fn honk(self) {
+		println(self.name, "just honked!")
+	}
 }
 ```

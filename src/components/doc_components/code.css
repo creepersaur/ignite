@@ -143,6 +143,7 @@ pre {
 }
 
 .line-number {
+	flex-shrink: 0;
 	position: relative;
 	display: inline-block;
 	width: 30px;
@@ -198,6 +199,10 @@ span.punctuation {
 
 span.token.property {
 	color: #aeffff;
+}
+
+span.token.double-semi {
+	opacity: 0;
 }
 
 span.token.tab {
