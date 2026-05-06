@@ -27,15 +27,18 @@
 .header-link {
 	position: relative;
 	display: inline-block;
-	color: oklch(0.5 0 0);
 	text-indent: 10px;
-	text-decoration: none;
 	opacity: 0;
+
+	transition: 0.2s cubic-bezier(0.075, 0.82, 0.165, 1);
 }
 
-.header-link:hover {
-	text-decoration: underline;
-	color: var(--primary);
+.header-link * {
+	stroke: oklch(0.5 0 0);
+}
+
+.header-link:hover * {
+	stroke: var(--primary);
 }
 
 h1:hover .header-link, h2:hover .header-link, h3:hover .header-link {

@@ -30,6 +30,7 @@ div.docs-main {
 	line-height: 32px;
 	background: #171717;
 	overflow-y: scroll;
+	font-weight: 300;
 }
 
 /* SCROLL BAR */

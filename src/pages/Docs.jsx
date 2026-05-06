@@ -1,4 +1,5 @@
 import { useParams } from "react-router-dom";
+import { renderToStaticMarkup } from "react-dom/server";
 import { useEffect, useRef, useState } from "react";
 import Sidebar from "../components/sidebar/sidebar";
 import TopBar from "../components/topbar/topbar";
@@ -9,6 +10,7 @@ import "../components/doc_components/doc_component.css";
 import Overview from "../components/overview/overview";
 import "../components/doc_components/code_block";
 import CodeBlock from "../components/doc_components/code_block";
+import { Link } from "lucide-react";
 
 export default function Docs() {
 	const { "*": docPath } = useParams();
@@ -28,6 +30,7 @@ export default function Docs() {
 
 	useEffect(() => {
 		if (!contentRef.current) return;
+		contentRef.current.scrollTo(0, 0);
 
 		const nodes = contentRef.current.querySelectorAll("h1, h2, h3");
 		const collected = Array.from(nodes).map((el) => {
@@ -42,9 +45,9 @@ export default function Docs() {
 			};
 
 			const header_link = document.createElement("a");
-			header_link.text = "#";
 			header_link.className = "header-link";
 			header_link.href = `#${id}`;
+			header_link.innerHTML = renderToStaticMarkup(<Link size={16} />);
 
 			el.querySelectorAll(".header-link").forEach((a) => a.remove());
 			el.appendChild(header_link);
