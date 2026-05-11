@@ -25,15 +25,20 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 const ORANGE: &str = "\x1b[38;2;255;150;60m";
 
+pub struct CallFrame {
+    scope_base: usize,
+    return_addr: usize,
+    upvalues: Vec<Rc<RefCell<HashMap<u64, (Value, bool)>>>>,
+}
+
 pub struct VM {
     pub pos: usize,
     pub instructions: Vec<Inst>,
     pub stack: Vec<Value>,
-    pub call_stack: Vec<usize>,
-    pub scope_stack: Vec<usize>,
+    pub call_stack: Vec<CallFrame>,
     pub constants: Vec<Value>,
     pub globals: HashMap<u64, (Value, bool)>,
-    pub locals: Vec<HashMap<u64, (Value, bool)>>,
+    pub locals: Vec<Rc<RefCell<HashMap<u64, (Value, bool)>>>>,
     pub libraries: HashMap<u64, Box<dyn Library>>,
     pub iterators: Vec<(Value, usize)>,
     pub intern_table: HashMap<u64, Rc<str>>,
@@ -47,11 +52,14 @@ impl VM {
             pos: 0,
             instructions: vec![],
             stack: Vec::with_capacity(100),
-            call_stack: Vec::with_capacity(100),
-            scope_stack: vec![],
+            call_stack: vec![CallFrame {
+                scope_base: 0,
+                return_addr: 0,
+                upvalues: vec![],
+            }],
             constants: Vec::with_capacity(100),
             globals: Self::initialize_globals(),
-            locals: vec![HashMap::new()],
+            locals: vec![rc!(RefCell::new(HashMap::new()))],
             libraries: Self::initialize_libs(),
             iterators: vec![],
             intern_table: HashMap::new(),
@@ -154,8 +162,11 @@ impl VM {
                 self.stack.push(value);
             }
         } else {
-            self.call_stack.push(self.pos);
-            self.scope_stack.push(self.locals.len());
+            self.call_stack.push(CallFrame {
+                scope_base: self.locals.len(),
+                return_addr: self.pos,
+                upvalues: f.upvalues,
+            });
             self.pos = f.entry;
         }
     }
@@ -219,6 +230,15 @@ impl VM {
                     Some(format!("STORE_GLOBAL({})", self.lookup_intern(*id)))
                 }
                 Inst::SET_VAR(id) => Some(format!("SET_VAR({})", self.lookup_intern(*id))),
+                Inst::LOAD_UPVALUE { id, scope_idx } => Some(format!(
+                    "LOAD_UPVALUE({}, depth: {})",
+                    self.lookup_intern(*id),
+                    depth
+                )),
+                Inst::MAKE_CLOSURE { entry, captures } => Some(format!(
+                    "MAKE_CLOSURE(entry: {}, captures: {:?})",
+                    entry, captures
+                )),
                 _ => None,
             };
 
@@ -627,35 +647,54 @@ impl VM {
                     );
                 }
 
-                Inst::PUSH_SCOPE => self.locals.push(HashMap::new()),
+                Inst::PUSH_SCOPE => self.locals.push(rc!(RefCell::new(HashMap::new()))),
                 Inst::POP_SCOPE => {
                     self.locals.pop();
                 }
                 Inst::STORE_LOCAL { id, depth } => {
-                    let id = *id;
-                    let depth = *depth;
-                    let value = self.pop();
-                    self.locals[depth].insert(id, (value, false));
+                    if let Some(current_frame) = self.call_stack.last() {
+                        let id = *id;
+                        let depth = current_frame.scope_base + *depth;
+                        let value = self.pop();
+                        self.locals[depth].borrow_mut().insert(id, (value, false));
+                    } else {
+                        panic!("Too little CallFrames in call_stack (LOAD_LOCAL)")
+                    }
                 }
                 Inst::LOAD_LOCAL { id, depth } => {
-                    if let Some((val, _)) = self.locals[*depth].get(id) {
-                        self.stack.push(val.clone());
+                    if let Some(current_frame) = self.call_stack.last() {
+                        if let Some((val, _)) = self.locals[current_frame.scope_base + *depth]
+                            .borrow()
+                            .get(id)
+                        {
+                            self.stack.push(val.clone());
+                        } else {
+                            panic!(
+                                "Unknown local variable at depth {}: {}",
+                                current_frame.scope_base + *depth,
+                                self.lookup_intern(*id)
+                            );
+                        }
                     } else {
-                        panic!("Unknown local variable: {}", self.lookup_intern(*id));
+                        panic!("Too little CallFrames in call_stack (LOAD_LOCAL)")
                     }
                 }
                 Inst::STORE_LOCAL_CONST { id, depth } => {
-                    let id = *id;
-                    let depth = *depth;
-                    let value = self.pop();
-                    self.locals[depth].insert(id, (value, true));
+                    if let Some(current_frame) = self.call_stack.last() {
+                        let id = *id;
+                        let depth = current_frame.scope_base + *depth;
+                        let value = self.pop();
+                        self.locals[depth].borrow_mut().insert(id, (value, true));
+                    } else {
+                        panic!("Too little CallFrames in call_stack (LOAD_LOCAL)")
+                    }
                 }
 
                 Inst::LOAD(name) => {
                     let mut found = None;
 
                     for scope in self.locals.iter().rev() {
-                        if let Some(val) = scope.get(name) {
+                        if let Some(val) = scope.borrow().get(name) {
                             found = Some(val.clone());
                             break;
                         }
@@ -676,7 +715,7 @@ impl VM {
                     let mut found_idx = None;
 
                     for i in (0..self.locals.len()).rev() {
-                        if let Some((_, is_const)) = self.locals[i].get(name) {
+                        if let Some((_, is_const)) = self.locals[i].borrow().get(name) {
                             if *is_const {
                                 panic!("Cannot set a constant `{name}`");
                             } else {
@@ -687,7 +726,7 @@ impl VM {
                     }
                     if let Some(scope) = found_idx {
                         let value = self.pop();
-                        if let Some(slot) = self.locals[scope].get_mut(&name) {
+                        if let Some(slot) = self.locals[scope].borrow_mut().get_mut(&name) {
                             slot.0 = value;
                         }
                     } else if let Some((_, is_const)) = self.globals.get(name) {
@@ -698,6 +737,30 @@ impl VM {
                             if let Some(slot) = self.globals.get_mut(&name) {
                                 slot.0 = value;
                             }
+                        }
+                    }
+                }
+
+                Inst::MAKE_CLOSURE { entry, captures } => {
+                    let upvalues = captures
+                        .iter()
+                        .map(|&i| Rc::clone(&self.locals[i]))
+                        .collect();
+
+                    self.stack.push(Value::Function(TFunction {
+                        entry: *entry,
+                        upvalues,
+                        handler: None,
+                        this: None,
+                    }));
+                }
+                Inst::LOAD_UPVALUE { scope_idx, id } => {
+                    if let Some(frame) = self.call_stack.last() {
+                        let scope = &frame.upvalues[*scope_idx];
+                        if let Some((val, _)) = scope.borrow().get(id) {
+                            self.stack.push(val.clone());
+                        } else {
+                            panic!("Unknown upvalue: {}", self.lookup_intern(*id));
                         }
                     }
                 }
@@ -733,25 +796,26 @@ impl VM {
                     let func = self.pop();
 
                     if let Value::Function(f) = func {
+                        let should_skip = f.handler.is_none();
                         self.call_function(f, arg_count);
+                        if should_skip {
+                            continue;
+                        }
                     } else {
-                        panic!("Tried calling non-function: {func:?}")
+                        panic!("({}) Tried calling non-function: {func:?}", self.pos)
                     }
                 }
                 Inst::RETURN => {
-                    if let Some(last) = self.call_stack.last() {
-                        self.pos = *last;
+                    if let Some(frame) = self.call_stack.last() {
+                        self.pos = *&frame.return_addr;
+                        self.locals.truncate(frame.scope_base);
                         self.call_stack.pop();
-
-                        if let Some(depth) = self.scope_stack.pop() {
-                            self.locals.truncate(depth);
-                        }
                     } else {
-						self.locals.pop();
+                        self.locals.pop();
                         break;
                     }
                     if stop_at_return {
-						self.locals.pop();
+                        self.locals.pop();
                         break;
                     }
                 }

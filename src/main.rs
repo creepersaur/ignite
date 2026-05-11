@@ -109,6 +109,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     } else {
         println!("\nRunning:");
         println!("---------------------------");
+		let instructions_clone = vm.instructions.clone();
 
         if args.contains(&"bench".to_string()) {
             bench(&mut vm);
@@ -119,7 +120,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         if args.contains(&"trace".to_string()) {
             println!(
                 "Last Instruction ({}): {:?}",
-                vm.pos, vm.instructions[vm.pos]
+                vm.pos, instructions_clone[vm.pos]
             );
         }
     }

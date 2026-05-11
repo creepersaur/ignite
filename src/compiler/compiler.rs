@@ -4,7 +4,7 @@ use crate::{
     patch, patch_execute, rc,
     virtual_machine::{
         inst::Inst,
-        types::{function::TFunction, list::TList, structdef::TStructDef},
+        types::{list::TList, structdef::TStructDef},
         value::Value,
     },
 };
@@ -21,6 +21,7 @@ pub struct Compiler {
     pub intern_table: HashMap<u64, Rc<str>>,
     pub scopes: Vec<HashSet<String>>,
     pub scope_base: usize,
+    pub current_captures: Vec<usize>,
 }
 
 impl Compiler {
@@ -32,6 +33,7 @@ impl Compiler {
             scopes: vec![HashSet::new()],
             intern_table: HashMap::new(),
             scope_base: 0,
+            current_captures: vec![],
         }
     }
 
@@ -59,6 +61,12 @@ impl Compiler {
         let id = self.intern(name);
         let depth = self.scopes.len() - 1 - self.scope_base;
 
+        if self.scopes.len() == 1 {
+            self.instructions.push(Inst::STORE_GLOBAL(id));
+            self.scopes[0].insert(name.to_string());
+            return;
+        }
+
         self.instructions.push(if is_const {
             Inst::STORE_LOCAL_CONST { id, depth }
         } else {
@@ -71,25 +79,37 @@ impl Compiler {
     }
 
     pub fn emit_load_local(&mut self, name: &str) {
-        let mut found_depth = None;
-
         for (depth, scope) in self.scopes.iter().enumerate().rev() {
-            if let Some(_) = scope.get(name) {
-                found_depth = Some(depth);
-                break;
+            if scope.contains(name) {
+                let id = self.intern(name);
+
+                if depth == 0 {
+                    self.instructions.push(Inst::LOAD_GLOBAL(id));
+                } else if depth < self.scope_base {
+                    let absolute = depth; // absolute index into locals at runtime
+                    if !self.current_captures.contains(&absolute) {
+                        self.current_captures.push(absolute);
+                    }
+
+                    let scope_idx = self
+                        .current_captures
+                        .iter()
+                        .position(|&d| d == absolute)
+                        .unwrap();
+                    self.instructions.push(Inst::LOAD_UPVALUE { id, scope_idx });
+                } else {
+                    let relative = depth - self.scope_base;
+                    self.instructions.push(Inst::LOAD_LOCAL {
+                        id,
+                        depth: relative,
+                    });
+                }
+                return;
             }
         }
 
         let id = self.intern(name);
-        if let Some(depth) = found_depth {
-            let relative = depth.saturating_sub(self.scope_base);
-            self.instructions.push(Inst::LOAD_LOCAL {
-                id,
-                depth: relative,
-            });
-        } else {
-            self.instructions.push(Inst::LOAD_GLOBAL(id));
-        }
+        self.instructions.push(Inst::LOAD_GLOBAL(id));
     }
 
     pub fn compile_node(&mut self, node: &Node) {
@@ -626,6 +646,8 @@ impl Compiler {
         args: &Vec<(Rc<String>, Option<Rc<String>>, Option<Node>)>,
         block: &Box<Node>,
     ) {
+        let saved_captures = std::mem::take(&mut self.current_captures);
+
         self.comment("New function:");
         let func_value = patch!(self.instructions);
         if let Some(name) = name {
@@ -662,10 +684,16 @@ impl Compiler {
 
         self.comment("Function def end");
 
+        let captures = std::mem::take(&mut self.current_captures);
+        self.current_captures = saved_captures;
+
         patch_execute!(
             self.instructions,
             func_value,
-            Inst::PUSH(Value::Function(TFunction::new(func_start)))
+            Inst::MAKE_CLOSURE {
+                entry: func_start,
+                captures
+            }
         );
 
         patch_execute!(

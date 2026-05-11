@@ -58,6 +58,10 @@ pub enum Inst {
     STORE_LOCAL { id: u64, depth: usize },       // ✅
     STORE_LOCAL_CONST { id: u64, depth: usize }, // ✅
 
+    // UpValues
+    MAKE_CLOSURE { entry: usize, captures: Vec<usize> }, // ✅
+    LOAD_UPVALUE { id: u64, scope_idx: usize },          // ✅
+
     // Load from local or global
     LOAD(u64), // ✅
 

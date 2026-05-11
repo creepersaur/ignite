@@ -25,7 +25,10 @@ impl Compiler {
 
     pub fn trim_end_pops(&mut self) {
         while let Some(last) = self.instructions.last() {
-            if matches!(last, Inst::NOP | Inst::TRY_POP | Inst::POP | Inst::DEFAULT_NIL) {
+            if matches!(
+                last,
+                Inst::NOP | Inst::TRY_POP | Inst::POP | Inst::DEFAULT_NIL
+            ) {
                 self.instructions.pop();
             } else {
                 break;
@@ -105,21 +108,26 @@ impl Compiler {
         let mut new_idx = 0;
         for inst in &self.instructions {
             old_to_new.push(new_idx);
-            if !matches!(inst, Inst::NOP) {
+            if !matches!(inst, Inst::NOP | Inst::COMMENT(..)) {
                 new_idx += 1;
             }
         }
 
+		old_to_new.push(new_idx);
+
         for inst in &mut self.instructions {
             match inst {
-                Inst::JUMP(target) => *target = old_to_new[*target],
-                Inst::JUMP_IF_FALSE(target) => *target = old_to_new[*target],
-                Inst::JUMP_IF_TRUE(target) => *target = old_to_new[*target],
-                Inst::JUMP_IF_NOT_NIL(target) => *target = old_to_new[*target],
-                Inst::FOR_ITER(target) => *target = old_to_new[*target],
+                Inst::JUMP(target)
+                | Inst::JUMP_IF_FALSE(target)
+                | Inst::JUMP_IF_TRUE(target)
+                | Inst::JUMP_IF_NOT_NIL(target)
+                | Inst::FOR_ITER(target) => {
+                    *target = old_to_new[*target];
+                }
 
                 // Functions
                 Inst::PUSH(Value::Function(f)) => f.entry = old_to_new[f.entry],
+                Inst::MAKE_CLOSURE { entry, .. } => *entry = old_to_new[*entry],
 
                 _ => {}
             }
