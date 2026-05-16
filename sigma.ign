@@ -1,4 +1,4 @@
 using Std::Math::{sin, PI}
 
-let x = sin(PI / 2)
+let x: number = sin(PI / 2)
 println(x)

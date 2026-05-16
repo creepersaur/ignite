@@ -891,6 +891,16 @@ impl Parser {
 
             self.skip_new_lines();
 
+
+            if let Ok(x) = self.current()
+                && x.kind == TokenKind::COLON
+            {
+				self.advance()?;
+				self.expect_and_consume(TokenKind::Identifier)?;
+            }
+
+			self.skip_new_lines();
+
             if let Ok(x) = self.current()
                 && x.kind == TokenKind::COMMA
             {
