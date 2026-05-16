@@ -382,6 +382,11 @@ impl VM {
                     let n = self.stack.len();
                     self.stack.swap(n - 1, n - 2);
                 }
+                Inst::ROT3 => {
+                    let n = self.stack.len();
+                    self.stack.swap(n - 2, n - 1);
+                    self.stack.swap(n - 3, n - 2);
+                }
 
                 // Collections
                 Inst::LIST(length) => {
@@ -598,10 +603,11 @@ impl VM {
                     }
                 }
                 Inst::LT => {
-                    if let (Value::Number(a), Value::Number(b)) = self.pop_two() {
+                    let (a, b) = self.pop_two();
+                    if let (Value::Number(a), Value::Number(b)) = (&a, &b) {
                         self.stack.push(Value::Bool(a < b));
                     } else {
-                        panic!("LT expects numbers");
+                        panic!("LT expects numbers, got {a:?} and {b:?}");
                     }
                 }
                 Inst::GE => {

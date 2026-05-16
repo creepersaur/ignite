@@ -41,6 +41,10 @@ pub enum Node {
         right: Box<Node>,
         is_prefix: bool,
     },
+    ComparisonChain {
+        expressions: Vec<Node>,
+        operators: Vec<TokenKind>,
+    },
 
     // Dedicated Coalescing
     NullCoalesce {
@@ -145,10 +149,10 @@ pub enum Node {
         fields: Vec<(String, String)>, // (key, type)
     },
 
-	StructInit {
-		target: Box<Node>,
-		fields: Vec<(String, Node)>
-	},
+    StructInit {
+        target: Box<Node>,
+        fields: Vec<(String, Node)>,
+    },
 
     InterfaceDef {
         name: Rc<String>,
@@ -157,7 +161,7 @@ pub enum Node {
     },
 
     EnumDef {
-		name: String,
+        name: String,
         items: Vec<(String, Node)>,
     },
 

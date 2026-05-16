@@ -772,7 +772,10 @@ impl Parser {
     }
 
     fn parse_comparison(&mut self) -> NodeResult {
-        let mut left = self.parse_range()?;
+        let first = self.parse_range()?;
+
+        let mut expressions = vec![first];
+        let mut operators = vec![];
 
         while let Ok(next) = self.current() {
             if !matches!(
@@ -782,17 +785,18 @@ impl Parser {
                 break;
             }
 
-            let op = self.advance()?.kind;
-            let right = self.parse_range()?;
-
-            left = Node::BinOp {
-                left: Box::new(left),
-                right: Box::new(right),
-                op,
-            };
+            operators.push(self.advance()?.kind);
+            expressions.push(self.parse_range()?);
         }
 
-        Ok(left)
+        if operators.is_empty() {
+            return Ok(expressions.remove(0));
+        }
+
+        Ok(Node::ComparisonChain {
+            expressions,
+            operators,
+        })
     }
 
     fn parse_function_call(&mut self, expr: Node) -> NodeResult {
@@ -1353,9 +1357,9 @@ impl Parser {
                         | Node::WhileLoop { .. }
                         | Node::ForLoop { .. }
                         | Node::Loop { .. }
-						| Node::OutStatement(..)
-						| Node::ReturnStatement(..)
-						| Node::BreakStatement(..)
+                        | Node::OutStatement(..)
+                        | Node::ReturnStatement(..)
+                        | Node::BreakStatement(..)
                 );
 
                 if is_returnable {

@@ -156,6 +156,11 @@ impl Compiler {
                 is_prefix,
             } => self.compile_unary_op(op, right, *is_prefix),
             Node::BinOp { left, right, op } => self.compile_bin_op(left, right, op),
+            Node::ComparisonChain {
+                expressions,
+                operators,
+            } => self.compile_comparison_chain(expressions, operators),
+
             Node::NullCoalesce { left, right } => self.compile_null_coalesce(left, right),
             Node::ElvisCoalesce { left, right } => self.compile_elvis_coalesce(left, right),
             Node::TernaryOp {
@@ -367,42 +372,9 @@ impl Compiler {
     }
 
     pub fn compile_bin_op(&mut self, left: &Box<Node>, right: &Box<Node>, op: &TokenKind) {
-        if Self::is_comparison_op(op) {
-            if let Node::BinOp {
-                left: ll,
-                right: lr,
-                op: inner_op,
-            } = &**left
-            {
-                if Self::is_comparison_op(inner_op) {
-                    self.compile_node(&**lr); // x
-                    self.instructions.push(Inst::DUP); // x x
-                    self.compile_node(&**ll); // x x 0
-                    self.instructions.push(Inst::SWAP); // x 0 x
-                    self.instructions.push(match inner_op {
-                        TokenKind::GT => Inst::GT,
-                        TokenKind::LT => Inst::LT,
-                        TokenKind::GE => Inst::GE,
-                        TokenKind::LE => Inst::LE,
-                        _ => unreachable!(),
-                    });
-                    self.instructions.push(Inst::SWAP); // bool x
-                    self.compile_node(&**right); // bool x 5
-                    self.instructions.push(match op {
-                        TokenKind::GT => Inst::GT,
-                        TokenKind::LT => Inst::LT,
-                        TokenKind::GE => Inst::GE,
-                        TokenKind::LE => Inst::LE,
-                        _ => unreachable!(),
-                    });
-                    self.instructions.push(Inst::AND);
-                    return;
-                }
-            }
-        }
-
         self.compile_node(&**left);
         self.compile_node(&**right);
+
         self.instructions.push(match op {
             TokenKind::PLUS => Inst::ADD,
             TokenKind::MINUS => Inst::SUB,
@@ -426,11 +398,47 @@ impl Compiler {
         });
     }
 
-    fn is_comparison_op(op: &TokenKind) -> bool {
-        matches!(
-            op,
-            TokenKind::LT | TokenKind::LE | TokenKind::GT | TokenKind::GE
-        )
+    pub fn compile_comparison_chain(
+        &mut self,
+        expressions: &Vec<Node>,
+        operators: &Vec<TokenKind>,
+    ) {
+        self.compile_node(&expressions[0]);
+
+        let n = operators.len();
+        for i in 0..n {
+            let is_first = i == 0;
+            let is_last = i == n - 1;
+
+            self.compile_node(&expressions[i + 1]);
+
+            // Save a copy of the right operand as carry for the next comparison
+            if !is_last {
+                self.instructions.push(Inst::DUP);
+                self.instructions.push(Inst::ROT3);
+            }
+
+            self.instructions.push(match operators[i] {
+                TokenKind::LT => Inst::LT,
+                TokenKind::LE => Inst::LE,
+                TokenKind::GT => Inst::GT,
+                TokenKind::GE => Inst::GE,
+                _ => unreachable!(),
+            });
+
+            if !is_last {
+                // Re-establish invariant: [accumulated, carry]
+                self.instructions.push(Inst::SWAP);
+                if !is_first {
+                    // Fold in prior accumulated result
+                    self.instructions.push(Inst::ROT3);
+                    self.instructions.push(Inst::AND);
+                    self.instructions.push(Inst::SWAP);
+                }
+            } else if !is_first {
+                self.instructions.push(Inst::AND);
+            }
+        }
     }
 
     pub fn compile_null_coalesce(&mut self, left: &Box<Node>, right: &Box<Node>) {
