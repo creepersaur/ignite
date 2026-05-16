@@ -1,9 +1,7 @@
 use std::{cell::RefCell, fmt::Debug, rc::Rc};
 
 use crate::{
-    lib_function,
     misc::to_index::to_index,
-    rc,
     virtual_machine::{
         libs::types::list_lib::LIST_FUNCTIONS, libs::types::tuple_lib::TUPLE_FUNCTIONS,
         traits::member_accessible::IMemberAccessible, types::function::TFunction, value::Value,

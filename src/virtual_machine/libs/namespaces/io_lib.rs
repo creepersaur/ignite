@@ -1,7 +1,6 @@
 use std::io::{Write, stdin, stdout};
 
 use crate::{
-    hash_u64,
     virtual_machine::{libs::lib::Library, types::string::TString, value::Value, vm::VM},
 };
 
@@ -91,7 +90,7 @@ impl IOLib {
 // LIBRARY
 impl Library for IOLib {
     fn get_name(&self) -> &str {
-        "io"
+        "IO"
     }
 
     fn get_function(&self, name: u64) -> Box<dyn Fn(&mut VM, Vec<Value>) -> Value> {

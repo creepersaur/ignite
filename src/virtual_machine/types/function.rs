@@ -3,7 +3,7 @@ use std::{
     cell::RefCell, collections::HashMap, fmt::Debug, hash::{Hash, Hasher}, rc::Rc
 };
 
-use crate::{hash_u64, virtual_machine::value::Value};
+use crate::{virtual_machine::value::Value};
 
 #[derive(Encode, Decode, Clone)]
 pub struct TFunction {

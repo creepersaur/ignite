@@ -1,7 +1,7 @@
 use std::{cell::RefCell, cmp::Ordering};
 
 use crate::{
-    get_args, hash_u64, rc, virtual_machine::{libs::lib::Library, types::list::TList, value::Value, vm::VM}
+    get_args, virtual_machine::{libs::lib::Library, types::list::TList, value::Value, vm::VM}
 };
 
 pub const TUPLE_FUNCTIONS: [&str; 10] = [

@@ -1,1 +1,4 @@
-println(0 < 3 < 5 < 7)
+using Std::Math::{sin, PI}
+
+let x = sin(PI / 2)
+println(x)

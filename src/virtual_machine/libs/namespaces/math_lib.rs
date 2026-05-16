@@ -1,5 +1,5 @@
 use crate::{
-    get_args, hash_u64, virtual_machine::{libs::lib::Library, value::Value, vm::VM}
+    get_args, virtual_machine::{libs::lib::Library, value::Value, vm::VM}
 };
 
 pub struct MathLib;
@@ -332,7 +332,7 @@ impl MathLib {
 // LIBRARY
 impl Library for MathLib {
     fn get_name(&self) -> &str {
-        "math"
+        "Math"
     }
 
     fn get_function(&self, name: u64) -> Box<dyn Fn(&mut VM, Vec<Value>) -> Value> {

@@ -77,7 +77,7 @@ impl IMemberAccessible for TNamespace {
                 if !*is_const {
                     self.env.insert(t.0.clone(), (value, false));
                 } else {
-                    panic!(
+					panic!(
                         "Cannot set a constant member `{}` of namespace:{}.",
                         member.to_string(false),
                         self.name
@@ -94,10 +94,10 @@ impl IMemberAccessible for TNamespace {
 
 #[macro_export]
 macro_rules! namespace_lib_function {
-    ($namespace:expr, $lib:expr, $func:expr) => {
+    ($namespace:expr, $func:expr) => {
         $namespace.env.insert(
             std::rc::Rc::from($func),
-            (lib_function!($lib, $func), true),
+            (lib_function!($namespace.name.clone(), $func), true),
         );
     };
 }

@@ -1,5 +1,5 @@
 use crate::{
-    get_args, hash_u64,
+    get_args,
     virtual_machine::{libs::lib::Library, types::string::TString, value::Value, vm::VM},
 };
 

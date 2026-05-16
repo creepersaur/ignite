@@ -1,6 +1,5 @@
-use bincode::{Decode, Encode};
-
 use crate::virtual_machine::{inst::Inst, value::Value};
+use bincode::{Decode, Encode};
 
 #[derive(Encode, Decode)]
 pub struct Chunk {

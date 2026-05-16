@@ -1,5 +1,7 @@
 use crate::{
-    get_args, hash_u64, misc::to_index::to_index, rc, virtual_machine::{libs::lib::Library, types::list::TList, value::Value, vm::VM}
+    get_args,
+    misc::to_index::to_index,
+    virtual_machine::{libs::lib::Library, types::list::TList, value::Value, vm::VM},
 };
 use std::{cell::RefCell, cmp::Ordering};
 

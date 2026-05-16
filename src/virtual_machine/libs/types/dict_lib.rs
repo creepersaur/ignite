@@ -3,7 +3,7 @@
 use std::{cell::RefCell, collections::HashMap};
 
 use crate::{
-    get_args, hash_u64, rc, virtual_machine::{
+    get_args, virtual_machine::{
         libs::lib::Library,
         types::{dict::TDict, list::TList},
         value::Value,

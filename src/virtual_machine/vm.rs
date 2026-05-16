@@ -1,5 +1,4 @@
 use crate::{
-    hash_u64, lib_function, rc,
     virtual_machine::{
         chunk::Chunk,
         inst::Inst,
@@ -74,9 +73,9 @@ impl VM {
         // Global Builtins
         globals.insert(
             hash_u64!("println"),
-            (lib_function!("io", "write_line"), false),
+            (lib_function!("IO", "write_line"), false),
         );
-        globals.insert(hash_u64!("print"), (lib_function!("io", "write"), false));
+        globals.insert(hash_u64!("print"), (lib_function!("IO", "write"), false));
         globals.insert(
             hash_u64!("typeof"),
             (lib_function!("type", "typeof"), false),
@@ -106,9 +105,9 @@ impl VM {
         libs.insert(hash_u64!("dict"), Box::new(DictLib));
 
         // namespaces
-        libs.insert(hash_u64!("math"), Box::new(MathLib));
-        libs.insert(hash_u64!("io"), Box::new(IOLib));
-        libs.insert(hash_u64!("fs"), Box::new(FSLib));
+        libs.insert(hash_u64!("Math"), Box::new(MathLib));
+        libs.insert(hash_u64!("IO"), Box::new(IOLib));
+        libs.insert(hash_u64!("FS"), Box::new(FSLib));
 
         libs
     }
@@ -161,6 +160,16 @@ impl VM {
             if let Some(lib) = self.libraries.get(&library) {
                 let value = lib.get_function(method)(self, args);
                 self.stack.push(value);
+            } else {
+                println!("macro hash: {}", hash_u64!("Math"));
+                println!("handler hash: {}", library);
+                println!("handler name: {}", self.lookup_intern(library));
+
+                panic!(
+                    "Library not found for handler key: {} (method: {})",
+                    library,
+                    self.lookup_intern(method)
+                );
             }
         } else {
             self.call_stack.push(CallFrame {
@@ -174,11 +183,11 @@ impl VM {
 
     pub fn lookup_intern(&self, id: u64) -> Rc<str> {
         if !self.expose_interns {
-            return rc!("<unknown>");
+            return rc_str!("<unknown>");
         }
         self.intern_table
             .get(&id)
-            .unwrap_or(&rc!("<unknown>"))
+            .unwrap_or(&rc_str!("<unknown>"))
             .clone()
     }
 

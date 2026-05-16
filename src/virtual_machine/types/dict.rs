@@ -1,7 +1,6 @@
 use std::{cell::RefCell, collections::HashMap, fmt::Debug, rc::Rc};
 
 use crate::{
-    lib_function, rc,
     virtual_machine::{
         traits::member_accessible::IMemberAccessible, types::function::TFunction,
         libs::types::dict_lib::DICT_FUNCTIONS, value::Value, vm::VM,

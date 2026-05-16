@@ -1,9 +1,7 @@
 use std::{fmt::Debug, rc::Rc};
 
 use crate::{
-    lib_function,
     misc::to_index::to_index,
-    rc,
     virtual_machine::{
         libs::types::string_lib::STRING_FUNCTIONS, traits::member_accessible::IMemberAccessible,
         types::function::TFunction, value::Value, vm::VM,

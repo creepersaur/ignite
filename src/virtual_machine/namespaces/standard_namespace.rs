@@ -1,5 +1,4 @@
 use crate::{
-    rc,
     virtual_machine::{
         namespaces::{
             namespace::TNamespace,
@@ -13,9 +12,9 @@ use std::cell::RefCell;
 pub fn load_standard_namespace() -> Value {
     let mut namespace = TNamespace::new("Std", true);
 
-    namespace.env.insert(rc!("Math"), (std_math(), true));
-    namespace.env.insert(rc!("IO"), (std_io(), true));
-    namespace.env.insert(rc!("FS"), (std_fs(), true));
+    namespace.env.insert(rc_str!("Math"), (std_math(), true));
+    namespace.env.insert(rc_str!("IO"), (std_io(), true));
+    namespace.env.insert(rc_str!("FS"), (std_fs(), true));
 
     return Value::Namespace(rc!(RefCell::new(namespace)));
 }
