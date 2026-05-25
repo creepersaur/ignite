@@ -320,7 +320,7 @@ impl Parser {
     }
 
     fn parse_exponent(&mut self) -> NodeResult {
-        let mut left = self.parse_primary()?;
+        let mut left = self.parse_call()?;
 
         while let Ok(next) = self.current() {
             if !matches!(next.kind, TokenKind::POW) {
@@ -339,6 +339,56 @@ impl Parser {
         }
 
         Ok(left)
+    }
+
+	fn parse_call(&mut self) -> NodeResult {
+		let mut expr = self.parse_member()?;
+
+        loop {
+            if let Ok(x) = self.current() {
+                match x.kind {
+                    TokenKind::LPAREN => {
+                        expr = self.parse_function_call(expr)?;
+                        continue;
+                    }
+
+                    _ => {}
+                }
+            }
+
+            break;
+        }
+
+        return Ok(expr);
+	}
+
+    fn parse_member(&mut self) -> NodeResult {
+		let mut expr = self.parse_primary()?;
+
+        loop {
+            if let Ok(x) = self.current() {
+                match x.kind {
+                    TokenKind::DOT => {
+                        expr = self.parse_member_access(expr)?;
+                        continue;
+                    }
+                    TokenKind::DOUBLECOLON => {
+                        expr = self.parse_member_access(expr)?;
+                        continue;
+                    }
+                    TokenKind::LBRACK => {
+                        expr = self.parse_member_access(expr)?;
+                        continue;
+                    }
+
+                    _ => {}
+                }
+            }
+
+            break;
+        }
+
+        return Ok(expr);
     }
 
     fn parse_primary(&mut self) -> NodeResult {
@@ -366,6 +416,7 @@ impl Parser {
             TokenKind::LET => self.parse_let(false),
             TokenKind::CONST => self.parse_const(),
             TokenKind::FN => self.parse_function_def(true, false),
+            TokenKind::NEW => self.parse_new(),
             TokenKind::LOOP => self.parse_loop(),
             TokenKind::WHILE => self.parse_while(),
             TokenKind::FOR => self.parse_for(),
@@ -385,7 +436,7 @@ impl Parser {
             self.advance()?;
         }
 
-        self.parse_postfix(node)
+		Ok(node)
     }
 
     fn skip_new_lines(&mut self) {
@@ -969,9 +1020,9 @@ impl Parser {
                         && next.kind == TokenKind::AS
                     {
                         self.advance()?;
-						let new_name = self.expect_and_consume(TokenKind::Identifier)?;
+                        let new_name = self.expect_and_consume(TokenKind::Identifier)?;
 
-						alias = Some(new_name.get_text(&self.source));
+                        alias = Some(new_name.get_text(&self.source));
                     }
 
                     imports.push((token.get_text(&self.source), alias));
@@ -1295,6 +1346,7 @@ impl Parser {
 
         let mut let_statements = vec![];
         let mut functions = vec![];
+        let mut constructor = None;
 
         loop {
             self.skip_new_lines();
@@ -1309,8 +1361,12 @@ impl Parser {
 
             if let Ok(next) = self.current() {
                 match next.kind {
-                    TokenKind::FN => functions.push(self.parse_function_def(false, false)?),
                     TokenKind::LET => let_statements.push(self.parse_let(false)?),
+                    TokenKind::CONST => let_statements.push(self.parse_let(true)?),
+                    TokenKind::CONSTRUCTOR => {
+                        constructor = Some(Box::new(self.parse_function_def(true, false)?))
+                    }
+                    TokenKind::FN => functions.push(self.parse_function_def(false, false)?),
                     TokenKind::SEMI => {
                         self.advance()?;
                     }
@@ -1331,6 +1387,29 @@ impl Parser {
             interfaces,
             let_statements,
             functions,
+            constructor,
+        })
+    }
+
+    fn parse_new(&mut self) -> NodeResult {
+        self.advance()?;
+
+        let target = self.parse_member()?;
+        let mut parameters = vec![];
+
+        self.parse_surrounded(
+            TokenKind::LPAREN,
+            TokenKind::RPAREN,
+            Some(TokenKind::COMMA),
+            |this| {
+                parameters.push(this.parse_expression()?);
+                Ok(())
+            },
+        )?;
+
+        Ok(Node::ClassInit {
+            target: Box::new(target),
+            parameters,
         })
     }
 

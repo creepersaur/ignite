@@ -3,7 +3,7 @@ use crate::{
     language::{ast::AST, lexer::Lexer, parser::Parser},
     virtual_machine::vm::VM,
 };
-use std::panic::{AssertUnwindSafe, catch_unwind};
+use std::{cell::RefCell, panic::{AssertUnwindSafe, catch_unwind}};
 #[allow(unused)]
 use std::{error::Error, fs, rc::Rc};
 
@@ -69,7 +69,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
         if args.contains(&"opt".to_string()) {
             vm.constants = compiler.constants.clone();
-            vm.instructions = compiler.instructions.clone();
+            vm.instructions = rc!(RefCell::new(compiler.instructions.clone()));
             vm.intern_table = compiler.intern_table.clone();
 
             if args.contains(&"inst".to_string()) {
@@ -87,7 +87,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
 
         vm.constants = compiler.constants;
-        vm.instructions = compiler.instructions;
+        vm.instructions = rc!(RefCell::new(compiler.instructions));
         vm.intern_table = compiler.intern_table;
     }
 
@@ -118,10 +118,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
 
         if args.contains(&"trace".to_string()) {
-            if vm.pos < instructions_clone.len() {
+            if vm.pos < instructions_clone.borrow().len() {
                 println!(
                     "Last Instruction ({}): {:?}",
-                    vm.pos, instructions_clone[vm.pos]
+                    vm.pos, instructions_clone.borrow()[vm.pos]
                 );
             } else {
                 println!("Completed all instructions")

@@ -62,11 +62,11 @@ impl Compiler {
         let depth = self.scopes.len() - 1 - self.scope_base;
 
         if self.scopes.len() == 1 {
-			if is_const {
-				self.instructions.push(Inst::STORE_GLOBAL_CONST(id));
-			} else {
-				self.instructions.push(Inst::STORE_GLOBAL(id));
-			}
+            if is_const {
+                self.instructions.push(Inst::STORE_GLOBAL_CONST(id));
+            } else {
+                self.instructions.push(Inst::STORE_GLOBAL(id));
+            }
             self.scopes[0].insert(name.to_string());
             return;
         }
@@ -201,7 +201,7 @@ impl Compiler {
                 name,
                 return_type,
                 args,
-				is_const,
+                is_const,
                 block,
             } => self.compile_function_def(name, return_type, args, *is_const, block),
 
@@ -240,6 +240,15 @@ impl Compiler {
 
             Node::StructDef { name, fields } => self.compile_struct_def(name, fields),
             Node::StructInit { target, fields } => self.compile_struct_init(target, fields),
+
+            Node::ClassDef {
+                name,
+                let_statements,
+                functions,
+				constructor,
+                ..
+            } => self.compile_class_def(name, let_statements, functions, constructor),
+            Node::ClassInit { target, parameters } => self.compile_class_init(target, parameters),
 
             _ => panic!("Unknown node: `{node:?}`"),
         }
@@ -707,7 +716,7 @@ impl Compiler {
         name: &Option<Rc<String>>,
         _return_type: &Option<Rc<String>>,
         args: &Vec<(Rc<String>, Option<Rc<String>>, Option<Node>)>,
-		is_const: bool,
+        is_const: bool,
         block: &Box<Node>,
     ) {
         let saved_captures = std::mem::take(&mut self.current_captures);
@@ -905,10 +914,10 @@ impl Compiler {
                     .push(Inst::PUSH(Value::string(item.clone())));
                 self.instructions.push(Inst::GET_PROP);
                 if let Some(alias) = alias {
-					self.emit_store_local(alias, false);
-				} else {
-					self.emit_store_local(item, false);
-				}
+                    self.emit_store_local(alias, false);
+                } else {
+                    self.emit_store_local(item, false);
+                }
             }
         } else {
             self.emit_store_local(&sequence[sequence.len() - 1], false);
@@ -951,6 +960,74 @@ impl Compiler {
         self.instructions.push(Inst::STRUCT(
             field_names.iter().rev().map(|x| x.clone()).collect(),
         ));
+    }
+
+    pub fn compile_class_def(&mut self, name: &String, values: &Vec<Node>, functions: &Vec<Node>, constructor: &Option<Box<Node>>) {
+		if let Some(constructor) = constructor {
+			self.compile_node(&**constructor);
+		}
+
+        let mut field_names: Vec<String> = vec![];
+        let mut field_consts: Vec<bool> = vec![];
+
+        for node in values {
+            if let Node::LetStatement {
+                names: field_name_list,
+                values: field_values,
+                is_const,
+            } = node
+            {
+                for (i, field_name) in field_name_list.iter().enumerate() {
+                    field_names.push(field_name.to_string());
+                    field_consts.push(*is_const);
+
+                    match field_values.get(i).and_then(|v| v.as_deref()) {
+                        Some(val) => self.compile_node(val),
+                        None => self.instructions.push(Inst::PUSH(Value::NIL)),
+                    }
+                }
+            }
+        }
+
+        let mut method_names: Vec<String> = vec![];
+
+        for node in functions {
+            if let Node::FunctionDefinition {
+                name: method_name,
+                return_type,
+                args,
+                is_const,
+                block,
+            } = node
+            {
+                let method_str = method_name
+                    .as_ref()
+                    .map(|n| n.to_string())
+                    .unwrap_or_default();
+                method_names.push(method_str);
+
+                self.compile_function_def(&None, return_type, args, *is_const, block);
+            }
+        }
+
+        self.instructions.push(Inst::MAKE_CLASS {
+            name: name.clone(),
+            field_names,
+            field_consts,
+            method_names,
+			has_constructor: constructor.is_some()
+        });
+
+        self.emit_store_local(name, false);
+    }
+
+    pub fn compile_class_init(&mut self, target: &Box<Node>, parameters: &Vec<Node>) {
+		for i in parameters.iter().rev() {
+			self.compile_node(i);
+		}
+
+        self.compile_node(&**target);
+        self.instructions.push(Inst::INIT_CLASS(parameters.len()));
     }
 }
 

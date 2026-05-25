@@ -9,8 +9,14 @@ use std::{
 use crate::virtual_machine::{
     namespaces::namespace::TNamespace,
     types::{
-        dict::TDict, r#enum::TEnum, function::TFunction, list::TList, string::TString,
-        r#struct::TStruct, structdef::TStructDef,
+        classes::{r#class::TClass, class_object::TClassObject},
+        dict::TDict,
+        r#enum::TEnum,
+        function::TFunction,
+        list::TList,
+        string::TString,
+        r#struct::TStruct,
+        structdef::TStructDef,
     },
 };
 
@@ -30,8 +36,11 @@ pub enum Value {
     Tuple(TList),
     Dict(TDict),
 
-    Struct(TStruct),
     StructDef(Rc<TStructDef>),
+    Struct(TStruct),
+
+    Class(TClass),
+    ClassObject(TClassObject),
 
     // Namespaces
     Namespace(Rc<RefCell<TNamespace>>),
@@ -74,6 +83,8 @@ impl Value {
             Value::Tuple(_) => "tuple",
             Value::Dict(_) => "dict",
             Value::Namespace(_) => "namespace",
+            Value::Class(data) => &data.name,
+            Value::ClassObject(data) => &data.base.name,
             Value::Enum(_) => "enum",
             Value::Range { .. } => "range",
             Value::StructDef(..) => "structdef",
@@ -120,8 +131,7 @@ impl Value {
                 list.values
                     .borrow()
                     .iter()
-                    .map(|x|
-						if let Value::List(v) = x {
+                    .map(|x| if let Value::List(v) = x {
                         if list.values.as_ptr() == v.values.as_ptr() {
                             String::from("[...]")
                         } else {
@@ -222,6 +232,9 @@ impl Value {
                     .collect::<Vec<_>>()
                     .join(", ")
             ),
+
+            Value::Class(def) => format!("class:{}", def.name),
+            Value::ClassObject(data) => format!("object:{}", data.base.name),
         }
     }
 
@@ -304,9 +317,19 @@ impl Hash for Value {
                 def.name.hash(state);
                 std::ptr::hash(Rc::as_ptr(&def.fields), state);
             }
-            Self::Struct(def) => {
-                def.base.name.hash(state);
-                def.values.as_ptr().hash(state);
+            Self::Struct(data) => {
+                data.base.name.hash(state);
+                data.values.as_ptr().hash(state);
+            }
+
+            Self::Class(def) => {
+                def.name.hash(state);
+                std::ptr::hash(Rc::as_ptr(&def.values), state);
+                std::ptr::hash(Rc::as_ptr(&def.functions), state);
+            }
+            Self::ClassObject(data) => {
+                data.base.name.hash(state);
+                data.values.as_ptr().hash(state);
             }
         }
     }

@@ -170,6 +170,8 @@ impl Lexer {
             "if" => IF,
             "else" => ELSE,
             "class" => CLASS,
+            "constructor" => CONSTRUCTOR,
+            "new" => NEW,
             "match" => MATCH,
             "using" => USING,
             "as" => AS,

@@ -26,6 +26,14 @@ pub enum Inst {
     DICT(usize),              // ✅
     ENUM(String, Vec<Value>), // ✅
     STRUCT(Vec<String>),      // ✅
+    MAKE_CLASS {
+        name: String,
+        field_names: Vec<String>,
+        field_consts: Vec<bool>,
+        method_names: Vec<String>,
+		has_constructor: bool,
+    }, // ✅
+    INIT_CLASS(usize),        // ✅
 
     PATCH_ME(String), // ✅
 
@@ -55,15 +63,30 @@ pub enum Inst {
     STORE_GLOBAL_CONST(u64), // ✅
     SET_VAR(u64),            // ✅
 
-    PUSH_SCOPE,                                  // ✅
-    POP_SCOPE,                                   // ✅
-    LOAD_LOCAL { id: u64, depth: usize },        // ✅
-    STORE_LOCAL { id: u64, depth: usize },       // ✅
-    STORE_LOCAL_CONST { id: u64, depth: usize }, // ✅
+    PUSH_SCOPE, // ✅
+    POP_SCOPE,  // ✅
+    LOAD_LOCAL {
+        id: u64,
+        depth: usize,
+    }, // ✅
+    STORE_LOCAL {
+        id: u64,
+        depth: usize,
+    }, // ✅
+    STORE_LOCAL_CONST {
+        id: u64,
+        depth: usize,
+    }, // ✅
 
     // UpValues
-    MAKE_CLOSURE { entry: usize, captures: Vec<usize> }, // ✅
-    LOAD_UPVALUE { id: u64, scope_idx: usize },          // ✅
+    MAKE_CLOSURE {
+        entry: usize,
+        captures: Vec<usize>,
+    }, // ✅
+    LOAD_UPVALUE {
+        id: u64,
+        scope_idx: usize,
+    }, // ✅
 
     // Load from local or global
     LOAD(u64), // ✅

@@ -1,23 +1,24 @@
-use crate::{
-    virtual_machine::{
-        chunk::Chunk,
-        inst::Inst,
-        libs::{
-            lib::Library,
-            namespaces::{fs_lib::FSLib, io_lib::IOLib, math_lib::MathLib},
-            type_lib::TypeLib,
-            types::{
-                dict_lib::DictLib, list_lib::ListLib, string_lib::StringLib, tuple_lib::TupleLib,
-            },
-        },
-        namespaces::standard_namespace::load_standard_namespace,
-        traits::member_accessible::IMemberAccessible,
-        types::{
-            dict::TDict, r#enum::TEnum, function::TFunction, list::TList, string::TString,
-            r#struct::TStruct,
-        },
-        value::Value,
+use crate::virtual_machine::{
+    chunk::Chunk,
+    inst::Inst,
+    libs::{
+        lib::Library,
+        namespaces::{fs_lib::FSLib, io_lib::IOLib, math_lib::MathLib},
+        type_lib::TypeLib,
+        types::{dict_lib::DictLib, list_lib::ListLib, string_lib::StringLib, tuple_lib::TupleLib},
     },
+    namespaces::standard_namespace::load_standard_namespace,
+    traits::member_accessible::IMemberAccessible,
+    types::{
+        classes::{class::TClass, class_object::TClassObject},
+        dict::TDict,
+        r#enum::TEnum,
+        function::TFunction,
+        list::TList,
+        string::TString,
+        r#struct::TStruct,
+    },
+    value::Value,
 };
 use simply_colored::*;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
@@ -32,7 +33,7 @@ pub struct CallFrame {
 
 pub struct VM {
     pub pos: usize,
-    pub instructions: Vec<Inst>,
+    pub instructions: Rc<RefCell<Vec<Inst>>>,
     pub stack: Vec<Value>,
     pub call_stack: Vec<CallFrame>,
     pub constants: Vec<Value>,
@@ -49,7 +50,7 @@ impl VM {
     pub fn new() -> Self {
         Self {
             pos: 0,
-            instructions: vec![],
+            instructions: rc!(RefCell::new(vec![])),
             stack: Vec::with_capacity(100),
             call_stack: vec![CallFrame {
                 scope_base: 0,
@@ -116,9 +117,9 @@ impl VM {
         self.pos += 1;
     }
 
-    pub fn push_inst(&mut self, instruction: Inst) {
-        self.instructions.push(instruction);
-    }
+    // pub fn push_inst(&mut self, instruction: Inst) {
+    //     self.instructions.push(instruction);
+    // }
 
     #[inline]
     pub fn pop(&mut self) -> Value {
@@ -150,7 +151,12 @@ impl VM {
     }
 
     pub fn call_function(&mut self, f: TFunction, mut args_count: usize) {
-        if let Some((library, method)) = f.handler {
+        if let Some(target) = f.target {
+			self.stack.push(target.as_ref().clone());
+			args_count += 1;
+		}
+
+		if let Some((library, method)) = f.handler {
             if let Some(this) = f.this {
                 self.stack.push(*this);
                 args_count += 1;
@@ -194,7 +200,7 @@ impl VM {
     pub fn print_instructions(&self) {
         let mut depth: i32 = 0;
 
-        for (i, v) in self.instructions.iter().enumerate() {
+        for (i, v) in self.instructions.borrow().iter().enumerate() {
             if let Inst::POP_SCOPE = v {
                 depth -= 1;
             }
@@ -248,6 +254,14 @@ impl VM {
                 Inst::MAKE_CLOSURE { entry, captures } => Some(format!(
                     "MAKE_CLOSURE(entry: {}, captures: {:?})",
                     entry, captures
+                )),
+                Inst::MAKE_CLASS {
+                    name,
+                    has_constructor,
+                    ..
+                } => Some(format!(
+                    "MAKE_CLASS(name: {}, has_constructor: {})",
+                    name, has_constructor
                 )),
                 _ => None,
             };
@@ -315,11 +329,14 @@ impl VM {
         let decoded: (Chunk, _) = bincode::decode_from_slice(&bytecode_file, config).unwrap();
 
         self.constants = decoded.0.constants;
-        self.instructions = decoded.0.instructions;
+        self.instructions = rc!(RefCell::new(decoded.0.instructions));
     }
 
     pub fn write_bytecode_file(&mut self, path: &str) {
-        let chunk = Chunk::new(self.constants.clone(), self.instructions.clone());
+        let chunk = Chunk::new(
+            self.constants.clone(),
+            (*self.instructions.borrow()).clone(),
+        );
         let config = bincode::config::standard().with_variable_int_encoding();
         let encoded = bincode::encode_to_vec(chunk, config).unwrap();
 
@@ -334,7 +351,7 @@ impl VM {
     }
 
     pub fn fold_constants(&mut self) {
-        for inst in &mut self.instructions {
+        for inst in &mut self.instructions.borrow_mut().iter_mut() {
             if let Inst::LOAD_CONST(idx) = inst {
                 *inst = Inst::PUSH(self.constants[*idx].clone());
             }
@@ -342,13 +359,13 @@ impl VM {
     }
 
     pub fn run(&mut self, debug: bool, stop_at_return: bool) {
-        let instructions = std::mem::take(&mut self.instructions);
+        let instructions = self.instructions.clone();
 
-        while self.pos < instructions.len() {
+        while self.pos < instructions.borrow().len() {
             if debug {
                 println!("{BLACK}{} ...{RESET}", self.pos);
             }
-            let current = &instructions[self.pos];
+            let current = &instructions.borrow()[self.pos];
 
             match current {
                 Inst::EXIT => return,
@@ -455,6 +472,62 @@ impl VM {
                     }
 
                     self.stack.push(Value::Struct(TStruct::new(base, values)));
+                }
+                Inst::MAKE_CLASS {
+                    name,
+                    field_names,
+                    field_consts,
+                    method_names,
+                    has_constructor,
+                } => {
+                    let mut functions_map: HashMap<Rc<str>, Value> = HashMap::new();
+                    for method_name in method_names.iter().rev() {
+                        let closure = self.pop();
+                        functions_map.insert(method_name.clone().into(), closure);
+                    }
+
+                    let mut values_map: HashMap<Rc<str>, (Value, bool)> = HashMap::new();
+                    for (field_name, is_const) in field_names.iter().zip(field_consts.iter()).rev()
+                    {
+                        let default_val = self.pop();
+                        values_map.insert(field_name.clone().into(), (default_val, *is_const));
+                    }
+
+                    let constructor = if *has_constructor {
+                        Some(Box::new(self.pop()))
+                    } else {
+                        None
+                    };
+
+                    self.stack.push(Value::Class(TClass::new(
+                        Rc::from(name.as_str()),
+                        rc!(RefCell::new(values_map)),
+                        rc!(RefCell::new(functions_map)),
+                        constructor,
+                    )));
+                }
+                Inst::INIT_CLASS(args) => {
+                    let target = self.pop();
+
+                    if let Value::Class(c) = target {
+                        let obj = Value::ClassObject(TClassObject::new(rc!(c.clone())));
+
+                        if let Some(constructor) = &c.constructor {
+                            if let Value::Function(f) = constructor.as_ref().clone() {
+                                self.stack.push(obj.clone());
+                                self.call_function(f, args + 1);
+                                self.run(false, true);
+                                self.pop();
+                            }
+                        }
+
+                        self.stack.push(obj);
+                    } else {
+                        panic!(
+                            "`new` can only be used to construct classes. Got {}",
+                            target.get_type()
+                        )
+                    }
                 }
 
                 Inst::RANGE => {
@@ -654,7 +727,7 @@ impl VM {
                     let value = self.pop();
                     self.globals.insert(id, (value, false));
                 }
-				Inst::STORE_GLOBAL_CONST(id) => {
+                Inst::STORE_GLOBAL_CONST(id) => {
                     let id = *id;
                     let value = self.pop();
                     self.globals.insert(id, (value, true));
@@ -777,6 +850,7 @@ impl VM {
                         upvalues,
                         handler: None,
                         this: None,
+                        target: None,
                     }));
                 }
                 Inst::LOAD_UPVALUE { scope_idx, id } => {
@@ -885,6 +959,16 @@ impl VM {
                             self.stack.push(value);
                         }
 
+                        Value::Class(x) => {
+                            let value = x.get_member(self, &member);
+                            self.stack.push(value);
+                        }
+
+                        Value::ClassObject(x) => {
+                            let value = x.get_member(self, &member);
+                            self.stack.push(value);
+                        }
+
                         _ => panic!("Cannot get property on `{target:?}`"),
                     }
                 }
@@ -911,6 +995,14 @@ impl VM {
                         }
 
                         Value::Struct(mut x) => {
+                            x.set_member(&member, value);
+                        }
+
+                        Value::Class(mut x) => {
+                            x.set_member(&member, value);
+                        }
+
+                        Value::ClassObject(mut x) => {
                             x.set_member(&member, value);
                         }
 

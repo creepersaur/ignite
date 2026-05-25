@@ -101,7 +101,7 @@ pub enum Node {
         name: Option<Rc<String>>,
         return_type: Option<Rc<String>>,
         args: Vec<(Rc<String>, Option<Rc<String>>, Option<Node>)>,
-		is_const: bool,
+        is_const: bool,
         block: Box<Node>,
     },
 
@@ -143,6 +143,12 @@ pub enum Node {
         interfaces: Vec<Rc<String>>,
         let_statements: Vec<Node>,
         functions: Vec<Node>,
+		constructor: Option<Box<Node>>,
+    },
+
+    ClassInit {
+        target: Box<Node>,
+        parameters: Vec<Node>,
     },
 
     StructDef {

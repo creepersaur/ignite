@@ -5,3 +5,4 @@ pub mod function;
 pub mod list;
 pub mod string;
 pub mod structdef;
+pub mod classes;

@@ -1,3 +1,11 @@
-using Std::Math::{sin as hello}
+class Car {
+	let name = "nissan"
 
-println(hello)
+	fn honk(self, extra) {
+		println(self.name, "just honked")
+		println(extra)
+	}
+}
+
+let my_car = new Car()
+my_car.honk("lol")

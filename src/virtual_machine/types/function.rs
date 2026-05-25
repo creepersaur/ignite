@@ -10,6 +10,7 @@ pub struct TFunction {
     pub entry: usize,
     pub handler: Option<(u64, u64)>,
     pub this: Option<Box<Value>>,
+    pub target: Option<Box<Value>>,
     pub upvalues: Vec<Rc<RefCell<HashMap<u64, (Value, bool)>>>>,
 }
 
@@ -19,6 +20,7 @@ impl TFunction {
             entry,
             handler: None,
             this: None,
+            target: None,
 			upvalues: vec![],
         }
     }
@@ -31,6 +33,7 @@ impl TFunction {
         Self {
             entry: 0,
             handler: Some((hash_u64!(lib.as_ref()), hash_u64!(method.as_ref()))),
+            target: None,
             this,
 			upvalues: vec![],
         }
