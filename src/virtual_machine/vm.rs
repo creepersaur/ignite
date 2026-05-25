@@ -20,8 +20,9 @@ use crate::virtual_machine::{
     },
     value::Value,
 };
+use lz4_flex::frame::{FrameDecoder, FrameEncoder};
 use simply_colored::*;
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, io::Read, rc::Rc};
 
 const ORANGE: &str = "\x1b[38;2;255;150;60m";
 
@@ -152,11 +153,11 @@ impl VM {
 
     pub fn call_function(&mut self, f: TFunction, mut args_count: usize) {
         if let Some(target) = f.target {
-			self.stack.push(target.as_ref().clone());
-			args_count += 1;
-		}
+            self.stack.push(target.as_ref().clone());
+            args_count += 1;
+        }
 
-		if let Some((library, method)) = f.handler {
+        if let Some((library, method)) = f.handler {
             if let Some(this) = f.this {
                 self.stack.push(*this);
                 args_count += 1;
@@ -321,26 +322,54 @@ impl VM {
 }
 
 // BYTECODE
+const MAGIC: &[u8; 4] = b"MYVM";
+
 impl VM {
     pub fn read_bytecode_file(&mut self, path: &str) {
-        let bytecode_file = std::fs::read(path).unwrap();
+        let file = std::fs::read(path).unwrap();
+
+        assert!(&file[0..4] == b"MYVM");
+
+        let _version = file[4];
+        let compressed = file[5] != 0;
+
+        let payload = &file[6..];
+
+        let decoded_bytes = if compressed {
+            let mut decoder = FrameDecoder::new(payload);
+            let mut out = vec![];
+            decoder.read_to_end(&mut out).expect("Could not decode compressed bytecode");
+            out
+        } else {
+            payload.to_vec()
+        };
 
         let config = bincode::config::standard().with_variable_int_encoding();
-        let decoded: (Chunk, _) = bincode::decode_from_slice(&bytecode_file, config).unwrap();
+        let decoded: (Chunk, _) = bincode::decode_from_slice(&decoded_bytes, config).unwrap();
 
         self.constants = decoded.0.constants;
         self.instructions = rc!(RefCell::new(decoded.0.instructions));
     }
 
-    pub fn write_bytecode_file(&mut self, path: &str) {
+    pub fn write_bytecode_file(&mut self, path: &str, force_compress: bool) {
         let chunk = Chunk::new(
             self.constants.clone(),
             (*self.instructions.borrow()).clone(),
         );
         let config = bincode::config::standard().with_variable_int_encoding();
         let encoded = bincode::encode_to_vec(chunk, config).unwrap();
+        let compressed = FrameEncoder::new(encoded.clone()).finish().unwrap();
 
-        std::fs::write(path, encoded).unwrap();
+        let use_compression = compressed.len() < encoded.len() || force_compress;
+        let data = if use_compression { compressed } else { encoded };
+
+        let mut file = vec![];
+        file.extend_from_slice(MAGIC);
+        file.push(1);
+        file.push(use_compression as u8);
+        file.extend(data);
+
+        std::fs::write(path, file).unwrap();
     }
 }
 
@@ -480,13 +509,13 @@ impl VM {
                     method_names,
                     has_constructor,
                 } => {
-                    let mut functions_map: HashMap<Rc<str>, Value> = HashMap::new();
+                    let mut functions_map = HashMap::new();
                     for method_name in method_names.iter().rev() {
                         let closure = self.pop();
                         functions_map.insert(method_name.clone().into(), closure);
                     }
 
-                    let mut values_map: HashMap<Rc<str>, (Value, bool)> = HashMap::new();
+                    let mut values_map = HashMap::new();
                     for (field_name, is_const) in field_names.iter().zip(field_consts.iter()).rev()
                     {
                         let default_val = self.pop();

@@ -103,9 +103,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     if args.contains(&"bytecode".to_string()) {
-        vm.write_bytecode_file("bytecode.igb");
+        vm.write_bytecode_file("bytecode.igb", args.contains(&"compress".to_string()));
     } else if args.contains(&"bytecode2".to_string()) {
-        vm.write_bytecode_file("bytecode2.igb");
+        vm.write_bytecode_file("bytecode2.igb", args.contains(&"compress".to_string()));
     } else {
         println!("\nRunning:");
         println!("---------------------------");
