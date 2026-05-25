@@ -11,9 +11,9 @@ use crate::{
     }
 };
 
-pub const DICT_FUNCTIONS: [&str; 11] = [
+pub const DICT_FUNCTIONS: [&str; 12] = [
     "len", "items", "keys", "values", "get", "insert", "remove", "clear", "append", "concat",
-    "count",
+    "count", "map",
 ];
 
 pub struct DictLib;

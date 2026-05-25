@@ -300,10 +300,17 @@ impl Compiler {
         }
 
         if all_literals && !values.is_empty() {
-            self.instructions
+            if is_tuple {
+				self.instructions
+                .push(Inst::PUSH(Value::Tuple(TList::new(rc!(RefCell::new(
+                    folded_values
+                ))))));
+			} else {
+				self.instructions
                 .push(Inst::PUSH(Value::List(TList::new(rc!(RefCell::new(
                     folded_values
                 ))))));
+			}
             return;
         }
 
