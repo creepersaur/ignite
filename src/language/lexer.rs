@@ -172,6 +172,7 @@ impl Lexer {
             "class" => CLASS,
             "constructor" => CONSTRUCTOR,
             "new" => NEW,
+            "is" => IS,
             "match" => MATCH,
             "using" => USING,
             "as" => AS,
@@ -258,14 +259,14 @@ impl Lexer {
             }
         }
 
-		// Numbers
+        // Numbers
         if let Ok(x) = text.parse::<f64>() {
             if x.is_finite() {
                 return NumberLiteral(x);
             }
         }
 
-		// Booleans
+        // Booleans
         if let Ok(x) = text.parse::<bool>() {
             return BooleanLiteral(x);
         } else if text.starts_with('"') && text.ends_with('"') {
@@ -319,6 +320,24 @@ pub fn process_escapes(s: &str) -> String {
                     result.push(n as char);
                 } else {
                     panic!("Invalid hex escape: \\x{hex}");
+                }
+            }
+
+            Some(c @ '0'..='7') => {
+                let mut oct = String::new();
+                oct.push(c);
+
+                for _ in 0..2 {
+                    if let Some(c @ '0'..='7') = chars.peek().copied() {
+                        oct.push(c);
+                        chars.next();
+                    } else {
+                        break;
+                    }
+                }
+
+                if let Ok(n) = u8::from_str_radix(&oct, 8) {
+                    result.push(n as char);
                 }
             }
 

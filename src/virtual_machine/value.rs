@@ -7,6 +7,7 @@ use std::{
 };
 
 use crate::virtual_machine::{
+    libs::types::TypeValue,
     namespaces::namespace::TNamespace,
     types::{
         classes::{r#class::TClass, class_object::TClassObject},
@@ -24,6 +25,8 @@ use crate::virtual_machine::{
 #[derive(Encode, Decode, Debug, Clone, PartialEq, PartialOrd)]
 pub enum Value {
     NIL,
+    Type(TypeValue),
+
     Number(f64),
     Bool(bool),
     Char(char),
@@ -39,7 +42,7 @@ pub enum Value {
     StructDef(Rc<TStructDef>),
     Struct(TStruct),
 
-    Class(TClass),
+    Class(Rc<RefCell<TClass>>),
     ClassObject(TClassObject),
 
     // Namespaces
@@ -72,8 +75,9 @@ impl Value {
     }
 
     pub fn get_type(&self) -> String {
-        match self {
+        let t = match self {
             Value::NIL => "nil",
+            Value::Type(_) => "type",
             Value::Number(_) => "number",
             Value::Bool(_) => "bool",
             Value::Char(_) => "char",
@@ -83,19 +87,20 @@ impl Value {
             Value::Tuple(_) => "tuple",
             Value::Dict(_) => "dict",
             Value::Namespace(_) => "namespace",
-            Value::Class(data) => &data.name,
-            Value::ClassObject(data) => &data.base.name,
+            Value::Class(data) => &*data.borrow().name,
+            Value::ClassObject(data) => &data.base.borrow().name,
             Value::Enum(_) => "enum",
             Value::Range { .. } => "range",
             Value::StructDef(..) => "structdef",
             Value::Struct(data) => &data.base.name,
-        }
-        .to_owned()
+        };
+        t.to_owned()
     }
 
     pub fn to_string(&self, debug: bool) -> String {
         match self {
             Self::NIL => "nil".to_string(),
+            Self::Type(x) => format!("{x:?}"),
             Self::Number(x) => x.to_string(),
             Self::Bool(x) => x.to_string(),
             Self::Char(x) => {
@@ -233,8 +238,8 @@ impl Value {
                     .join(", ")
             ),
 
-            Value::Class(def) => format!("class:{}", def.name),
-            Value::ClassObject(data) => format!("object:{}", data.base.name),
+            Value::Class(def) => format!("class:{}", def.borrow().name),
+            Value::ClassObject(data) => format!("object:{}", data.base.borrow().name),
         }
     }
 
@@ -263,8 +268,16 @@ impl Value {
             "list" => matches!(self, Value::List(_)),
             "dict" => matches!(self, Value::Dict(_)),
             "any" => true,
-            // other check (nothing)
-            _ => true,
+
+            _ => match self {
+                Value::Class(def) => &*def.borrow().name == type_hint,
+                Value::ClassObject(data) => &*data.base.borrow().name == type_hint,
+
+                Value::StructDef(def) => &*def.name == type_hint,
+                Value::Struct(data) => &*data.base.name == type_hint,
+
+                _ => false,
+            },
         }
     }
 }
@@ -277,6 +290,7 @@ impl Hash for Value {
 
         match self {
             Self::NIL => (),
+            Self::Type(x) => x.hash(state),
             Self::Number(n) => {
                 // We convert to bits to provide a consistent hash.
                 n.to_bits().hash(state);
@@ -323,12 +337,12 @@ impl Hash for Value {
             }
 
             Self::Class(def) => {
-                def.name.hash(state);
-                std::ptr::hash(Rc::as_ptr(&def.values), state);
-                std::ptr::hash(Rc::as_ptr(&def.functions), state);
+                def.borrow().name.hash(state);
+                std::ptr::hash(Rc::as_ptr(&def.borrow().values), state);
+                std::ptr::hash(Rc::as_ptr(&def.borrow().functions), state);
             }
             Self::ClassObject(data) => {
-                data.base.name.hash(state);
+                data.base.borrow().name.hash(state);
                 data.values.as_ptr().hash(state);
             }
         }

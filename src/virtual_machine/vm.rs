@@ -5,7 +5,10 @@ use crate::virtual_machine::{
         lib::Library,
         namespaces::{fs_lib::FSLib, io_lib::IOLib, math_lib::MathLib},
         type_lib::TypeLib,
-        types::{dict_lib::DictLib, list_lib::ListLib, string_lib::StringLib, tuple_lib::TupleLib},
+        types::{
+            TypeValue, dict_lib::DictLib, list_lib::ListLib, string_lib::StringLib,
+            tuple_lib::TupleLib,
+        },
     },
     namespaces::standard_namespace::load_standard_namespace,
     traits::member_accessible::IMemberAccessible,
@@ -81,16 +84,6 @@ impl VM {
         globals.insert(
             hash_u64!("typeof"),
             (lib_function!("type", "typeof"), false),
-        );
-        globals.insert(
-            hash_u64!("number"),
-            (lib_function!("type", "number"), false),
-        );
-        globals.insert(hash_u64!("char"), (lib_function!("type", "char"), false));
-        globals.insert(hash_u64!("bool"), (lib_function!("type", "bool"), false));
-        globals.insert(
-            hash_u64!("string"),
-            (lib_function!("type", "string"), false),
         );
 
         return globals;
@@ -338,7 +331,9 @@ impl VM {
         let decoded_bytes = if compressed {
             let mut decoder = FrameDecoder::new(payload);
             let mut out = vec![];
-            decoder.read_to_end(&mut out).expect("Could not decode compressed bytecode");
+            decoder
+                .read_to_end(&mut out)
+                .expect("Could not decode compressed bytecode");
             out
         } else {
             payload.to_vec()
@@ -426,7 +421,11 @@ impl VM {
                         self.stack.push(Value::NIL)
                     }
                 }
+
                 Inst::PUSH(value) => self.stack.push(value.clone()),
+                Inst::PUSH_NIL => self.stack.push(Value::NIL),
+                Inst::PUSH_TYPE(t) => self.stack.push(Value::Type(*t)),
+
                 Inst::DUP => self.stack.push(
                     self.stack
                         .last()
@@ -528,20 +527,20 @@ impl VM {
                         None
                     };
 
-                    self.stack.push(Value::Class(TClass::new(
+                    self.stack.push(Value::Class(rc!(RefCell::new(TClass::new(
                         Rc::from(name.as_str()),
                         rc!(RefCell::new(values_map)),
                         rc!(RefCell::new(functions_map)),
                         constructor,
-                    )));
+                    )))));
                 }
                 Inst::INIT_CLASS(args) => {
                     let target = self.pop();
 
                     if let Value::Class(c) = target {
-                        let obj = Value::ClassObject(TClassObject::new(rc!(c.clone())));
+                        let obj = Value::ClassObject(TClassObject::new(c.clone()));
 
-                        if let Some(constructor) = &c.constructor {
+                        if let Some(constructor) = &c.borrow().constructor {
                             if let Value::Function(f) = constructor.as_ref().clone() {
                                 self.stack.push(obj.clone());
                                 self.call_function(f, args + 1);
@@ -749,6 +748,19 @@ impl VM {
                     let res = self.pop().is_truthy();
                     self.stack.push(Value::Bool(!res));
                 }
+                Inst::IS_INSTANCE_OF => {
+                    let result = match self.pop_two() {
+                        (Value::NIL, Value::NIL) => true,
+                        (Value::Number(_), Value::Type(TypeValue::Number)) => true,
+
+                        (Value::Class(x), Value::Class(y)) => x == y,
+                        (Value::ClassObject(x), Value::Class(y)) => x.base == y,
+
+                        _ => false,
+                    };
+
+                    self.stack.push(Value::Bool(result));
+                }
 
                 Inst::LOAD_CONST(id) => self.stack.push(self.constants[*id].clone()),
                 Inst::STORE_GLOBAL(id) => {
@@ -930,7 +942,63 @@ impl VM {
                             continue;
                         }
                     } else {
-                        panic!("({}) Tried calling non-function: {func:?}", self.pos)
+                        let args = (0..arg_count).map(|_| self.pop()).collect::<Vec<_>>();
+
+                        match func {
+                            Value::Type(TypeValue::Number) => {
+                                let value = &args[0];
+
+                                match value {
+                                    Value::Number(x) => self.stack.push(Value::Number(*x)),
+
+                                    Value::Bool(x) => {
+                                        self.stack.push(Value::Number(if *x { 1.0 } else { 0.0 }))
+                                    }
+
+                                    Value::Char(x) => {
+                                        self.stack.push(Value::Number(*x as u32 as f64))
+                                    }
+
+                                    Value::String(x) => {
+                                        self.stack.push(Value::Number(x.0.parse::<f64>().expect(
+                                            &format!("Could not convert `{}` to number", x.0),
+                                        )))
+                                    }
+
+                                    _ => panic!("Cannot cast {value:?} to number"),
+                                }
+                            }
+
+                            Value::Type(TypeValue::Char) => {
+                                let value = &args[0];
+                                match value {
+                                    Value::Number(x) => self.stack.push(Value::Char(
+                                        char::from_u32(*x as u32)
+                                            .expect(&format!("Could not convert `{x}` to char")),
+                                    )),
+
+                                    Value::String(x) => {
+                                        self.stack.push(Value::Char(x.0.chars().next().unwrap()))
+                                    }
+
+                                    Value::Char(x) => self.stack.push(Value::Char(*x)),
+
+                                    _ => panic!("Cannot cast {value:?} to char"),
+                                }
+                            }
+
+                            Value::Type(TypeValue::Bool) => {
+                                let value = &args[0];
+                                if let Value::Number(x) = value {
+                                    if *x == 0.0 {
+                                        self.stack.push(Value::Bool(false))
+                                    }
+                                }
+                                self.stack.push(Value::Bool(value.is_truthy()))
+                            }
+
+                            _ => panic!("({}) Tried calling non-function: {func:?}", self.pos),
+                        }
                     }
                 }
                 Inst::RETURN => {
@@ -989,7 +1057,7 @@ impl VM {
                         }
 
                         Value::Class(x) => {
-                            let value = x.get_member(self, &member);
+                            let value = x.borrow().get_member(self, &member);
                             self.stack.push(value);
                         }
 
@@ -1027,8 +1095,8 @@ impl VM {
                             x.set_member(&member, value);
                         }
 
-                        Value::Class(mut x) => {
-                            x.set_member(&member, value);
+                        Value::Class(x) => {
+                            x.borrow_mut().set_member(&member, value);
                         }
 
                         Value::ClassObject(mut x) => {

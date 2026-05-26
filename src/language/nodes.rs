@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::language::token::TokenKind;
+use crate::{language::token::TokenKind, virtual_machine::libs::types::TypeValue};
 
 #[allow(unused)]
 #[derive(Debug, Clone)]
@@ -11,6 +11,7 @@ pub enum Node {
     // LITERALS
     NIL,
     Variable(Rc<String>),
+    Type(TypeValue),
 
     NumberLiteral(f64),
     BooleanLiteral(bool),

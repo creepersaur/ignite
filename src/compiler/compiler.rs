@@ -119,6 +119,7 @@ impl Compiler {
     pub fn compile_node(&mut self, node: &Node) {
         match node {
             Node::NIL => self.instructions.push(Inst::PUSH(Value::NIL)),
+            Node::Type(t) => self.instructions.push(Inst::PUSH(Value::Type(*t))),
             Node::Variable(x) => self.emit_load_local(x.as_str()),
             Node::NumberLiteral(x) => self.instructions.push(Inst::PUSH(Value::Number(*x))),
             Node::BooleanLiteral(x) => self.instructions.push(Inst::PUSH(Value::Bool(*x))),
@@ -228,6 +229,8 @@ impl Compiler {
 
             Node::BreakStatement(value) => self.compile_break(value),
 
+            Node::ContinueStatement => self.compile_continue(),
+
             Node::ForLoop {
                 var_name,
                 expr,
@@ -245,7 +248,7 @@ impl Compiler {
                 name,
                 let_statements,
                 functions,
-				constructor,
+                constructor,
                 ..
             } => self.compile_class_def(name, let_statements, functions, constructor),
             Node::ClassInit { target, parameters } => self.compile_class_init(target, parameters),
@@ -301,16 +304,16 @@ impl Compiler {
 
         if all_literals && !values.is_empty() {
             if is_tuple {
-				self.instructions
-                .push(Inst::PUSH(Value::Tuple(TList::new(rc!(RefCell::new(
-                    folded_values
-                ))))));
-			} else {
-				self.instructions
-                .push(Inst::PUSH(Value::List(TList::new(rc!(RefCell::new(
-                    folded_values
-                ))))));
-			}
+                self.instructions
+                    .push(Inst::PUSH(Value::Tuple(TList::new(rc!(RefCell::new(
+                        folded_values
+                    ))))));
+            } else {
+                self.instructions
+                    .push(Inst::PUSH(Value::List(TList::new(rc!(RefCell::new(
+                        folded_values
+                    ))))));
+            }
             return;
         }
 
@@ -354,6 +357,8 @@ impl Compiler {
                 self.instructions.push(Inst::SET_VAR(id))
             } else if let Node::MemberAccess { expr, member } = &**target {
                 self.compile_node(&**expr);
+                self.compile_node(&**member);
+                self.instructions.push(Inst::GET_PROP);
                 if !is_prefix {
                     self.instructions.push(Inst::DUP);
                 }
@@ -414,6 +419,8 @@ impl Compiler {
 
             TokenKind::AND => Inst::AND,
             TokenKind::OR => Inst::OR,
+
+            TokenKind::IS => Inst::IS_INSTANCE_OF,
 
             _ => panic!("Cannot compile unknown bin-op: `{op:?}`"),
         });
@@ -698,12 +705,13 @@ impl Compiler {
         } else if let Node::MemberAccess { expr, member } = &**target {
             self.compile_node(&**expr);
             self.compile_node(&**member);
-            self.instructions.push(Inst::GET_PROP);
-            self.compile_node(&**value);
-            self.instructions.push(operator_inst);
+            self.instructions.push(Inst::GET_PROP); // LOAD expr.member
+            self.compile_node(&**value); // LOAD 1
+            self.instructions.push(operator_inst); // ADD
+
             self.compile_node(&**expr);
             self.compile_node(&**member);
-            self.instructions.push(Inst::SET_PROP);
+            self.instructions.push(Inst::SET_PROP); // SET expr.member
         } else {
             panic!("Cannot set equal a value to `{:?}`", **target);
         }
@@ -807,6 +815,13 @@ impl Compiler {
             loop_start_index
         );
 
+        patch_execute!(
+            self.instructions,
+            "continue",
+            Inst::JUMP(loop_start_index),
+            loop_start_index
+        );
+
         self.instructions.push(Inst::DEFAULT_NIL);
     }
 
@@ -840,6 +855,13 @@ impl Compiler {
             loop_start_index
         );
 
+        patch_execute!(
+            self.instructions,
+            "continue",
+            Inst::JUMP(loop_start_index),
+            loop_start_index
+        );
+
         self.pop_scope();
         self.instructions.push(Inst::DEFAULT_NIL);
         self.comment("For loop end");
@@ -859,6 +881,13 @@ impl Compiler {
             loop_start_index
         );
 
+        patch_execute!(
+            self.instructions,
+            "continue",
+            Inst::JUMP(loop_start_index),
+            loop_start_index
+        );
+
         self.instructions.push(Inst::DEFAULT_NIL);
     }
 
@@ -869,6 +898,10 @@ impl Compiler {
             self.instructions.push(Inst::PUSH(Value::NIL));
         }
         let _ = patch!(self.instructions, "break");
+    }
+
+    pub fn compile_continue(&mut self) {
+        let _ = patch!(self.instructions, "continue");
     }
 
     pub fn compile_match(&mut self, expr: &Box<Node>, branches: &Vec<(Node, Node)>) {
@@ -969,10 +1002,16 @@ impl Compiler {
         ));
     }
 
-    pub fn compile_class_def(&mut self, name: &String, values: &Vec<Node>, functions: &Vec<Node>, constructor: &Option<Box<Node>>) {
-		if let Some(constructor) = constructor {
-			self.compile_node(&**constructor);
-		}
+    pub fn compile_class_def(
+        &mut self,
+        name: &String,
+        values: &Vec<Node>,
+        functions: &Vec<Node>,
+        constructor: &Option<Box<Node>>,
+    ) {
+        if let Some(constructor) = constructor {
+            self.compile_node(&**constructor);
+        }
 
         let mut field_names: Vec<String> = vec![];
         let mut field_consts: Vec<bool> = vec![];
@@ -1022,16 +1061,16 @@ impl Compiler {
             field_names,
             field_consts,
             method_names,
-			has_constructor: constructor.is_some()
+            has_constructor: constructor.is_some(),
         });
 
         self.emit_store_local(name, false);
     }
 
     pub fn compile_class_init(&mut self, target: &Box<Node>, parameters: &Vec<Node>) {
-		for i in parameters.iter().rev() {
-			self.compile_node(i);
-		}
+        for i in parameters.iter().rev() {
+            self.compile_node(i);
+        }
 
         self.compile_node(&**target);
         self.instructions.push(Inst::INIT_CLASS(parameters.len()));

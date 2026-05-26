@@ -8,7 +8,7 @@ use bincode::{Decode, Encode};
 
 #[derive(Encode, Decode, Clone, PartialEq)]
 pub struct TClassObject {
-    pub base: Rc<TClass>,
+    pub base: Rc<RefCell<TClass>>,
     pub values: Rc<RefCell<HashMap<Rc<str>, (Value, bool)>>>,
 }
 
@@ -19,17 +19,15 @@ impl PartialOrd for TClassObject {
 }
 
 impl TClassObject {
-    pub fn new(base: Rc<TClass>) -> Self {
-        Self {
-            values: base.values.clone(),
-            base,
-        }
+    pub fn new(base: Rc<RefCell<TClass>>) -> Self {
+        let values = base.borrow().values.clone();
+        Self { base, values }
     }
 }
 
 impl Debug for TClassObject {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&format!("Object:{}", self.base.name)).unwrap();
+        f.write_str(&format!("Object:{}", self.base.borrow().name)).unwrap();
         Ok(())
     }
 }
@@ -42,7 +40,7 @@ impl IMemberAccessible for TClassObject {
                 return v.clone();
             }
 
-            if let Some(v) = self.base.functions.borrow_mut().get_mut(&*member.0) {
+            if let Some(v) = self.base.borrow().functions.borrow_mut().get_mut(&*member.0) {
                 if let Value::Function(f) = v {
                     f.target = Some(Box::new(Value::ClassObject(self.clone())))
                 }

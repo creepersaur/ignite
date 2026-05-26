@@ -9,6 +9,7 @@ use crate::{
         token::{Token, TokenKind},
     },
     rc,
+    virtual_machine::libs::types::TypeValue,
 };
 
 type TokenResult = Result<Token, String>;
@@ -341,8 +342,8 @@ impl Parser {
         Ok(left)
     }
 
-	fn parse_call(&mut self) -> NodeResult {
-		let mut expr = self.parse_member()?;
+    fn parse_call(&mut self) -> NodeResult {
+        let mut expr = self.parse_member()?;
 
         loop {
             if let Ok(x) = self.current() {
@@ -360,10 +361,10 @@ impl Parser {
         }
 
         return Ok(expr);
-	}
+    }
 
     fn parse_member(&mut self) -> NodeResult {
-		let mut expr = self.parse_primary()?;
+        let mut expr = self.parse_primary()?;
 
         loop {
             if let Ok(x) = self.current() {
@@ -402,9 +403,15 @@ impl Parser {
             TokenKind::BooleanLiteral(x) => Ok(Node::BooleanLiteral(x)),
             TokenKind::StringLiteral(x) => Ok(Node::StringLiteral(x)),
 
-            TokenKind::Identifier => Ok(Node::Variable(rc!(current
-                .get_text(&self.source)
-                .to_string()))),
+            TokenKind::Identifier => {
+                let text = current.get_text(&self.source);
+
+                if let Some(t) = self.is_type(&text) {
+                    Ok(Node::Type(t))
+                } else {
+                    Ok(Node::Variable(rc!(text)))
+                }
+            }
 
             TokenKind::AT => self.parse_explicit_block(),
 
@@ -436,7 +443,22 @@ impl Parser {
             self.advance()?;
         }
 
-		Ok(node)
+        Ok(node)
+    }
+
+    fn is_type(&mut self, text: &str) -> Option<TypeValue> {
+        match text {
+            "number" => Some(TypeValue::Number),
+			"bool" => Some(TypeValue::Bool),
+			"char" => Some(TypeValue::Char),
+			"string" => Some(TypeValue::String),
+			"dict" => Some(TypeValue::Dict),
+			"function" => Some(TypeValue::Function),
+			"list" => Some(TypeValue::List),
+			"tuple" => Some(TypeValue::Tuple),
+
+            _ => None,
+        }
     }
 
     fn skip_new_lines(&mut self) {
@@ -654,37 +676,6 @@ impl Parser {
         Ok(expr)
     }
 
-    fn parse_postfix(&mut self, mut expr: Node) -> NodeResult {
-        loop {
-            if let Ok(x) = self.current() {
-                match x.kind {
-                    TokenKind::LPAREN => {
-                        expr = self.parse_function_call(expr)?;
-                        continue;
-                    }
-                    TokenKind::DOT => {
-                        expr = self.parse_member_access(expr)?;
-                        continue;
-                    }
-                    TokenKind::DOUBLECOLON => {
-                        expr = self.parse_member_access(expr)?;
-                        continue;
-                    }
-                    TokenKind::LBRACK => {
-                        expr = self.parse_member_access(expr)?;
-                        continue;
-                    }
-
-                    _ => {}
-                }
-            }
-
-            break;
-        }
-
-        return Ok(expr);
-    }
-
     fn parse_ternary_op(&mut self) -> NodeResult {
         let mut condition = self.parse_elvis_coalescing()?;
 
@@ -805,7 +796,7 @@ impl Parser {
         let mut left = self.parse_comparison()?;
 
         while let Ok(next) = self.current() {
-            if !matches!(next.kind, TokenKind::EQ | TokenKind::NEQ) {
+            if !matches!(next.kind, TokenKind::EQ | TokenKind::NEQ | TokenKind::IS) {
                 break;
             }
 

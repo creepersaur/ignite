@@ -1,8 +1,6 @@
-use std::io::{Write, stdin, stdout};
+use std::io::{Read, Write, stdin, stdout};
 
-use crate::{
-    virtual_machine::{libs::lib::Library, types::string::TString, value::Value, vm::VM},
-};
+use crate::virtual_machine::{libs::lib::Library, types::string::TString, value::Value, vm::VM};
 
 pub struct IOLib;
 
@@ -12,7 +10,7 @@ impl IOLib {
         let msg = args
             .iter()
             .map(|x| x.to_string(false))
-			.rev()
+            .rev()
             .collect::<Vec<_>>()
             .join(" ");
 
@@ -31,7 +29,7 @@ impl IOLib {
         let msg = args
             .iter()
             .map(|x| x.to_string(false))
-			.rev()
+            .rev()
             .collect::<Vec<_>>()
             .join(" ");
 
@@ -46,45 +44,65 @@ impl IOLib {
         Value::String(TString::new(buf))
     }
 
-	// Output
-	fn clear(_vm: &mut VM, _args: Vec<Value>) -> Value {
-		print!("\x1B[2J\x1B[1;1H");
-
-		Value::NIL
-	}
-
-	fn reset(_vm: &mut VM, _args: Vec<Value>) -> Value {
-		print!("{esc}c", esc = 27 as char);
-
-		Value::NIL
-	}
-
-	fn write(_vm: &mut VM, args: Vec<Value>) -> Value {
+    fn read(_vm: &mut VM, args: Vec<Value>) -> Value {
         let msg = args
             .iter()
             .map(|x| x.to_string(false))
-			.rev()
+            .rev()
+            .collect::<Vec<_>>()
+            .join(" ");
+
+        print!("{}", msg);
+        let _ = stdout().flush();
+
+        let mut buf = [0u8; 1];
+
+        stdin()
+            .read_exact(&mut buf)
+            .expect("Couldn't read() from console");
+
+        Value::Char(buf[0] as char)
+    }
+
+    // Output
+    fn clear(_vm: &mut VM, _args: Vec<Value>) -> Value {
+        print!("\x1B[2J\x1B[1;1H");
+
+        Value::NIL
+    }
+
+    fn reset(_vm: &mut VM, _args: Vec<Value>) -> Value {
+        print!("{esc}c", esc = 27 as char);
+
+        Value::NIL
+    }
+
+    fn write(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let msg = args
+            .iter()
+            .map(|x| x.to_string(false))
+            .rev()
             .collect::<Vec<_>>()
             .join(" ");
 
         print!("{msg}");
         let _ = stdout().flush();
 
-		Value::NIL
-	}
+        Value::NIL
+    }
 
-	fn write_line(_vm: &mut VM, args: Vec<Value>) -> Value {
+    fn write_line(_vm: &mut VM, args: Vec<Value>) -> Value {
         let msg = args
             .iter()
             .map(|x| x.to_string(false))
-			.rev()
+            .rev()
             .collect::<Vec<_>>()
             .join(" ");
 
         println!("{msg}");
 
-		Value::NIL
-	}
+        Value::NIL
+    }
 }
 
 // LIBRARY
@@ -98,6 +116,7 @@ impl Library for IOLib {
             // INPUT
             x if x == hash_u64!("read_line") => Box::new(Self::read_line),
             x if x == hash_u64!("read_line_raw") => Box::new(Self::read_line_raw),
+            x if x == hash_u64!("read") => Box::new(Self::read),
 
             // OUTPUT
             x if x == hash_u64!("clear") => Box::new(Self::clear),

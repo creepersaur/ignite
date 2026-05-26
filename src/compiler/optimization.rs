@@ -9,6 +9,25 @@ impl Compiler {
         self.replace_tostring();
         self.remove_load_pops();
         self.remove_store_load_pairs();
+        self.replace(Inst::PUSH(Value::NIL), Inst::PUSH_NIL);
+        self.replace_with(|_, x| {
+            if let Inst::PUSH(Value::Type(t)) = x {
+                Some(Inst::PUSH_TYPE(*t))
+            } else {
+                None
+            }
+        });
+        self.replace_with(|i, v| {
+            if let Inst::JUMP(n) = v
+                && *n == i + 1
+            {
+                Some(Inst::COMMENT(
+                    "optimized away jump straight ahead".to_string(),
+                ))
+            } else {
+                None
+            }
+        });
     }
 
     pub fn finalize_bytecode(&mut self) {
@@ -19,7 +38,6 @@ impl Compiler {
         }
 
         self.remove_nops();
-
         self.trim_end_pops();
     }
 
@@ -74,6 +92,14 @@ impl Compiler {
         });
     }
 
+    pub fn replace_with(&mut self, replacer: impl Fn(usize, &Inst) -> Option<Inst>) {
+        self.instructions.iter_mut().enumerate().for_each(|(i, v)| {
+            if let Some(new) = replacer(i, v) {
+                *v = new;
+            }
+        });
+    }
+
     fn replace_pattern_2(&mut self, a: Inst, b: Inst, replacement: Inst) {
         let indices: Vec<usize> = self
             .instructions
@@ -113,7 +139,7 @@ impl Compiler {
             }
         }
 
-		old_to_new.push(new_idx);
+        old_to_new.push(new_idx);
 
         for inst in &mut self.instructions {
             match inst {

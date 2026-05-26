@@ -1,1 +1,63 @@
-println((10, 20))
+class Brainfuck {
+	constructor(self, text: string) {
+		self.text = text
+		self.pos = 0
+		self.pointer = 0
+		self.memory = []
+		for _ in 0..10 => self.memory.push(0)
+
+		let stack = []
+		self.jumps = {}
+
+		for i in 0..self.text.len() {
+			if self.text[i] == "[" {
+				stack.push(i)
+			} else if self.text[i] == "]" {
+				let start = stack.pop()
+
+				self.jumps[start] = i
+				self.jumps[i] = start
+			}
+		}
+	}
+
+	fn run(self) {
+		while self.pos < self.text.len() {
+			match self.text[self.pos] {
+				"." => print(char(self.memory[self.pointer])),
+				"," => self.memory[self.pointer] = number(Std::IO::read()),
+
+				"+" => self.memory[self.pointer]++,
+				"-" => self.memory[self.pointer]--,
+
+				">" => self.pointer++,
+				"<" => self.pointer--,
+
+				"[" => @ {
+					if self.memory[self.pointer] == 0 {
+						self.pos = self.jumps[self.pos]
+					}
+				},
+				"]" => @ {
+					if self.memory[self.pointer] != 0 {
+						self.pos = self.jumps[self.pos]
+					}
+				},
+			}
+
+			if self.memory[self.pointer] > 255 {
+				self.memory[self.pointer] = 0
+			} else if self.memory[self.pointer] < 0 {
+				self.memory[self.pointer] = 255
+			}
+
+			self.pos++
+		}
+	}
+
+	fn print(self) => println("\n\033[38;5;118m[Memory]:\n  ", self.memory, "\e[0m")
+}
+
+let interpreter = new Brainfuck("++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>+.")
+interpreter.run()
+interpreter.print()

@@ -1,6 +1,6 @@
 use bincode::{Decode, Encode};
 
-use crate::virtual_machine::value::Value;
+use crate::virtual_machine::{libs::types::TypeValue, value::Value};
 
 #[allow(unused, non_camel_case_types)]
 #[derive(Encode, Decode, Debug, Clone, PartialEq)]
@@ -12,7 +12,11 @@ pub enum Inst {
     TO_STRING,
     DEFAULT,
     DEFAULT_NIL,
-    PUSH(Value),
+
+	PUSH(Value),
+	PUSH_TYPE(TypeValue),
+	PUSH_NIL,
+
     DUP,
     SWAP,
     ROT3,
@@ -56,6 +60,7 @@ pub enum Inst {
     AND,
     OR,
     NOT,
+	IS_INSTANCE_OF,
 
     LOAD_CONST(usize),
     LOAD_GLOBAL(u64),

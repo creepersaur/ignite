@@ -56,6 +56,7 @@ pub enum TokenKind {
     CLASS,
 	CONSTRUCTOR,
 	NEW,
+	IS,
     MATCH,
     USING,
     AS,
