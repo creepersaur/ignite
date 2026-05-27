@@ -3,7 +3,10 @@ use crate::{
     language::{ast::AST, lexer::Lexer, parser::Parser},
     virtual_machine::vm::VM,
 };
-use std::{cell::RefCell, panic::{AssertUnwindSafe, catch_unwind}};
+use std::{
+    cell::RefCell,
+    panic::{AssertUnwindSafe, catch_unwind},
+};
 #[allow(unused)]
 use std::{error::Error, fs, rc::Rc};
 
@@ -121,7 +124,8 @@ fn main() -> Result<(), Box<dyn Error>> {
             if vm.pos < instructions_clone.borrow().len() {
                 println!(
                     "Last Instruction ({}): {:?}",
-                    vm.pos, instructions_clone.borrow()[vm.pos]
+                    vm.pos,
+                    instructions_clone.borrow()[vm.pos]
                 );
             } else {
                 println!("Completed all instructions")
@@ -133,11 +137,15 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 
 fn bench(vm: &mut VM) {
-    let runs = 1000;
+    let runs = 1_000_000;
     let start = std::time::Instant::now();
     for _ in 0..runs {
-        let _ = catch_unwind(AssertUnwindSafe(|| vm.run(false, false)));
+		vm.stack.clear();
+		vm.pos = 0;
+        vm.run(false, false);
     }
-    let avg = start.elapsed() / runs;
-    println!("avg: {:?}", avg);
+
+	let elapsed = start.elapsed();
+    println!("total: {:?}", elapsed);
+    println!("per run: {:.2} ns", elapsed.as_nanos() as f64 / runs as f64);
 }

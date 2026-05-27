@@ -5,9 +5,24 @@ use crate::{
 };
 use std::{cell::RefCell, cmp::Ordering};
 
-pub const LIST_FUNCTIONS: [&str; 16] = [
-    "len", "push", "insert", "remove", "map", "pop", "clear", "append", "concat", "copy", "count",
-    "sort", "reverse", "fill", "rep", "push_n",
+pub const LIST_FUNCTIONS: [&str; 17] = [
+    "len",
+    "push",
+    "insert",
+    "remove",
+    "map",
+    "map_enumerate",
+    "pop",
+    "clear",
+    "append",
+    "concat",
+    "copy",
+    "count",
+    "sort",
+    "reverse",
+    "fill",
+    "rep",
+    "push_n",
 ];
 
 pub struct ListLib;
@@ -106,6 +121,30 @@ impl ListLib {
             }
         } else {
             panic!("Can only use list.map on Lists");
+        }
+    }
+
+    fn map_enumerate(vm: &mut VM, args: Vec<Value>) -> Value {
+        let [list, func] = get_args!(args, 2);
+        let mut new_array = vec![];
+
+        if let Value::List(inner) = list {
+            if let Value::Function(f) = func {
+                for (i, v) in inner.values.borrow().iter().enumerate() {
+                    vm.stack.push(v.clone());
+                    vm.stack.push(Value::Number(i as f64));
+                    vm.call_function(f.clone(), 2);
+                    vm.run(false, true);
+                    let new_value = vm.pop();
+                    new_array.push(new_value);
+                }
+
+                return Value::List(TList::new(rc!(RefCell::new(new_array))));
+            } else {
+                panic!("Expected function in list.map_enumerate");
+            }
+        } else {
+            panic!("Can only use list.map_enumerate on Lists");
         }
     }
 
@@ -261,6 +300,7 @@ impl Library for ListLib {
             x if x == hash_u64!("insert") => return Box::new(Self::insert),
             x if x == hash_u64!("remove") => return Box::new(Self::remove),
             x if x == hash_u64!("map") => return Box::new(Self::map),
+            x if x == hash_u64!("map_enumerate") => return Box::new(Self::map_enumerate),
             x if x == hash_u64!("pop") => return Box::new(Self::pop),
             x if x == hash_u64!("clear") => return Box::new(Self::clear),
             x if x == hash_u64!("append") => return Box::new(Self::append),
