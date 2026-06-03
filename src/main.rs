@@ -1,7 +1,7 @@
 use crate::{
     compiler::compiler::Compiler,
     language::{ast::AST, lexer::Lexer, parser::Parser},
-    virtual_machine::{inst::Inst, value::Value, vm::VM},
+    virtual_machine::vm::VM,
 };
 use std::{
     cell::RefCell,
@@ -110,9 +110,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     } else if args.contains(&"bytecode2".to_string()) {
         vm.write_bytecode_file("bytecode2.igb", args.contains(&"compress".to_string()));
     } else {
-		println!("Size of Inst: {}", std::mem::size_of::<Inst>());
-		println!("Size of Value: {}", std::mem::size_of::<Value>());
-
         println!("\nRunning:");
         println!("---------------------------");
         let instructions_clone = vm.instructions.clone();
@@ -140,9 +137,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 
 fn bench(vm: &mut VM) {
-	let runs = 1_000_000;
+    let runs = 1_000_000;
     let mut total = 0u128;
-	let full_start = std::time::Instant::now();
+    let full_start = std::time::Instant::now();
 
     for _ in 0..runs {
         vm.reset();
@@ -152,7 +149,10 @@ fn bench(vm: &mut VM) {
         total += start.elapsed().as_nanos();
     }
 
-    println!("(run + reset) total: {:.5}s", full_start.elapsed().as_secs_f64());
+    println!(
+        "(run + reset) total: {:.5}s",
+        full_start.elapsed().as_secs_f64()
+    );
     println!("(run) total: {:.5}s", total as f64 / 1e9);
     println!("per run: {:.2} ns", total as f64 / runs as f64);
 }
