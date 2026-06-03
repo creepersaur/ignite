@@ -44,7 +44,7 @@ impl Compiler {
     }
 
     pub fn comment(&mut self, data: &str) {
-        self.instructions.push(Inst::COMMENT(data.to_string()))
+        self.instructions.push(Inst::COMMENT(data.into()))
     }
 
     pub fn push_scope(&mut self) {
@@ -971,19 +971,20 @@ impl Compiler {
             name_vec.push(Value::string(name));
             self.compile_node(value);
         }
-        self.instructions.push(Inst::ENUM(name.clone(), name_vec));
+        self.instructions
+            .push(Inst::ENUM(name.as_str().into(), name_vec));
         self.emit_store_local(name, false);
     }
 
     pub fn compile_struct_def(&mut self, name: &String, fields: &Vec<(String, String)>) {
-        let mut field_map: HashMap<String, String> = HashMap::new();
+        let mut field_map = HashMap::new();
         for (k, v) in fields {
-            field_map.insert(k.clone(), v.clone());
+            field_map.insert(k.as_str().into(), v.as_str().into());
         }
 
         self.instructions
             .push(Inst::PUSH(Value::StructDef(rc!(TStructDef::new(
-                name.clone(),
+                name.as_str().into(),
                 rc!(field_map),
             )))));
 
@@ -998,7 +999,11 @@ impl Compiler {
         }
         self.compile_node(&**target);
         self.instructions.push(Inst::STRUCT(
-            field_names.iter().rev().map(|x| x.clone()).collect(),
+            field_names
+                .iter()
+                .rev()
+                .map(|x| x.as_str().into())
+                .collect(),
         ));
     }
 
@@ -1013,8 +1018,8 @@ impl Compiler {
             self.compile_node(&**constructor);
         }
 
-        let mut field_names: Vec<String> = vec![];
-        let mut field_consts: Vec<bool> = vec![];
+        let mut field_names = vec![];
+        let mut field_consts = vec![];
 
         for node in values {
             if let Node::LetStatement {
@@ -1024,7 +1029,7 @@ impl Compiler {
             } = node
             {
                 for (i, field_name) in field_name_list.iter().enumerate() {
-                    field_names.push(field_name.to_string());
+                    field_names.push(field_name.as_str().into());
                     field_consts.push(*is_const);
 
                     match field_values.get(i).and_then(|v| v.as_deref()) {
@@ -1035,7 +1040,7 @@ impl Compiler {
             }
         }
 
-        let mut method_names: Vec<String> = vec![];
+        let mut method_names = vec![];
 
         for node in functions {
             if let Node::FunctionDefinition {
@@ -1050,14 +1055,14 @@ impl Compiler {
                     .as_ref()
                     .map(|n| n.to_string())
                     .unwrap_or_default();
-                method_names.push(method_str);
+                method_names.push(method_str.as_str().into());
 
                 self.compile_function_def(&None, return_type, args, *is_const, block);
             }
         }
 
         self.instructions.push(Inst::MAKE_CLASS {
-            name: name.clone(),
+            name: name.as_str().into(),
             field_names,
             field_consts,
             method_names,
@@ -1080,12 +1085,12 @@ impl Compiler {
 #[macro_export]
 macro_rules! patch {
     ($instructions:expr, $expr:expr) => {{
-        $instructions.push(Inst::PATCH_ME($expr.to_string()));
+        $instructions.push(Inst::PATCH_ME($expr.into()));
         $instructions.len() - 1
     }};
 
     ($instructions:expr) => {{
-        $instructions.push(Inst::PATCH_ME(String::new()));
+        $instructions.push(Inst::PATCH_ME("".into()));
         $instructions.len() - 1
     }};
 }
@@ -1094,7 +1099,7 @@ macro_rules! patch {
 macro_rules! patch_execute {
     ($instructions:expr, $expr:literal, $new_expr:expr, $from:expr) => {
         for i in $from..$instructions.len() {
-            if $instructions[i] == Inst::PATCH_ME($expr.to_string()) {
+            if $instructions[i] == Inst::PATCH_ME($expr.into()) {
                 $instructions[i] = $new_expr;
             }
         }
@@ -1102,7 +1107,7 @@ macro_rules! patch_execute {
 
     ($instructions:expr, $expr:literal, $new_expr:expr) => {
         for i in 0..$instructions.len() {
-            if $instructions[i] == Inst::PATCH_ME($expr.to_string()) {
+            if $instructions[i] == Inst::PATCH_ME($expr.into()) {
                 $instructions[i] = $new_expr;
             }
         }

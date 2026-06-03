@@ -140,12 +140,12 @@ fn bench(vm: &mut VM) {
     let runs = 1_000_000;
     let start = std::time::Instant::now();
     for _ in 0..runs {
-		vm.stack.clear();
-		vm.pos = 0;
+        vm.stack.clear();
+        vm.pos = 0;
         vm.run(false, false);
     }
 
-	let elapsed = start.elapsed();
+    let elapsed = start.elapsed();
     println!("total: {:?}", elapsed);
     println!("per run: {:.2} ns", elapsed.as_nanos() as f64 / runs as f64);
 }

@@ -9,7 +9,7 @@ use bincode::{Decode, Encode};
 #[derive(Encode, Decode, Clone, PartialEq)]
 pub struct TStruct {
     pub base: Rc<TStructDef>,
-    pub values: Rc<RefCell<HashMap<String, Value>>>,
+    pub values: Rc<RefCell<HashMap<Rc<str>, Value>>>,
 }
 
 impl PartialOrd for TStruct {
@@ -19,7 +19,7 @@ impl PartialOrd for TStruct {
 }
 
 impl TStruct {
-    pub fn new(base: Rc<TStructDef>, values: Rc<RefCell<HashMap<String, Value>>>) -> Self {
+    pub fn new(base: Rc<TStructDef>, values: Rc<RefCell<HashMap<Rc<str>, Value>>>) -> Self {
         Self { base, values }
     }
 }
@@ -51,7 +51,7 @@ impl IMemberAccessible for TStruct {
                         "Field '{}' expects type `{v_type}`, got `{}`. (Struct '{}')",
                         &*member.0,
                         value.get_type(),
-						self.base.name
+                        self.base.name
                     )
                 }
             } else {

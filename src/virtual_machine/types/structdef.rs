@@ -5,8 +5,8 @@ use bincode::{Decode, Encode};
 
 #[derive(Encode, Decode, Clone, PartialEq)]
 pub struct TStructDef {
-	pub name: String,
-    pub fields: Rc<HashMap<String, String>>,
+	pub name: Rc<str>,
+    pub fields: Rc<HashMap<Rc<str>, Rc<str>>>,
 }
 
 impl PartialOrd for TStructDef {
@@ -16,7 +16,7 @@ impl PartialOrd for TStructDef {
 }
 
 impl TStructDef {
-    pub fn new(name: String, fields: Rc<HashMap<String, String>>) -> Self {
+    pub fn new(name: Rc<str>, fields: Rc<HashMap<Rc<str>, Rc<str>>>) -> Self {
         Self { name, fields }
     }
 }

@@ -1,7 +1,7 @@
 use crate::{
     compiler::compiler::Compiler,
     hash_u64,
-    virtual_machine::{inst::Inst, value::Value},
+    virtual_machine::{inst::Inst, types::function::TFunction, value::Value},
 };
 
 impl Compiler {
@@ -21,9 +21,7 @@ impl Compiler {
             if let Inst::JUMP(n) = v
                 && *n == i + 1
             {
-                Some(Inst::COMMENT(
-                    "optimized away jump straight ahead".to_string(),
-                ))
+                Some(Inst::COMMENT("optimized away jump straight ahead".into()))
             } else {
                 None
             }
@@ -152,7 +150,15 @@ impl Compiler {
                 }
 
                 // Functions
-                Inst::PUSH(Value::Function(f)) => f.entry = old_to_new[f.entry],
+                Inst::PUSH(Value::Function(f)) => {
+                    *f = Box::new(TFunction {
+                        entry: old_to_new[f.entry],
+                        handler: f.handler,
+                        this: f.this.clone(),
+                        target: f.target.clone(),
+                        upvalues: f.upvalues.clone(),
+                    })
+                }
                 Inst::MAKE_CLOSURE { entry, .. } => *entry = old_to_new[*entry],
 
                 _ => {}
@@ -168,28 +174,28 @@ impl Compiler {
         while i < self.instructions.len().saturating_sub(1) {
             match (&self.instructions[i], &self.instructions[i + 1]) {
                 (Inst::LOAD(_), Inst::POP | Inst::TRY_POP) => {
-                    self.instructions[i] = Inst::COMMENT("optimized away LOAD".to_string());
-                    self.instructions[i + 1] = Inst::COMMENT("optimized away POP".to_string());
+                    self.instructions[i] = Inst::COMMENT("optimized away LOAD".into());
+                    self.instructions[i + 1] = Inst::COMMENT("optimized away POP".into());
                     i += 2;
                 }
                 (Inst::LOAD_CONST(_), Inst::POP | Inst::TRY_POP) => {
-                    self.instructions[i] = Inst::COMMENT("optimized away LOAD_CONST".to_string());
-                    self.instructions[i + 1] = Inst::COMMENT("optimized away POP".to_string());
+                    self.instructions[i] = Inst::COMMENT("optimized away LOAD_CONST".into());
+                    self.instructions[i + 1] = Inst::COMMENT("optimized away POP".into());
                     i += 2;
                 }
                 (Inst::LOAD_LOCAL { .. }, Inst::POP | Inst::TRY_POP) => {
-                    self.instructions[i] = Inst::COMMENT("optimized away LOAD_LOCAL".to_string());
-                    self.instructions[i + 1] = Inst::COMMENT("optimized away POP".to_string());
+                    self.instructions[i] = Inst::COMMENT("optimized away LOAD_LOCAL".into());
+                    self.instructions[i + 1] = Inst::COMMENT("optimized away POP".into());
                     i += 2;
                 }
                 (Inst::LOAD_GLOBAL(_), Inst::POP | Inst::TRY_POP) => {
-                    self.instructions[i] = Inst::COMMENT("optimized away LOAD_GLOBAL".to_string());
-                    self.instructions[i + 1] = Inst::COMMENT("optimized away POP".to_string());
+                    self.instructions[i] = Inst::COMMENT("optimized away LOAD_GLOBAL".into());
+                    self.instructions[i + 1] = Inst::COMMENT("optimized away POP".into());
                     i += 2;
                 }
                 (Inst::PUSH(_), Inst::POP | Inst::TRY_POP) => {
-                    self.instructions[i] = Inst::COMMENT("optimized away PUSH".to_string());
-                    self.instructions[i + 1] = Inst::COMMENT("optimized away POP".to_string());
+                    self.instructions[i] = Inst::COMMENT("optimized away PUSH".into());
+                    self.instructions[i + 1] = Inst::COMMENT("optimized away POP".into());
                     i += 2;
                 }
 

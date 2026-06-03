@@ -423,8 +423,10 @@ impl VM {
                 }
 
                 Inst::PUSH(value) => self.stack.push(value.clone()),
-                Inst::PUSH_NIL => self.stack.push(Value::NIL),
                 Inst::PUSH_TYPE(t) => self.stack.push(Value::Type(*t)),
+                Inst::PUSH_NIL => self.stack.push(Value::NIL),
+                Inst::PUSH_TRUE => self.stack.push(Value::Bool(true)),
+                Inst::PUSH_FALSE => self.stack.push(Value::Bool(false)),
 
                 Inst::DUP => self.stack.push(
                     self.stack
@@ -462,7 +464,7 @@ impl VM {
                     let map = name_vec
                         .iter()
                         .rev()
-                        .map(|x| (x.clone(), self.pop()))
+                        .map(|x| (x.as_str().into(), self.pop()))
                         .collect::<HashMap<_, _>>();
 
                     self.stack
@@ -528,7 +530,7 @@ impl VM {
                     };
 
                     self.stack.push(Value::Class(rc!(RefCell::new(TClass::new(
-                        Rc::from(name.as_str()),
+                        Rc::from(name.clone()),
                         rc!(RefCell::new(values_map)),
                         rc!(RefCell::new(functions_map)),
                         constructor,
@@ -543,7 +545,7 @@ impl VM {
                         if let Some(constructor) = &c.borrow().constructor {
                             if let Value::Function(f) = constructor.as_ref().clone() {
                                 self.stack.push(obj.clone());
-                                self.call_function(f, args + 1);
+                                self.call_function(*f, args + 1);
                                 self.run(false, true);
                                 self.pop();
                             }
@@ -756,6 +758,9 @@ impl VM {
                         (Value::Class(x), Value::Class(y)) => x == y,
                         (Value::ClassObject(x), Value::Class(y)) => x.base == y,
 
+                        (Value::StructDef(x), Value::StructDef(y)) => x == y,
+                        (Value::Struct(x), Value::StructDef(y)) => x.base == y,
+
                         _ => false,
                     };
 
@@ -886,13 +891,13 @@ impl VM {
                         .map(|&i| Rc::clone(&self.locals[i]))
                         .collect();
 
-                    self.stack.push(Value::Function(TFunction {
+                    self.stack.push(Value::Function(Box::new(TFunction {
                         entry: *entry,
                         upvalues,
                         handler: None,
                         this: None,
                         target: None,
-                    }));
+                    })));
                 }
                 Inst::LOAD_UPVALUE { scope_idx, id } => {
                     if let Some(frame) = self.call_stack.last() {
@@ -937,7 +942,7 @@ impl VM {
 
                     if let Value::Function(f) = func {
                         let should_skip = f.handler.is_none();
-                        self.call_function(f, arg_count);
+                        self.call_function(*f, arg_count);
                         if should_skip {
                             continue;
                         }

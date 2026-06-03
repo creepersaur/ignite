@@ -1,3 +1,1 @@
-let x = [1, 2, 3, 4]
-let y = x.map_enumerate(fn(i, v) => println(i, v))
-println(y)
+let x = 10

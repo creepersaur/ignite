@@ -32,7 +32,7 @@ pub enum Value {
     Char(char),
     String(TString),
 
-    Function(TFunction),
+    Function(Box<TFunction>),
 
     // Collections
     List(TList),
@@ -258,6 +258,14 @@ impl Value {
             panic!("Cannot convert `{self:?}` to number.")
         }
     }
+
+    pub fn as_str(&self) -> &str {
+		if let Value::String(x) = self {
+			&x.0
+		} else {
+			panic!("Cannot covnert `{self:?}` to str")
+		}
+	}
 
     pub fn type_matches(&self, type_hint: &str) -> bool {
         match type_hint {

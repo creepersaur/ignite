@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use bincode::{Decode, Encode};
 
 use crate::virtual_machine::{libs::types::TypeValue, value::Value};
@@ -5,7 +7,7 @@ use crate::virtual_machine::{libs::types::TypeValue, value::Value};
 #[allow(unused, non_camel_case_types)]
 #[derive(Encode, Decode, Debug, Clone, PartialEq)]
 pub enum Inst {
-    COMMENT(String),
+    COMMENT(Rc<str>),
     NOP,
     EXIT,
     PRINT,
@@ -16,6 +18,8 @@ pub enum Inst {
 	PUSH(Value),
 	PUSH_TYPE(TypeValue),
 	PUSH_NIL,
+	PUSH_TRUE,
+	PUSH_FALSE,
 
     DUP,
     SWAP,
@@ -28,18 +32,18 @@ pub enum Inst {
     LIST(usize),
     TUPLE(usize),
     DICT(usize),
-    ENUM(String, Vec<Value>),
-    STRUCT(Vec<String>),
+    ENUM(Rc<str>, Vec<Value>),
+    STRUCT(Vec<Rc<str>>),
     MAKE_CLASS {
-        name: String,
-        field_names: Vec<String>,
+        name: Rc<str>,
+        field_names: Vec<Rc<str>>,
         field_consts: Vec<bool>,
-        method_names: Vec<String>,
+        method_names: Vec<Rc<str>>,
         has_constructor: bool,
     },
     INIT_CLASS(usize),
 
-    PATCH_ME(String),
+    PATCH_ME(Rc<str>),
 
     ADD,
     SUB,

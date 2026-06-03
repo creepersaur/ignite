@@ -52,18 +52,26 @@ macro_rules! hashmap {
 #[macro_export]
 macro_rules! lib_function {
     ($this:expr, $lib:expr, $member:expr, $val:expr) => {
-        Value::Function(TFunction::with_lib(
+        Value::Function(Box::new(TFunction::with_lib(
             rc_str!($lib),
             rc_str!($member),
             Some(Box::new({ $val }($this.clone()))),
-        ))
+        )))
     };
 
     ($lib:literal, $member:expr) => {
-        Value::Function(TFunction::with_lib(rc_str!($lib), rc_str!($member), None))
+        Value::Function(Box::new(TFunction::with_lib(
+            rc_str!($lib),
+            rc_str!($member),
+            None
+        )))
     };
 
     ($lib:expr, $member:expr) => {
-        Value::Function(TFunction::with_lib(rc_str!($lib), rc_str!($member), None))
+        Value::Function(Box::new(TFunction::with_lib(
+            rc_str!($lib),
+            rc_str!($member),
+            None
+        )))
     };
 }

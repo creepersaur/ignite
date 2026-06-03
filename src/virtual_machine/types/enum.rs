@@ -5,8 +5,8 @@ use bincode::{Decode, Encode};
 
 #[derive(Encode, Decode, Clone, PartialEq)]
 pub struct TEnum {
-	pub name: String,
-    pub values: Rc<HashMap<Value, Value>>,
+    pub name: Rc<str>,
+    pub values: Rc<HashMap<Rc<str>, Value>>,
 }
 
 impl PartialOrd for TEnum {
@@ -16,7 +16,7 @@ impl PartialOrd for TEnum {
 }
 
 impl TEnum {
-    pub fn new(name: String, values: Rc<HashMap<Value, Value>>) -> Self {
+    pub fn new(name: Rc<str>, values: Rc<HashMap<Rc<str>, Value>>) -> Self {
         Self { name, values }
     }
 }
@@ -31,10 +31,18 @@ impl Debug for TEnum {
 // MEMBER ACCESS
 impl IMemberAccessible for TEnum {
     fn get_member(&self, _vm: &mut VM, member: &Value) -> Value {
-        if let Some(x) = self.values.get(member) {
-            return x.clone();
+        if let Value::String(s) = member {
+            if let Some(x) = self.values.get(&s.0) {
+                return x.clone();
+            }
+
+            panic!("Cannot get member `{}` on {self:?}", member.to_string(true));
         }
 
-        panic!("Cannot get member `{}` on {self:?}", member.to_string(true));
+        panic!(
+            "Can only get string members on enum `{}`. Got {}",
+            self.name,
+            member.to_string(true)
+        )
     }
 }

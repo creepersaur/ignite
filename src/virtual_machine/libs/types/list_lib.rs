@@ -109,7 +109,7 @@ impl ListLib {
             if let Value::Function(f) = func {
                 for i in inner.values.borrow().iter() {
                     vm.stack.push(i.clone());
-                    vm.call_function(f.clone(), 1);
+                    vm.call_function(*f.clone(), 1);
                     vm.run(false, true);
                     let new_value = vm.pop();
                     new_array.push(new_value);
@@ -133,7 +133,7 @@ impl ListLib {
                 for (i, v) in inner.values.borrow().iter().enumerate() {
                     vm.stack.push(v.clone());
                     vm.stack.push(Value::Number(i as f64));
-                    vm.call_function(f.clone(), 2);
+                    vm.call_function(*f.clone(), 2);
                     vm.run(false, true);
                     let new_value = vm.pop();
                     new_array.push(new_value);
