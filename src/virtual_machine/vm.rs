@@ -427,6 +427,8 @@ impl VM {
                 Inst::PUSH_NIL => self.stack.push(Value::NIL),
                 Inst::PUSH_TRUE => self.stack.push(Value::Bool(true)),
                 Inst::PUSH_FALSE => self.stack.push(Value::Bool(false)),
+                Inst::PUSH_0 => self.stack.push(Value::Number(0.0)),
+                Inst::PUSH_1 => self.stack.push(Value::Number(1.0)),
 
                 Inst::DUP => self.stack.push(
                     self.stack

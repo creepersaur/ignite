@@ -10,6 +10,10 @@ impl Compiler {
         self.remove_load_pops();
         self.remove_store_load_pairs();
         self.replace(Inst::PUSH(Value::NIL), Inst::PUSH_NIL);
+        self.replace(Inst::PUSH(Value::Bool(true)), Inst::PUSH_TRUE);
+        self.replace(Inst::PUSH(Value::Bool(false)), Inst::PUSH_FALSE);
+        self.replace(Inst::PUSH(Value::Number(0.0)), Inst::PUSH_0);
+        self.replace(Inst::PUSH(Value::Number(1.0)), Inst::PUSH_1);
         self.replace_with(|_, x| {
             if let Inst::PUSH(Value::Type(t)) = x {
                 Some(Inst::PUSH_TYPE(*t))

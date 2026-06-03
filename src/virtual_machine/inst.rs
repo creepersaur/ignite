@@ -20,6 +20,8 @@ pub enum Inst {
 	PUSH_NIL,
 	PUSH_TRUE,
 	PUSH_FALSE,
+	PUSH_0,
+	PUSH_1,
 
     DUP,
     SWAP,
