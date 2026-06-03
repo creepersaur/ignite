@@ -223,6 +223,10 @@ impl Compiler {
                         depth: depth_b,
                     },
                 ) => *id_a == *id_b && *depth_a == *depth_b,
+                (
+                    Inst::STORE_GLOBAL(id_a),
+                    Inst::LOAD_GLOBAL(id_b),
+                ) => *id_a == *id_b,
                 _ => false,
             };
 

@@ -1,7 +1,7 @@
 use crate::{
     compiler::compiler::Compiler,
     language::{ast::AST, lexer::Lexer, parser::Parser},
-    virtual_machine::vm::VM,
+    virtual_machine::{inst::Inst, value::Value, vm::VM},
 };
 use std::{
     cell::RefCell,
@@ -110,6 +110,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     } else if args.contains(&"bytecode2".to_string()) {
         vm.write_bytecode_file("bytecode2.igb", args.contains(&"compress".to_string()));
     } else {
+		println!("Size of Inst: {}", std::mem::size_of::<Inst>());
+		println!("Size of Value: {}", std::mem::size_of::<Value>());
+
         println!("\nRunning:");
         println!("---------------------------");
         let instructions_clone = vm.instructions.clone();

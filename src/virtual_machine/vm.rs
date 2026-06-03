@@ -384,11 +384,11 @@ impl VM {
         self.iterators.clear();
         self.call_stack.truncate(1);
 
-		self.globals.clear();
-		self.globals.extend(Self::initialize_globals());
+        self.globals.clear();
+        self.globals.extend(Self::initialize_globals());
 
-		self.locals.truncate(1);
-		self.locals[0].borrow_mut().clear();
+        self.locals.truncate(1);
+        self.locals[0].borrow_mut().clear();
 
         self.pos = 0;
     }
@@ -519,7 +519,6 @@ impl VM {
                 Inst::MAKE_CLASS {
                     name,
                     field_names,
-                    field_consts,
                     method_names,
                     has_constructor,
                 } => {
@@ -530,8 +529,7 @@ impl VM {
                     }
 
                     let mut values_map = HashMap::new();
-                    for (field_name, is_const) in field_names.iter().zip(field_consts.iter()).rev()
-                    {
+                    for (field_name, is_const) in field_names.iter().rev() {
                         let default_val = self.pop();
                         values_map.insert(field_name.clone().into(), (default_val, *is_const));
                     }

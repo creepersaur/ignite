@@ -39,8 +39,7 @@ pub enum Inst {
     STRUCT(Vec<Rc<str>>),
     MAKE_CLASS {
         name: Rc<str>,
-        field_names: Vec<Rc<str>>,
-        field_consts: Vec<bool>,
+        field_names: Vec<(Rc<str>, bool)>,
         method_names: Vec<Rc<str>>,
         has_constructor: bool,
     },

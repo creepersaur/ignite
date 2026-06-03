@@ -116,6 +116,21 @@ impl Compiler {
         self.instructions.push(Inst::LOAD_GLOBAL(id));
     }
 
+    pub fn emit_load_const(&mut self, value: Value) {
+        if let Some((idx, _)) = self
+            .constants
+            .iter()
+            .enumerate()
+            .find(|(_, thing)| thing == &&value)
+        {
+            self.instructions.push(Inst::LOAD_CONST(idx));
+            return;
+        }
+        self.constants.push(value);
+        self.instructions
+            .push(Inst::LOAD_CONST(self.constants.len() - 1));
+    }
+
     pub fn compile_node(&mut self, node: &Node) {
         match node {
             Node::NIL => self.instructions.push(Inst::PUSH(Value::NIL)),
@@ -123,20 +138,7 @@ impl Compiler {
             Node::Variable(x) => self.emit_load_local(x.as_str()),
             Node::NumberLiteral(x) => self.instructions.push(Inst::PUSH(Value::Number(*x))),
             Node::BooleanLiteral(x) => self.instructions.push(Inst::PUSH(Value::Bool(*x))),
-            Node::StringLiteral(x) => {
-                if let Some((idx, _)) = self
-                    .constants
-                    .iter()
-                    .enumerate()
-                    .find(|(_, thing)| thing == &&Value::string(x))
-                {
-                    self.instructions.push(Inst::LOAD_CONST(idx));
-                    return;
-                }
-                self.constants.push(Value::string(x));
-                self.instructions
-                    .push(Inst::LOAD_CONST(self.constants.len() - 1));
-            }
+            Node::StringLiteral(x) => self.emit_load_const(Value::string(x)),
             Node::FString(values) => self.compile_fstring(values),
 
             Node::ListNode(values) => self.compile_list(values, false),
@@ -1021,7 +1023,6 @@ impl Compiler {
         }
 
         let mut field_names = vec![];
-        let mut field_consts = vec![];
 
         for node in values {
             if let Node::LetStatement {
@@ -1031,8 +1032,7 @@ impl Compiler {
             } = node
             {
                 for (i, field_name) in field_name_list.iter().enumerate() {
-                    field_names.push(field_name.as_str().into());
-                    field_consts.push(*is_const);
+                    field_names.push((field_name.as_str().into(), *is_const));
 
                     match field_values.get(i).and_then(|v| v.as_deref()) {
                         Some(val) => self.compile_node(val),
@@ -1066,7 +1066,6 @@ impl Compiler {
         self.instructions.push(Inst::MAKE_CLASS {
             name: name.as_str().into(),
             field_names,
-            field_consts,
             method_names,
             has_constructor: constructor.is_some(),
         });
