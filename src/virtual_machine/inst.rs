@@ -30,7 +30,8 @@ pub enum Inst {
     TRY_POP,
 
     // Collections
-    RANGE,
+    RANGE_INCLUSIVE,
+	RANGE_EXCLUSIVE,
     LIST(usize),
     TUPLE(usize),
     DICT(usize),

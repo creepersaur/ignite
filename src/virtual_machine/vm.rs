@@ -278,7 +278,8 @@ impl VM {
                     | Inst::DICT(_)
                     | Inst::ENUM(..)
                     | Inst::STRUCT(..)
-                    | Inst::RANGE
+                    | Inst::RANGE_EXCLUSIVE
+                    | Inst::RANGE_INCLUSIVE
             ) {
                 GREEN
             } else if matches!(v, Inst::NOP) {
@@ -380,6 +381,19 @@ impl VM {
                 *inst = Inst::PUSH(self.constants[*idx].clone());
             }
         }
+    }
+
+    pub fn reset(&mut self) {
+        self.stack.clear();
+        self.call_stack = vec![CallFrame {
+            scope_base: 0,
+            return_addr: 0,
+            upvalues: vec![],
+        }];
+        self.globals.clear();
+        self.locals.clear();
+        self.iterators.clear();
+        self.pos = 0;
     }
 
     pub fn run(&mut self, debug: bool, stop_at_return: bool) {
@@ -562,23 +576,28 @@ impl VM {
                     }
                 }
 
-                Inst::RANGE => {
-                    let inclusive_val = self.pop();
+                Inst::RANGE_INCLUSIVE => {
                     let step = self.pop();
                     let end = self.pop();
                     let start = self.pop();
-
-                    let inclusive = if let Value::Bool(x) = inclusive_val {
-                        x
-                    } else {
-                        false
-                    };
 
                     self.stack.push(Value::Range {
                         start: Box::new(start),
                         end: Box::new(end),
                         step: Box::new(step),
-                        inclusive,
+                        inclusive: true,
+                    });
+                }
+                Inst::RANGE_EXCLUSIVE => {
+                    let step = self.pop();
+                    let end = self.pop();
+                    let start = self.pop();
+
+                    self.stack.push(Value::Range {
+                        start: Box::new(start),
+                        end: Box::new(end),
+                        step: Box::new(step),
+                        inclusive: false,
                     });
                 }
 

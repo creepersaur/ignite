@@ -140,8 +140,7 @@ fn bench(vm: &mut VM) {
     let runs = 1_000_000;
     let start = std::time::Instant::now();
     for _ in 0..runs {
-        vm.stack.clear();
-        vm.pos = 0;
+		vm.reset();
         vm.run(false, false);
     }
 

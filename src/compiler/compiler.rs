@@ -3,7 +3,7 @@ use crate::{
     language::{nodes::Node, token::TokenKind},
     patch, patch_execute, rc,
     virtual_machine::{
-        inst::Inst,
+        inst::Inst::{self, RANGE_EXCLUSIVE, RANGE_INCLUSIVE},
         types::{list::TList, structdef::TStructDef},
         value::Value,
     },
@@ -280,8 +280,10 @@ impl Compiler {
         } else {
             self.instructions.push(Inst::PUSH(Value::Number(1.0)))
         }
-        self.instructions.push(Inst::PUSH(Value::Bool(inclusive)));
-        self.instructions.push(Inst::RANGE);
+        self.instructions.push(match inclusive {
+            true => RANGE_INCLUSIVE,
+            false => RANGE_EXCLUSIVE,
+        });
     }
 
     pub fn compile_list(&mut self, values: &Vec<Node>, is_tuple: bool) {
