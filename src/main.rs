@@ -137,14 +137,19 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 
 fn bench(vm: &mut VM) {
-    let runs = 1_000_000;
-    let start = std::time::Instant::now();
+	let runs = 1_000_000;
+    let mut total = 0u128;
+	let full_start = std::time::Instant::now();
+
     for _ in 0..runs {
-		vm.reset();
+        vm.reset();
+
+        let start = std::time::Instant::now();
         vm.run(false, false);
+        total += start.elapsed().as_nanos();
     }
 
-    let elapsed = start.elapsed();
-    println!("total: {:?}", elapsed);
-    println!("per run: {:.2} ns", elapsed.as_nanos() as f64 / runs as f64);
+    println!("(run + reset) total: {:.5}s", full_start.elapsed().as_secs_f64());
+    println!("(run) total: {:.5}s", total as f64 / 1e9);
+    println!("per run: {:.2} ns", total as f64 / runs as f64);
 }

@@ -55,17 +55,17 @@ impl VM {
         Self {
             pos: 0,
             instructions: rc!(RefCell::new(vec![])),
-            stack: Vec::with_capacity(100),
+            stack: Vec::with_capacity(600),
             call_stack: vec![CallFrame {
                 scope_base: 0,
                 return_addr: 0,
-                upvalues: vec![],
+                upvalues: Vec::with_capacity(20),
             }],
-            constants: Vec::with_capacity(100),
+            constants: Vec::with_capacity(150),
             globals: Self::initialize_globals(),
             locals: vec![rc!(RefCell::new(HashMap::new()))],
             libraries: Self::initialize_libs(),
-            iterators: vec![],
+            iterators: Vec::with_capacity(30),
             intern_table: HashMap::new(),
             expose_interns: true,
         }
@@ -161,10 +161,6 @@ impl VM {
                 let value = lib.get_function(method)(self, args);
                 self.stack.push(value);
             } else {
-                println!("macro hash: {}", hash_u64!("Math"));
-                println!("handler hash: {}", library);
-                println!("handler name: {}", self.lookup_intern(library));
-
                 panic!(
                     "Library not found for handler key: {} (method: {})",
                     library,
@@ -385,14 +381,15 @@ impl VM {
 
     pub fn reset(&mut self) {
         self.stack.clear();
-        self.call_stack = vec![CallFrame {
-            scope_base: 0,
-            return_addr: 0,
-            upvalues: vec![],
-        }];
-        self.globals.clear();
-        self.locals.clear();
         self.iterators.clear();
+        self.call_stack.truncate(1);
+
+		self.globals.clear();
+		self.globals.extend(Self::initialize_globals());
+
+		self.locals.truncate(1);
+		self.locals[0].borrow_mut().clear();
+
         self.pos = 0;
     }
 

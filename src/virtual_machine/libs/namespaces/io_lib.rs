@@ -7,15 +7,17 @@ pub struct IOLib;
 impl IOLib {
     // Input
     fn read_line(_vm: &mut VM, args: Vec<Value>) -> Value {
-        let msg = args
-            .iter()
-            .map(|x| x.to_string(false))
-            .rev()
-            .collect::<Vec<_>>()
-            .join(" ");
+        if args.len() > 0 {
+            let msg = args
+                .iter()
+                .map(|x| x.to_string(false))
+                .rev()
+                .collect::<Vec<_>>()
+                .join(" ");
 
-        print!("{}", msg);
-        let _ = stdout().flush();
+            print!("{}", msg);
+            let _ = stdout().flush();
+        }
 
         let mut buf = String::new();
         stdin()
@@ -26,15 +28,17 @@ impl IOLib {
     }
 
     fn read_line_raw(_vm: &mut VM, args: Vec<Value>) -> Value {
-        let msg = args
-            .iter()
-            .map(|x| x.to_string(false))
-            .rev()
-            .collect::<Vec<_>>()
-            .join(" ");
+        if args.len() > 0 {
+            let msg = args
+                .iter()
+                .map(|x| x.to_string(false))
+                .rev()
+                .collect::<Vec<_>>()
+                .join(" ");
 
-        print!("{}", msg);
-        let _ = stdout().flush();
+            print!("{}", msg);
+            let _ = stdout().flush();
+        }
 
         let mut buf = String::new();
         stdin()
@@ -45,15 +49,17 @@ impl IOLib {
     }
 
     fn read(_vm: &mut VM, args: Vec<Value>) -> Value {
-        let msg = args
-            .iter()
-            .map(|x| x.to_string(false))
-            .rev()
-            .collect::<Vec<_>>()
-            .join(" ");
+        if args.len() > 0 {
+            let msg = args
+                .iter()
+                .map(|x| x.to_string(false))
+                .rev()
+                .collect::<Vec<_>>()
+                .join(" ");
 
-        print!("{}", msg);
-        let _ = stdout().flush();
+            print!("{}", msg);
+            let _ = stdout().flush();
+        }
 
         let mut buf = [0u8; 1];
 
@@ -86,7 +92,6 @@ impl IOLib {
             .join(" ");
 
         print!("{msg}");
-        let _ = stdout().flush();
 
         Value::NIL
     }
