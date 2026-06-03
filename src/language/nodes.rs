@@ -144,7 +144,7 @@ pub enum Node {
         interfaces: Vec<Rc<String>>,
         let_statements: Vec<Node>,
         functions: Vec<Node>,
-		constructor: Option<Box<Node>>,
+        constructor: Option<Box<Node>>,
     },
 
     ClassInit {

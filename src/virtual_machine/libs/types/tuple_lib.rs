@@ -1,7 +1,8 @@
 use std::{cell::RefCell, cmp::Ordering};
 
 use crate::{
-    get_args, virtual_machine::{libs::lib::Library, types::list::TList, value::Value, vm::VM}
+    get_args,
+    virtual_machine::{libs::lib::Library, types::list::TList, value::Value, vm::VM},
 };
 
 pub const TUPLE_FUNCTIONS: [&str; 10] = [
@@ -34,7 +35,7 @@ impl TupleLib {
     }
 
     fn map(vm: &mut VM, args: Vec<Value>) -> Value {
-		let [tuple, func] = get_args!(args, 2);
+        let [tuple, func] = get_args!(args, 2);
         let mut new_array = vec![];
 
         if let Value::Tuple(inner) = tuple {
@@ -57,7 +58,7 @@ impl TupleLib {
     }
 
     fn concat(_vm: &mut VM, args: Vec<Value>) -> Value {
-		let [tuple, other] = get_args!(args, 2);
+        let [tuple, other] = get_args!(args, 2);
 
         if let Value::Tuple(inner) = tuple {
             if let Value::Tuple(other_inner) = other {
@@ -95,7 +96,7 @@ impl TupleLib {
     }
 
     fn count(_vm: &mut VM, args: Vec<Value>) -> Value {
-		let [tuple, item] = get_args!(args, 2);
+        let [tuple, item] = get_args!(args, 2);
 
         if let Value::Tuple(inner) = tuple {
             let count = inner.values.borrow().iter().filter(|x| x == &&item).count();
@@ -133,7 +134,7 @@ impl TupleLib {
     }
 
     fn rep(_vm: &mut VM, args: Vec<Value>) -> Value {
-		let [tuple, value] = get_args!(args, 2);
+        let [tuple, value] = get_args!(args, 2);
 
         if let Value::Tuple(inner) = tuple {
             if let Value::Number(n) = value {

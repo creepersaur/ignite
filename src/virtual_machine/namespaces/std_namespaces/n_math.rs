@@ -1,5 +1,5 @@
 use crate::{
-     namespace_lib_function,
+    namespace_lib_function,
     virtual_machine::{
         namespaces::namespace::TNamespace, types::function::TFunction, value::Value,
     },
@@ -75,7 +75,7 @@ pub fn std_math() -> Value {
     namespace_lib_function!(namespace, "is_infinite");
     namespace_lib_function!(namespace, "is_finite");
 
-	// Rounding
+    // Rounding
     namespace_lib_function!(namespace, "round");
     namespace_lib_function!(namespace, "round_to");
 
@@ -95,7 +95,7 @@ pub fn std_math() -> Value {
     namespace_lib_function!(namespace, "snap");
     namespace_lib_function!(namespace, "ping_pong");
 
-	// Geometry
+    // Geometry
     namespace_lib_function!(namespace, "dist");
 
     Value::Namespace(rc!(RefCell::new(namespace)))

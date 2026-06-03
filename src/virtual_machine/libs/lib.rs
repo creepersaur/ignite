@@ -8,12 +8,14 @@ pub trait Library {
 
 #[macro_export]
 macro_rules! get_args {
-	($args:expr, $count: expr) => {{
-		let v: [Value; $count] = $args.try_into().expect(&format!("Expected {} arguments", $count));
-		v
-	}};
+    ($args:expr, $count: expr) => {{
+        let v: [Value; $count] = $args
+            .try_into()
+            .expect(&format!("Expected {} arguments", $count));
+        v
+    }};
 
-	($args: expr) => {
-		&$args[0]
-	}
+    ($args: expr) => {
+        &$args[0]
+    };
 }

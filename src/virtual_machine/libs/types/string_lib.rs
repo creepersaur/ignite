@@ -1,10 +1,11 @@
 use crate::{
-    get_args, virtual_machine::{
+    get_args,
+    virtual_machine::{
         libs::lib::Library,
         types::{list::TList, string::TString},
         value::Value,
         vm::VM,
-    }
+    },
 };
 use std::cell::RefCell;
 

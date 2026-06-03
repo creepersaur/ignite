@@ -27,7 +27,8 @@ impl TClassObject {
 
 impl Debug for TClassObject {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&format!("Object:{}", self.base.borrow().name)).unwrap();
+        f.write_str(&format!("Object:{}", self.base.borrow().name))
+            .unwrap();
         Ok(())
     }
 }
@@ -40,7 +41,13 @@ impl IMemberAccessible for TClassObject {
                 return v.clone();
             }
 
-            if let Some(v) = self.base.borrow().functions.borrow_mut().get_mut(&*member.0) {
+            if let Some(v) = self
+                .base
+                .borrow()
+                .functions
+                .borrow_mut()
+                .get_mut(&*member.0)
+            {
                 if let Value::Function(f) = v {
                     f.target = Some(Box::new(Value::ClassObject(self.clone())))
                 }

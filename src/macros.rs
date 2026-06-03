@@ -63,7 +63,7 @@ macro_rules! lib_function {
         Value::Function(Box::new(TFunction::with_lib(
             rc_str!($lib),
             rc_str!($member),
-            None
+            None,
         )))
     };
 
@@ -71,7 +71,7 @@ macro_rules! lib_function {
         Value::Function(Box::new(TFunction::with_lib(
             rc_str!($lib),
             rc_str!($member),
-            None
+            None,
         )))
     };
 }

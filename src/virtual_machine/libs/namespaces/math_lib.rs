@@ -1,5 +1,6 @@
 use crate::{
-    get_args, virtual_machine::{libs::lib::Library, value::Value, vm::VM}
+    get_args,
+    virtual_machine::{libs::lib::Library, value::Value, vm::VM},
 };
 
 pub struct MathLib;
@@ -101,7 +102,9 @@ impl MathLib {
     }
     fn clamp(_vm: &mut VM, args: Vec<Value>) -> Value {
         let [x, min, max] = get_args!(args, 3);
-        Value::Number(Self::num(&x, "clamp").clamp(Self::num(&min, "clamp"), Self::num(&max, "clamp")))
+        Value::Number(
+            Self::num(&x, "clamp").clamp(Self::num(&min, "clamp"), Self::num(&max, "clamp")),
+        )
     }
     fn copysign(_vm: &mut VM, args: Vec<Value>) -> Value {
         let [x, sign] = get_args!(args, 2);

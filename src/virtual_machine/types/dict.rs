@@ -1,10 +1,8 @@
 use std::{cell::RefCell, collections::HashMap, fmt::Debug, rc::Rc};
 
-use crate::{
-    virtual_machine::{
-        traits::member_accessible::IMemberAccessible, types::function::TFunction,
-        libs::types::dict_lib::DICT_FUNCTIONS, value::Value, vm::VM,
-    },
+use crate::virtual_machine::{
+    libs::types::dict_lib::DICT_FUNCTIONS, traits::member_accessible::IMemberAccessible,
+    types::function::TFunction, value::Value, vm::VM,
 };
 use bincode::{Decode, Encode};
 

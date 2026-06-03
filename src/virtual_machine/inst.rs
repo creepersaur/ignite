@@ -15,13 +15,13 @@ pub enum Inst {
     DEFAULT,
     DEFAULT_NIL,
 
-	PUSH(Value),
-	PUSH_TYPE(TypeValue),
-	PUSH_NIL,
-	PUSH_TRUE,
-	PUSH_FALSE,
-	PUSH_0,
-	PUSH_1,
+    PUSH(Value),
+    PUSH_TYPE(TypeValue),
+    PUSH_NIL,
+    PUSH_TRUE,
+    PUSH_FALSE,
+    PUSH_0,
+    PUSH_1,
 
     DUP,
     SWAP,
@@ -31,7 +31,7 @@ pub enum Inst {
 
     // Collections
     RANGE_INCLUSIVE,
-	RANGE_EXCLUSIVE,
+    RANGE_EXCLUSIVE,
     LIST(usize),
     TUPLE(usize),
     DICT(usize),
@@ -66,7 +66,7 @@ pub enum Inst {
     AND,
     OR,
     NOT,
-	IS_INSTANCE_OF,
+    IS_INSTANCE_OF,
 
     LOAD_CONST(usize),
     LOAD_GLOBAL(u64),

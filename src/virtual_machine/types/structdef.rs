@@ -1,11 +1,11 @@
 use std::{collections::HashMap, fmt::Debug, rc::Rc};
 
-use crate::virtual_machine::{traits::member_accessible::IMemberAccessible};
+use crate::virtual_machine::traits::member_accessible::IMemberAccessible;
 use bincode::{Decode, Encode};
 
 #[derive(Encode, Decode, Clone, PartialEq)]
 pub struct TStructDef {
-	pub name: Rc<str>,
+    pub name: Rc<str>,
     pub fields: Rc<HashMap<Rc<str>, Rc<str>>>,
 }
 
@@ -29,6 +29,4 @@ impl Debug for TStructDef {
 }
 
 // MEMBER ACCESS
-impl IMemberAccessible for TStructDef {
-
-}
+impl IMemberAccessible for TStructDef {}

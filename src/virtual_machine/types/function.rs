@@ -1,9 +1,13 @@
 use bincode::{Decode, Encode};
 use std::{
-    cell::RefCell, collections::HashMap, fmt::Debug, hash::{Hash, Hasher}, rc::Rc
+    cell::RefCell,
+    collections::HashMap,
+    fmt::Debug,
+    hash::{Hash, Hasher},
+    rc::Rc,
 };
 
-use crate::{virtual_machine::value::Value};
+use crate::virtual_machine::value::Value;
 
 #[derive(Encode, Decode, Clone)]
 pub struct TFunction {
@@ -21,21 +25,17 @@ impl TFunction {
             handler: None,
             this: None,
             target: None,
-			upvalues: vec![],
+            upvalues: vec![],
         }
     }
 
-    pub fn with_lib(
-        lib: Rc<str>,
-        method: Rc<str>,
-        this: Option<Box<Value>>,
-    ) -> Self {
+    pub fn with_lib(lib: Rc<str>, method: Rc<str>, this: Option<Box<Value>>) -> Self {
         Self {
             entry: 0,
             handler: Some((hash_u64!(lib.as_ref()), hash_u64!(method.as_ref()))),
             target: None,
             this,
-			upvalues: vec![],
+            upvalues: vec![],
         }
     }
 }

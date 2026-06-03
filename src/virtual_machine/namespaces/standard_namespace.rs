@@ -1,11 +1,9 @@
-use crate::{
-    virtual_machine::{
-        namespaces::{
-            namespace::TNamespace,
-            std_namespaces::{n_fs::std_fs, n_io::std_io, n_math::std_math},
-        },
-        value::Value,
+use crate::virtual_machine::{
+    namespaces::{
+        namespace::TNamespace,
+        std_namespaces::{n_fs::std_fs, n_io::std_io, n_math::std_math},
     },
+    value::Value,
 };
 use std::cell::RefCell;
 

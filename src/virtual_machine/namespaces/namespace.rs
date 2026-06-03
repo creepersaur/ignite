@@ -77,7 +77,7 @@ impl IMemberAccessible for TNamespace {
                 if !*is_const {
                     self.env.insert(t.0.clone(), (value, false));
                 } else {
-					panic!(
+                    panic!(
                         "Cannot set a constant member `{}` of namespace:{}.",
                         member.to_string(false),
                         self.name

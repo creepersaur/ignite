@@ -260,12 +260,12 @@ impl Value {
     }
 
     pub fn as_str(&self) -> &str {
-		if let Value::String(x) = self {
-			&x.0
-		} else {
-			panic!("Cannot covnert `{self:?}` to str")
-		}
-	}
+        if let Value::String(x) = self {
+            &x.0
+        } else {
+            panic!("Cannot covnert `{self:?}` to str")
+        }
+    }
 
     pub fn type_matches(&self, type_hint: &str) -> bool {
         match type_hint {

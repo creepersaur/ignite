@@ -1,5 +1,5 @@
 use crate::{
-     namespace_lib_function,
+    namespace_lib_function,
     virtual_machine::{
         namespaces::namespace::TNamespace, types::function::TFunction, value::Value,
     },

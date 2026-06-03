@@ -449,13 +449,13 @@ impl Parser {
     fn is_type(&mut self, text: &str) -> Option<TypeValue> {
         match text {
             "number" => Some(TypeValue::Number),
-			"bool" => Some(TypeValue::Bool),
-			"char" => Some(TypeValue::Char),
-			"string" => Some(TypeValue::String),
-			"dict" => Some(TypeValue::Dict),
-			"function" => Some(TypeValue::Function),
-			"list" => Some(TypeValue::List),
-			"tuple" => Some(TypeValue::Tuple),
+            "bool" => Some(TypeValue::Bool),
+            "char" => Some(TypeValue::Char),
+            "string" => Some(TypeValue::String),
+            "dict" => Some(TypeValue::Dict),
+            "function" => Some(TypeValue::Function),
+            "list" => Some(TypeValue::List),
+            "tuple" => Some(TypeValue::Tuple),
 
             _ => None,
         }

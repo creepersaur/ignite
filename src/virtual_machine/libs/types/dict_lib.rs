@@ -3,12 +3,13 @@
 use std::{cell::RefCell, collections::HashMap};
 
 use crate::{
-    get_args, virtual_machine::{
+    get_args,
+    virtual_machine::{
         libs::lib::Library,
         types::{dict::TDict, list::TList},
         value::Value,
         vm::VM,
-    }
+    },
 };
 
 pub const DICT_FUNCTIONS: [&str; 12] = [
