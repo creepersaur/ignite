@@ -75,7 +75,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             vm.instructions = rc!(RefCell::new(compiler.instructions.clone()));
             vm.intern_table = compiler.intern_table.clone();
 
-            if args.contains(&"inst".to_string()) {
+            if args.contains(&"inst".to_string()) && !args.contains(&"no_pre".to_string()) {
                 println!("\n[Pre-optimization] Compiled instructions:");
                 println!("---------------------------");
 

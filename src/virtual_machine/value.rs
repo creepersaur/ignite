@@ -9,6 +9,7 @@ use std::{
 use crate::virtual_machine::{
     libs::types::TypeValue,
     namespaces::namespace::TNamespace,
+    traits::member_accessible::IMemberAccessible,
     types::{
         classes::{r#class::TClass, class_object::TClassObject},
         dict::TDict,
@@ -19,6 +20,7 @@ use crate::virtual_machine::{
         r#struct::TStruct,
         structdef::TStructDef,
     },
+    vm::VM,
 };
 
 #[allow(unused)]
@@ -286,6 +288,70 @@ impl Value {
 
                 _ => false,
             },
+        }
+    }
+
+    pub fn get_member(&self, vm: &mut VM, member: &Value) -> Value {
+        match self {
+            Value::String(x) => x.get_member(vm, &member),
+            Value::List(x) => x.get_member(vm, &member),
+            Value::Tuple(x) => x.get_member(vm, &member),
+            Value::Dict(x) => x.get_member(vm, &member),
+            Value::Namespace(x) => x.borrow().get_member(vm, &member),
+            Value::Enum(x) => x.get_member(vm, &member),
+            Value::Struct(x) => x.get_member(vm, &member),
+            Value::Class(x) => x.borrow().get_member(vm, &member),
+            Value::ClassObject(x) => x.get_member(vm, &member),
+
+            _ => panic!("Cannot get property on `{self:?}`"),
+        }
+    }
+
+    pub fn set_member(&mut self, member: &Value, value: Value) {
+        match self {
+            Value::String(x) => x.set_member(&member, value),
+            Value::List(x) => x.set_member(&member, value),
+            Value::Tuple(x) => x.set_member(&member, value),
+            Value::Dict(x) => x.set_member(&member, value),
+            Value::Namespace(x) => x.borrow_mut().set_member(&member, value),
+            Value::Enum(x) => x.set_member(&member, value),
+            Value::Struct(x) => x.set_member(&member, value),
+            Value::Class(x) => x.borrow_mut().set_member(&member, value),
+            Value::ClassObject(x) => x.set_member(&member, value),
+
+            _ => panic!("Cannot get property on `{self:?}`"),
+        }
+    }
+
+    pub fn get_member_id(&self, vm: &mut VM, member: &u64) -> Value {
+        match self {
+            Value::String(x) => x.get_member_id(vm, &member),
+            Value::List(x) => x.get_member_id(vm, &member),
+            Value::Tuple(x) => x.get_member_id(vm, &member),
+            Value::Dict(x) => x.get_member_id(vm, &member),
+            Value::Namespace(x) => x.borrow().get_member_id(vm, &member),
+            Value::Enum(x) => x.get_member_id(vm, &member),
+            Value::Struct(x) => x.get_member_id(vm, &member),
+            Value::Class(x) => x.borrow().get_member_id(vm, &member),
+            Value::ClassObject(x) => x.get_member_id(vm, &member),
+
+            _ => panic!("Cannot get property on `{self:?}`"),
+        }
+    }
+
+    pub fn set_member_id(&mut self, member: &u64, value: Value) {
+        match self {
+            Value::String(x) => x.set_member_id(&member, value),
+            Value::List(x) => x.set_member_id(&member, value),
+            Value::Tuple(x) => x.set_member_id(&member, value),
+            Value::Dict(x) => x.set_member_id(&member, value),
+            Value::Namespace(x) => x.borrow_mut().set_member_id(&member, value),
+            Value::Enum(x) => x.set_member_id(&member, value),
+            Value::Struct(x) => x.set_member_id(&member, value),
+            Value::Class(x) => x.borrow_mut().set_member_id(&member, value),
+            Value::ClassObject(x) => x.set_member_id(&member, value),
+
+            _ => panic!("Cannot get property on `{self:?}`"),
         }
     }
 }

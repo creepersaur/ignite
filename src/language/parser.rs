@@ -583,7 +583,11 @@ impl Parser {
                 }
             } else {
                 this.expect_and_consume(TokenKind::COLON)?;
-                (key_base, this.parse_expression()?)
+                if let Node::Variable(x) = key_base {
+                    (Node::StringLiteral(x.to_string()), this.parse_expression()?)
+                } else {
+                    unreachable!()
+                }
             };
 
             data.push((key, value));
@@ -892,7 +896,7 @@ impl Parser {
 
             return Ok(Node::MemberAccess {
                 expr: Box::new(expr),
-                member: Box::new(Node::StringLiteral(
+                member: Box::new(Node::Symbol(
                     member.get_text(&self.source).to_string(),
                 )),
             });

@@ -599,8 +599,13 @@ impl Compiler {
 
     pub fn compile_member_access(&mut self, expr: &Box<Node>, member: &Box<Node>) {
         self.compile_node(&**expr);
-        self.compile_node(&**member);
-        self.instructions.push(Inst::GET_PROP);
+        if let Node::Symbol(id) = &**member {
+			let id = self.intern(id);
+			self.instructions.push(Inst::GET_PROP_BY_ID(id));
+		} else{
+			self.compile_node(&**member);
+			self.instructions.push(Inst::GET_PROP);
+		}
     }
 
     pub fn compile_function_call(&mut self, target: &Box<Node>, args: &Vec<Node>) {

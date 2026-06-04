@@ -110,6 +110,8 @@ pub enum Inst {
     // Get/Set property (member access)
     GET_PROP,
     SET_PROP,
+	GET_PROP_BY_ID(u64),
+    SET_PROP_BY_ID(u64),
 
     CALL(usize),
     CALL_VOID(usize),

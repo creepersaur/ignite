@@ -9,7 +9,19 @@ use crate::{
 };
 use std::cell::RefCell;
 
-pub const STRING_FUNCTIONS: [&str; 31] = [
+macro_rules! string_functions {
+    ($($name:literal),* $(,)?) => {
+        pub const STRING_FUNCTIONS: &[&str] = &[
+            $($name),*
+        ];
+
+        pub const STRING_FUNCTION_IDS: &[u64] = &[
+            $(hash_u64!($name)),*
+        ];
+    };
+}
+
+string_functions![
     "len",
     "concat",
     "copy",

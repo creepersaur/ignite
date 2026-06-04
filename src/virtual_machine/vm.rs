@@ -11,7 +11,6 @@ use crate::virtual_machine::{
         },
     },
     namespaces::standard_namespace::load_standard_namespace,
-    traits::member_accessible::IMemberAccessible,
     types::{
         classes::{class::TClass, class_object::TClassObject},
         dict::TDict,
@@ -1041,94 +1040,27 @@ impl VM {
                     let member = self.pop();
                     let target = self.pop();
 
-                    match target {
-                        Value::String(x) => {
-                            let value = x.get_member(self, &member);
-                            self.stack.push(value);
-                        }
-
-                        Value::List(x) => {
-                            let value = x.get_member(self, &member);
-                            self.stack.push(value);
-                        }
-
-                        Value::Tuple(x) => {
-                            let value = x.get_member(self, &member);
-                            self.stack.push(value);
-                        }
-
-                        Value::Dict(x) => {
-                            let value = x.get_member(self, &member);
-                            self.stack.push(value);
-                        }
-
-                        Value::Namespace(x) => {
-                            let value = x.borrow().get_member(self, &member);
-                            self.stack.push(value);
-                        }
-
-                        Value::Enum(x) => {
-                            let value = x.get_member(self, &member);
-                            self.stack.push(value);
-                        }
-
-                        Value::Struct(x) => {
-                            let value = x.get_member(self, &member);
-                            self.stack.push(value);
-                        }
-
-                        Value::Class(x) => {
-                            let value = x.borrow().get_member(self, &member);
-                            self.stack.push(value);
-                        }
-
-                        Value::ClassObject(x) => {
-                            let value = x.get_member(self, &member);
-                            self.stack.push(value);
-                        }
-
-                        _ => panic!("Cannot get property on `{target:?}`"),
-                    }
+                    let value = target.get_member(self, &member);
+                    self.stack.push(value);
                 }
                 Inst::SET_PROP => {
                     let member = self.pop();
-                    let target = self.pop();
+                    let mut target = self.pop();
                     let value = self.pop();
 
-                    match target {
-                        Value::List(mut x) => {
-                            x.set_member(&member, value);
-                        }
+                    target.set_member(&member, value);
+                }
+                Inst::GET_PROP_BY_ID(id) => {
+                    let target = self.pop();
 
-                        Value::Tuple(mut x) => {
-                            x.set_member(&member, value);
-                        }
+                    let value = target.get_member_id(self, id);
+                    self.stack.push(value);
+                }
+                Inst::SET_PROP_BY_ID(id) => {
+                    let mut target = self.pop();
+                    let value = self.pop();
 
-                        Value::Dict(mut x) => {
-                            x.set_member(&member, value);
-                        }
-
-                        Value::Namespace(x) => {
-                            x.borrow_mut().set_member(&member, value);
-                        }
-
-                        Value::Struct(mut x) => {
-                            x.set_member(&member, value);
-                        }
-
-                        Value::Class(x) => {
-                            x.borrow_mut().set_member(&member, value);
-                        }
-
-                        Value::ClassObject(mut x) => {
-                            x.set_member(&member, value);
-                        }
-
-                        _ => panic!(
-                            "Cannot set property `{member:?}` on `{}`",
-                            target.to_string(false)
-                        ),
-                    }
+                    target.set_member_id(id, value);
                 }
 
                 Inst::GET_ITER => {

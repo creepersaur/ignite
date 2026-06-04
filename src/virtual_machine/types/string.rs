@@ -3,7 +3,7 @@ use std::{fmt::Debug, rc::Rc};
 use crate::{
     misc::to_index::to_index,
     virtual_machine::{
-        libs::types::string_lib::STRING_FUNCTIONS, traits::member_accessible::IMemberAccessible,
+        libs::types::string_lib::{STRING_FUNCTION_IDS, STRING_FUNCTIONS}, traits::member_accessible::IMemberAccessible,
         types::function::TFunction, value::Value, vm::VM,
     },
 };
@@ -85,6 +85,14 @@ impl IMemberAccessible for TString {
         }
 
         panic!("Cannot get member `{}` on {self:?}", member.to_string(true));
+    }
+
+    fn get_member_id(&self, _vm: &mut VM, member: &u64) -> Value {
+        if STRING_FUNCTION_IDS.contains(member) {
+            return lib_function_id!(self, hash_u64!("string"), *member, Value::String);
+        }
+
+        panic!("Cannot get member id `{}` on {self:?}", member);
     }
 
     fn set_member(&mut self, member: &Value, _value: Value) {

@@ -1,7 +1,1 @@
-class Hello {
-	constructor() {
-		println("Created a `Hello`")
-	}
-}
-
-new Hello()
+println("hello".len())

@@ -38,6 +38,16 @@ impl TFunction {
             upvalues: vec![],
         }
     }
+
+    pub fn with_lib_id(lib: u64, method: u64, this: Option<Box<Value>>) -> Self {
+        Self {
+            entry: 0,
+            handler: Some((lib, method)),
+            target: None,
+            this,
+            upvalues: vec![],
+        }
+    }
 }
 
 impl Debug for TFunction {

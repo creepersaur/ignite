@@ -75,3 +75,30 @@ macro_rules! lib_function {
         )))
     };
 }
+
+#[macro_export]
+macro_rules! lib_function_id {
+    ($this:expr, $lib:expr, $member:expr, $val:expr) => {
+        Value::Function(Box::new(TFunction::with_lib_id(
+            $lib,
+            $member,
+            Some(Box::new({ $val }($this.clone()))),
+        )))
+    };
+
+    ($lib:literal, $member:expr) => {
+        Value::Function(Box::new(TFunction::with_lib_id(
+            $lib,
+            $member,
+            None,
+        )))
+    };
+
+    ($lib:expr, $member:expr) => {
+        Value::Function(Box::new(TFunction::with_lib_id(
+            $lib,
+            $member,
+            None,
+        )))
+    };
+}

@@ -11,6 +11,7 @@ pub enum Node {
     // LITERALS
     NIL,
     Variable(Rc<String>),
+    Symbol(String),
     Type(TypeValue),
 
     NumberLiteral(f64),
