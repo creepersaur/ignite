@@ -14,7 +14,7 @@ impl AST {
             true
         } else if let Node::ReturnStatement(_) = node {
             true
-        } else if let Node::OutStatement(_) = node {
+        } else if let Node::OutStatement { .. } = node {
             true
         } else if let Node::ContinueStatement = node {
             true
@@ -35,7 +35,7 @@ impl AST {
             Node::ExprStmt(node) => {
                 Self::prune_node(node);
             }
-            Node::Block { body } => Self::prune_block(body),
+            Node::Block { body, .. } => Self::prune_block(body),
             Node::SingleLineBlock { body } => Self::prune_node(body),
             Node::IfStatement {
                 block,
@@ -72,7 +72,7 @@ impl AST {
                     Self::prune_node(v);
                 }
             }
-            Node::OutStatement(value) => {
+            Node::OutStatement { value, .. } => {
                 if let Some(v) = value {
                     Self::prune_node(v);
                 }
@@ -358,7 +358,8 @@ impl AST {
             }
 
             // --- DEEP RECURSION FOR ALL OTHER NODES ---
-            Node::Block { body } => Node::Block {
+            Node::Block { body, name } => Node::Block {
+                name,
                 body: body.into_iter().map(Self::fold_constants).collect(),
             },
             Node::SingleLineBlock { body } => Node::SingleLineBlock {
@@ -441,9 +442,10 @@ impl AST {
             Node::ReturnStatement(val) => {
                 Node::ReturnStatement(val.map(|v| Box::new(Self::fold_constants(*v))))
             }
-            Node::OutStatement(val) => {
-                Node::OutStatement(val.map(|v| Box::new(Self::fold_constants(*v))))
-            }
+            Node::OutStatement { block_name, value } => Node::OutStatement {
+                block_name,
+                value: value.map(|v| Box::new(Self::fold_constants(*v))),
+            },
             Node::BreakStatement(val) => {
                 Node::BreakStatement(val.map(|v| Box::new(Self::fold_constants(*v))))
             }

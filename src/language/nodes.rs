@@ -92,6 +92,7 @@ pub enum Node {
     },
 
     Block {
+        name: Option<String>,
         body: Vec<Node>,
     },
     SingleLineBlock {
@@ -114,7 +115,10 @@ pub enum Node {
 
     ReturnStatement(Option<Box<Node>>),
     BreakStatement(Option<Box<Node>>),
-    OutStatement(Option<Box<Node>>),
+    OutStatement {
+        block_name: Option<String>,
+        value: Option<Box<Node>>,
+    },
     ContinueStatement,
 
     // Loops

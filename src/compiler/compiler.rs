@@ -243,7 +243,7 @@ impl Compiler {
                 else_block,
             } => self.compile_if_statement(condition, block, elifs, else_block),
 
-            Node::Block { body } => self.compile_block(body),
+            Node::Block { name, body } => self.compile_block(name, body),
 
             Node::SingleLineBlock { body } => {
                 self.push_scope();
@@ -582,30 +582,37 @@ impl Compiler {
         self.emit_load_local(names[0].as_str());
     }
 
-    pub fn compile_block(&mut self, body: &Vec<Node>) {
-        let mut outs = vec![];
+    pub fn compile_block(&mut self, name: &Option<String>, body: &Vec<Node>) {
+        let out_text = format!("out:{}", name.clone().unwrap_or("".to_string()));
+        let block_start = self.instructions.len();
 
         self.push_scope();
         for i in body {
             if let Node::ExprStmt(expr) = i {
-                if let Node::OutStatement(val) = expr.as_ref() {
-                    if let Some(v) = val {
+                if let Node::OutStatement { block_name, value } = expr.as_ref() {
+                    if let Some(v) = value {
                         self.compile_node(&*v);
                     } else {
                         self.instructions.push(Inst::PUSH(Value::NIL));
                     }
-                    outs.push(patch!(self.instructions)); // Jump to scope cleanup
+                    let _ = patch!(
+                        self.instructions,
+                        format!("out:{}", block_name.clone().unwrap_or("".to_string()))
+                    ); // Jump to scope cleanup
                 } else {
                     self.compile_node(i);
                 }
             } else {
-                if let Node::OutStatement(val) = i {
-                    if let Some(v) = val {
+                if let Node::OutStatement { block_name, value } = i {
+                    if let Some(v) = value {
                         self.compile_node(&*v);
                     } else {
                         self.instructions.push(Inst::PUSH(Value::NIL));
                     }
-                    outs.push(patch!(self.instructions)); // Jump to scope cleanup
+                    let _ = patch!(
+                        self.instructions,
+                        format!("out:{}", block_name.clone().unwrap_or("".to_string()))
+                    ); // Jump to scope cleanup
                 } else {
                     self.compile_node(i);
                 }
@@ -615,9 +622,18 @@ impl Compiler {
         self.instructions.push(Inst::PUSH(Value::NIL));
 
         let block_end = self.instructions.len() as u32;
-        for i in outs {
-            patch_execute!(self.instructions, i, Inst::JUMP(block_end));
-        }
+        patch_execute!(
+            self.instructions,
+            out_text.as_str(),
+            Inst::JUMP(block_end),
+            block_start
+        );
+        patch_execute!(
+            self.instructions,
+            "out:",
+            Inst::JUMP(block_end),
+            block_start
+        );
 
         self.pop_scope();
     }
@@ -1133,6 +1149,14 @@ macro_rules! patch_execute {
 
     ($instructions:expr, $expr:literal, $new_expr:expr) => {
         for i in 0..$instructions.len() {
+            if $instructions[i] == Inst::PATCH_ME($expr.into()) {
+                $instructions[i] = $new_expr;
+            }
+        }
+    };
+
+    ($instructions:expr, $expr:expr, $new_expr:expr, $block_start:expr) => {
+        for i in $block_start..$instructions.len() {
             if $instructions[i] == Inst::PATCH_ME($expr.into()) {
                 $instructions[i] = $new_expr;
             }

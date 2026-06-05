@@ -1,12 +1,15 @@
-struct Player {
-	name: string,
-	age: number
+let user = nil
+
+let valid = @.validation {
+    if user == nil {
+        out.validation "No user"
+    }
+
+    if !user.is_active {
+        out.validation "Disabled"
+    }
+
+    out.validation "Welcome"
 }
 
-let p = Player {
-	name: "john doe",
-	age: 18
-}
-
-p.name = "blud"
-println(p.name)
+println(valid)

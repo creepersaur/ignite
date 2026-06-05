@@ -72,6 +72,21 @@ impl Parser {
         }
     }
 
+    fn expect_and_consume_without_skipping(&mut self, kind: TokenKind) -> Result<Token, String> {
+        self.skip_new_lines();
+
+        if let Ok(next) = self.current() {
+            if next.kind != kind {
+                Err(format!("Expected `{kind:?}`, got `{:?}`", next.kind))
+            } else {
+                self.advance()?;
+                Ok(next)
+            }
+        } else {
+            Err(format!("Expected `{kind:?}`, got [EOF]."))
+        }
+    }
+
     fn parse_surrounded(
         &mut self,
         left: TokenKind,
@@ -130,7 +145,23 @@ impl Parser {
 impl Parser {
     fn parse_explicit_block(&mut self) -> NodeResult {
         self.advance();
-        self.parse_block()
+
+        if let Ok(next) = self.current()
+            && (next.kind == TokenKind::DOT || next.kind == TokenKind::DOUBLECOLON)
+        {
+            self.advance()?;
+
+            let block_id = self.expect_and_consume(TokenKind::Identifier)?;
+            let mut node = self.parse_block()?;
+
+            if let Node::Block { name, body } = &mut node {
+                *name = Some(block_id.get_text(&self.source))
+            }
+
+            Ok(node)
+        } else {
+            self.parse_block()
+        }
     }
 
     fn parse_set_variable(&mut self, expr: Node) -> NodeResult {
@@ -896,9 +927,7 @@ impl Parser {
 
             return Ok(Node::MemberAccess {
                 expr: Box::new(expr),
-                member: Box::new(Node::Symbol(
-                    member.get_text(&self.source).to_string(),
-                )),
+                member: Box::new(Node::Symbol(member.get_text(&self.source).to_string())),
             });
         } else if x.kind == TokenKind::LBRACK {
             let member = self.parse_expression()?;
@@ -1099,7 +1128,7 @@ impl Parser {
 
         self.parse_implicit_return(body.last_mut());
 
-        Ok(Node::Block { body })
+        Ok(Node::Block { name: None, body })
     }
 
     fn parse_function_def(&mut self, is_lambda: bool, is_const: bool) -> NodeResult {
@@ -1203,12 +1232,29 @@ impl Parser {
     fn parse_out(&mut self) -> NodeResult {
         self.advance()?;
 
+        let block_name = if let Ok(next) = self.current()
+            && (next.kind == TokenKind::DOT || next.kind == TokenKind::DOUBLECOLON)
+        {
+            self.advance()?;
+
+            let block_id = self.expect_and_consume_without_skipping(TokenKind::Identifier)?;
+            Some(block_id.get_text(&self.source))
+        } else {
+            None
+        };
+
         if let Ok(next) = self.current()
             && !matches!(next.kind, TokenKind::NEWLINE | TokenKind::SEMI)
         {
-            Ok(Node::OutStatement(Some(Box::new(self.parse_expression()?))))
+            Ok(Node::OutStatement {
+                block_name,
+                value: Some(Box::new(self.parse_expression()?)),
+            })
         } else {
-            Ok(Node::OutStatement(None))
+            Ok(Node::OutStatement {
+                block_name,
+                value: None,
+            })
         }
     }
 
@@ -1463,13 +1509,16 @@ impl Parser {
                         | Node::WhileLoop { .. }
                         | Node::ForLoop { .. }
                         | Node::Loop { .. }
-                        | Node::OutStatement(..)
+                        | Node::OutStatement { .. }
                         | Node::ReturnStatement(..)
                         | Node::BreakStatement(..)
                 );
 
                 if is_returnable {
-                    *last = Node::ExprStmt(Box::new(Node::OutStatement(Some(expr.clone()))));
+                    *last = Node::ExprStmt(Box::new(Node::OutStatement {
+                        block_name: None,
+                        value: Some(expr.clone()),
+                    }));
                 }
             }
         }

@@ -27,6 +27,9 @@ use simply_colored::*;
 use std::{cell::RefCell, collections::HashMap, io::Read, rc::Rc};
 
 const ORANGE: &str = "\x1b[38;2;255;150;60m";
+const BLUE: &str = "\x1b[38;2;115;165;255m"; // #73a5ff
+const PURPLE: &str = "\x1b[38;2;197;156;249m"; // #c59cf9
+const GREEN: &str = "\x1b[38;2;62;198;140m"; // #3ec68c
 
 pub struct CallFrame {
     scope_base: usize,
@@ -189,31 +192,10 @@ impl VM {
     pub fn print_instructions(&self) {
         let mut depth: i32 = 0;
 
-        for (i, v) in self.instructions.borrow().iter().enumerate() {
-            if let Inst::POP_SCOPE = v {
-                depth -= 1;
-            }
-
-            let indent = format!(
-                "{}{}",
-                if depth < 0 { RED } else { DIM_BLACK },
-                "|  ".repeat(depth.abs() as usize)
-            );
-
-            if let Inst::COMMENT(x) = v {
-                println!(
-                    "{BLACK}\t {}--- {x} ---{RESET}",
-                    format!(
-                        "{}{}",
-                        if depth < 0 { RED } else { DIM_BLACK },
-                        "|  ".repeat(depth.abs() as usize)
-                    ),
-                );
-                continue;
-            }
-
-            // Resolve u64 instructions to human-readable display strings
+        let display_func = move |v: &Inst| {
             let display = match v {
+				Inst::PUSH_SCOPE => Some(format!("PUSH_SCOPE +")),
+				Inst::POP_SCOPE => Some(format!("POP_SCOPE -")),
                 Inst::LOAD(id) => Some(format!("LOAD({})", self.lookup_intern(*id))),
                 Inst::LOAD_LOCAL { id, depth } => Some(format!(
                     "LOAD_LOCAL({}, depth: {})",
@@ -234,6 +216,9 @@ impl VM {
                 Inst::STORE_GLOBAL(id) => {
                     Some(format!("STORE_GLOBAL({})", self.lookup_intern(*id)))
                 }
+                Inst::STORE_GLOBAL_CONST(id) => {
+                    Some(format!("STORE_GLOBAL_CONST({})", self.lookup_intern(*id)))
+                }
                 Inst::SET_VAR(id) => Some(format!("SET_VAR({})", self.lookup_intern(*id))),
                 Inst::LOAD_UPVALUE { id, scope_idx } => Some(format!(
                     "LOAD_UPVALUE({}, depth: {})",
@@ -250,17 +235,62 @@ impl VM {
                 Inst::SET_PROP_BY_ID(id) => {
                     Some(format!("SET_PROP_BY_ID({})", self.lookup_intern(*id)))
                 }
+                Inst::STRUCT(fields) => Some(format!(
+                    "STRUCT({:?})",
+                    fields
+                        .iter()
+                        .map(|x| self.lookup_intern(*x))
+                        .collect::<Vec<_>>()
+                )),
                 Inst::MAKE_CLASS {
                     name,
                     has_constructor,
                     ..
                 } => Some(format!(
-                    "MAKE_CLASS(name: {}, has_constructor: {})",
-                    name, has_constructor
+                    "MAKE_CLASS(name: {}{})",
+                    name,
+                    if *has_constructor {
+                        ", constructor"
+                    } else {
+                        ""
+                    }
                 )),
                 _ => None,
             };
 
+            display
+        };
+
+        let (max_opcode_width, max_operand_width) = self
+            .instructions
+            .borrow()
+            .iter()
+            .map(|v| {
+                let display = display_func(v).unwrap_or(format!("{v:?}"));
+                let mut parts = display.splitn(2, '(');
+
+                let opcode_width = parts.next().unwrap().len();
+                let operand_width = parts.next().map(|r| r.len().saturating_sub(1)).unwrap_or(0);
+
+                (opcode_width, operand_width)
+            })
+            .fold((0, 0), |(max_op, max_arg), (op, arg)| {
+                (max_op.max(op), max_arg.max(arg))
+            });
+
+        for (i, v) in self.instructions.borrow().iter().enumerate() {
+            if let Inst::POP_SCOPE = v {
+                depth -= 1;
+            }
+
+            if let Inst::COMMENT(x) = v {
+                println!(
+                    "{BLACK}\t   --- {x} ---{RESET}",
+                );
+                continue;
+            }
+
+            let display = display_func(v);
             let s = match &display {
                 Some(d) => d.clone(),
                 None => format!("{:?}", v),
@@ -286,32 +316,45 @@ impl VM {
             } else if matches!(v, Inst::NOP) {
                 BLACK
             } else {
-                ORANGE
+                BLUE
             };
 
-            print!("{MAGENTA}{i:>2}{BLACK} │ {indent}");
+            print!("{ORANGE}{i:>2}{BLACK} │ ");
+
+            let (opcode_width, operand_width) = (max_opcode_width, max_operand_width);
 
             if rest.is_empty() {
-                print!("{color}{opcode}{RESET}");
-            } else {
                 print!(
-                    "{color}{opcode}{RESET}({BLUE}{}{RESET})",
-                    &rest[0..rest.len() - 1]
+                    "{color}{opcode:<opcode_width$}{BLACK} │ {:<operand_width$} │ {RESET}",
+                    ""
                 );
+            } else {
+                let s = &rest[0..rest.len() - 1];
+
+                if let Some((typename, rest)) = s.split_once('(') {
+                    let contents = &rest[..rest.len() - 1];
+
+                    print!("{color}{opcode:<opcode_width$}{BLACK} │ ",);
+
+                    let plain_len = typename.len() + contents.len() + 2;
+                    let padding = operand_width.saturating_sub(plain_len);
+
+                    print!(
+                        "{DIM_BLACK}{typename}{RESET}({GREEN}{contents}{RESET}){}{BLACK} │ {RESET}",
+                        " ".repeat(padding)
+                    );
+                } else {
+                    print!(
+                        "{color}{opcode:<opcode_width$}{BLACK} │ {PURPLE}{:<operand_width$}{BLACK} │ {RESET}",
+                        &rest[0..rest.len() - 1]
+                    );
+                }
             }
 
             if let Inst::LOAD_CONST(x) = v {
-                print!("{BLACK}        │ {:>50?}{RESET}", self.constants[*x as usize]);
+                print!("{BLACK}{:?}{RESET}", self.constants[*x as usize]);
             }
-            if let Inst::PUSH_SCOPE = v {
-                print!(" {{");
-                depth += 1;
-            }
-            if let Inst::POP_SCOPE = v {
-                println!(" }}");
-            } else {
-                println!();
-            }
+            println!();
         }
     }
 }
@@ -828,7 +871,8 @@ impl VM {
                 }
                 Inst::LOAD_LOCAL { id, depth } => {
                     if let Some(current_frame) = self.call_stack.last() {
-                        if let Some((val, _)) = self.locals[current_frame.scope_base + *depth as usize]
+                        if let Some((val, _)) = self.locals
+                            [current_frame.scope_base + *depth as usize]
                             .borrow()
                             .get(id)
                         {
