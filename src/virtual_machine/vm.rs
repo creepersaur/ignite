@@ -244,6 +244,9 @@ impl VM {
                     "MAKE_CLOSURE(entry: {}, captures: {:?})",
                     entry, captures
                 )),
+                Inst::GET_PROP_BY_ID(id) => {
+                    Some(format!("GET_PROP_BY_ID({})", self.lookup_intern(*id)))
+                }
                 Inst::MAKE_CLASS {
                     name,
                     has_constructor,
