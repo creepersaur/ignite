@@ -25,7 +25,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     if args.contains(&"tokens".to_string()) {
         println!("Lexed Tokens:");
-        println!("---------------------------");
+        println!("───────────────────────────");
         println!("{:#?}", tokens);
     }
 
@@ -48,7 +48,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     if args.contains(&"nodes".to_string()) {
         println!("Generated Nodes:");
-        println!("---------------------------");
+        println!("───────────────────────────");
         println!("{nodes:#?}");
     }
 
@@ -77,7 +77,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
             if args.contains(&"inst".to_string()) && !args.contains(&"no_pre".to_string()) {
                 println!("\n[Pre-optimization] Compiled instructions:");
-                println!("---------------------------");
+                println!("───────────────────────────────────────────");
 
                 vm.print_instructions();
             }
@@ -100,7 +100,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     if args.contains(&"inst".to_string()) {
         println!("\nCompiled instructions:");
-        println!("---------------------------");
+        println!("───────────────────────────────────────────");
 
         vm.print_instructions();
     }
@@ -111,7 +111,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         vm.write_bytecode_file("bytecode2.igb", args.contains(&"compress".to_string()));
     } else {
         println!("\nRunning:");
-        println!("---------------------------");
+        println!("───────────────────────────");
         let instructions_clone = vm.instructions.clone();
 
         if args.contains(&"bench".to_string()) {

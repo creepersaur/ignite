@@ -5,7 +5,19 @@ use crate::{
     virtual_machine::{libs::lib::Library, types::list::TList, value::Value, vm::VM},
 };
 
-pub const TUPLE_FUNCTIONS: [&str; 10] = [
+macro_rules! tuple_functions {
+    ($($name:literal),* $(,)?) => {
+        pub const TUPLE_FUNCTIONS: &[&str] = &[
+            $($name),*
+        ];
+
+        pub const TUPLE_FUNCTION_IDS: &[u64] = &[
+            $(hash_u64!($name)),*
+        ];
+    };
+}
+
+tuple_functions![
     "len", "insert", "map", "concat", "copy", "count", "sort", "reverse", "rep", "to_list",
 ];
 

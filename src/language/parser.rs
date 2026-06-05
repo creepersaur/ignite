@@ -586,7 +586,7 @@ impl Parser {
                 if let Node::Variable(x) = key_base {
                     (Node::StringLiteral(x.to_string()), this.parse_expression()?)
                 } else {
-                    unreachable!()
+                    (key_base, this.parse_expression()?)
                 }
             };
 

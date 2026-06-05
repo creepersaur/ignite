@@ -12,7 +12,19 @@ use crate::{
     },
 };
 
-pub const DICT_FUNCTIONS: [&str; 12] = [
+macro_rules! dict_functions {
+    ($($name:literal),* $(,)?) => {
+        pub const DICT_FUNCTIONS: &[&str] = &[
+            $($name),*
+        ];
+
+        pub const DICT_FUNCTION_IDS: &[u64] = &[
+            $(hash_u64!($name)),*
+        ];
+    };
+}
+
+dict_functions![
     "len", "items", "keys", "values", "get", "insert", "remove", "clear", "append", "concat",
     "count", "map",
 ];

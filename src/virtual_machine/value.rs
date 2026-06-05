@@ -2,7 +2,7 @@ use bincode::{Decode, Encode};
 use std::{
     cell::RefCell,
     fmt::Debug,
-    hash::{Hash, Hasher},
+    hash::{DefaultHasher, Hash, Hasher},
     rc::Rc,
 };
 
@@ -339,21 +339,28 @@ impl Value {
         }
     }
 
-    pub fn set_member_id(&mut self, member: &u64, value: Value) {
+    pub fn set_member_id(&mut self, vm: &mut VM, member: &u64, value: Value) {
         match self {
-            Value::String(x) => x.set_member_id(&member, value),
-            Value::List(x) => x.set_member_id(&member, value),
-            Value::Tuple(x) => x.set_member_id(&member, value),
-            Value::Dict(x) => x.set_member_id(&member, value),
-            Value::Namespace(x) => x.borrow_mut().set_member_id(&member, value),
-            Value::Enum(x) => x.set_member_id(&member, value),
-            Value::Struct(x) => x.set_member_id(&member, value),
-            Value::Class(x) => x.borrow_mut().set_member_id(&member, value),
-            Value::ClassObject(x) => x.set_member_id(&member, value),
+            Value::String(x) => x.set_member_id(vm, &member, value),
+            Value::List(x) => x.set_member_id(vm, &member, value),
+            Value::Tuple(x) => x.set_member_id(vm, &member, value),
+            Value::Dict(x) => x.set_member_id(vm, &member, value),
+            Value::Namespace(x) => x.borrow_mut().set_member_id(vm, &member, value),
+            Value::Enum(x) => x.set_member_id(vm, &member, value),
+            Value::Struct(x) => x.set_member_id(vm, &member, value),
+            Value::Class(x) => x.borrow_mut().set_member_id(vm, &member, value),
+            Value::ClassObject(x) => x.set_member_id(vm, &member, value),
 
             _ => panic!("Cannot get property on `{self:?}`"),
         }
     }
+
+	#[allow(unused)]
+	pub fn hashed(&self) -> u64 {
+		let mut state = DefaultHasher::new();
+		self.hash(&mut state);
+		state.finish()
+	}
 }
 
 impl Eq for Value {}

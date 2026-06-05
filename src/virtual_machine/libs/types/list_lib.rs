@@ -5,7 +5,19 @@ use crate::{
 };
 use std::{cell::RefCell, cmp::Ordering};
 
-pub const LIST_FUNCTIONS: [&str; 17] = [
+macro_rules! list_functions {
+    ($($name:literal),* $(,)?) => {
+        pub const LIST_FUNCTIONS: &[&str] = &[
+            $($name),*
+        ];
+
+        pub const LIST_FUNCTION_IDS: &[u64] = &[
+            $(hash_u64!($name)),*
+        ];
+    };
+}
+
+list_functions![
     "len",
     "push",
     "insert",

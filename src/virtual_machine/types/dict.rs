@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::HashMap, fmt::Debug, rc::Rc};
 
 use crate::virtual_machine::{
-    libs::types::dict_lib::DICT_FUNCTIONS, traits::member_accessible::IMemberAccessible,
+    libs::types::dict_lib::{DICT_FUNCTION_IDS, DICT_FUNCTIONS}, traits::member_accessible::IMemberAccessible,
     types::function::TFunction, value::Value, vm::VM,
 };
 use bincode::{Decode, Encode};
@@ -50,5 +50,16 @@ impl IMemberAccessible for TDict {
         self.values.borrow_mut().insert(member.clone(), value);
 
         // panic!("Cannot set member `{}` on {self:?}", member.to_string(true));
+    }
+
+    fn get_member_id(&self, vm: &mut VM, member: &u64) -> Value {
+        if DICT_FUNCTION_IDS.contains(member) {
+            return lib_function_id!(self, hash_u64!("dict"), *member, Value::Dict);
+        }
+
+        panic!(
+            "Cannot get member id `{}` on {self:?}",
+            vm.lookup_intern(*member)
+        );
     }
 }

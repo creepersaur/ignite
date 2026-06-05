@@ -1,1 +1,12 @@
-println("hello".len())
+struct Player {
+	name: string,
+	age: number
+}
+
+let p = Player {
+	name: "john doe",
+	age: 18
+}
+
+p.name = "blud"
+println(p.name)

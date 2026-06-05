@@ -3,8 +3,7 @@ use std::{cell::RefCell, fmt::Debug, rc::Rc};
 use crate::{
     misc::to_index::to_index,
     virtual_machine::{
-        libs::types::list_lib::LIST_FUNCTIONS, libs::types::tuple_lib::TUPLE_FUNCTIONS,
-        traits::member_accessible::IMemberAccessible, types::function::TFunction, value::Value,
+        libs::types::{list_lib::{LIST_FUNCTION_IDS, LIST_FUNCTIONS}, tuple_lib::{TUPLE_FUNCTION_IDS, TUPLE_FUNCTIONS}}, traits::member_accessible::IMemberAccessible, types::function::TFunction, value::Value,
         vm::VM,
     },
 };
@@ -66,6 +65,23 @@ impl IMemberAccessible for TList {
         panic!("Cannot get member `{}` on {self:?}", member.to_string(true));
     }
 
+    fn get_member_id(&self, vm: &mut VM, member: &u64) -> Value {
+        match self.is_tuple {
+            true => {
+                if TUPLE_FUNCTION_IDS.contains(member) {
+                    return lib_function_id!(self, hash_u64!("tuple"), *member, Value::Tuple);
+                }
+            }
+            false => {
+                if LIST_FUNCTION_IDS.contains(member) {
+                    return lib_function_id!(self, hash_u64!("list"), *member, Value::List);
+                }
+            }
+        }
+
+        panic!("Cannot get member `{}` on {self:?}", vm.lookup_intern(*member));
+    }
+
     fn set_member(&mut self, member: &Value, value: Value) {
         if let Value::Number(index) = member {
             let len = self.values.borrow().len();
@@ -76,5 +92,9 @@ impl IMemberAccessible for TList {
         }
 
         panic!("Cannot set member `{}` on {self:?}", member.to_string(true));
+    }
+
+    fn set_member_id(&mut self, vm: &mut VM, member: &u64, _value: Value) {
+        panic!("Cannot set member `{}` on {self:?}", vm.lookup_intern(*member));
     }
 }

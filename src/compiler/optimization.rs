@@ -23,7 +23,7 @@ impl Compiler {
         });
         self.replace_with(|i, v| {
             if let Inst::JUMP(n) = v
-                && *n == i + 1
+                && *n == i as u32 + 1
             {
                 Some(Inst::COMMENT("optimized away jump straight ahead".into()))
             } else {
@@ -150,7 +150,7 @@ impl Compiler {
                 | Inst::JUMP_IF_TRUE(target)
                 | Inst::JUMP_IF_NOT_NIL(target)
                 | Inst::FOR_ITER(target) => {
-                    *target = old_to_new[*target];
+                    *target = old_to_new[*target as usize] as u32;
                 }
 
                 // Functions
@@ -163,7 +163,7 @@ impl Compiler {
                         upvalues: f.upvalues.clone(),
                     })
                 }
-                Inst::MAKE_CLOSURE { entry, .. } => *entry = old_to_new[*entry],
+                Inst::MAKE_CLOSURE { entry, .. } => *entry = old_to_new[*entry as usize] as u32,
 
                 _ => {}
             }

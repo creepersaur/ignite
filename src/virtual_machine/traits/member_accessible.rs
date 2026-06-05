@@ -12,10 +12,10 @@ pub trait IMemberAccessible: Debug {
     }
 
     fn get_member_id(&self, vm: &mut VM, member: &u64) -> Value {
-        self.get_member(vm, &Value::string(member.to_string()))
+        panic!("Cannot get member id `{}` on {self:?}", vm.lookup_intern(*member));
     }
 
-    fn set_member_id(&mut self, member: &u64, value: Value) {
-        self.set_member(&Value::string(member.to_string()), value)
+    fn set_member_id(&mut self, vm: &mut VM, member: &u64, _value: Value) {
+        panic!("Cannot set member id `{}` on {self:?}", vm.lookup_intern(*member));
     }
 }

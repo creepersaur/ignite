@@ -59,7 +59,7 @@ impl Compiler {
 
     pub fn emit_store_local(&mut self, name: &str, is_const: bool) {
         let id = self.intern(name);
-        let depth = self.scopes.len() - 1 - self.scope_base;
+        let depth = (self.scopes.len() - 1 - self.scope_base) as u16;
 
         if self.scopes.len() == 1 {
             if is_const {
@@ -99,13 +99,13 @@ impl Compiler {
                         .current_captures
                         .iter()
                         .position(|&d| d == absolute)
-                        .unwrap();
+                        .unwrap() as u16;
                     self.instructions.push(Inst::LOAD_UPVALUE { id, scope_idx });
                 } else {
                     let relative = depth - self.scope_base;
                     self.instructions.push(Inst::LOAD_LOCAL {
                         id,
-                        depth: relative,
+                        depth: relative as u16,
                     });
                 }
                 return;
@@ -123,12 +123,38 @@ impl Compiler {
             .enumerate()
             .find(|(_, thing)| thing == &&value)
         {
-            self.instructions.push(Inst::LOAD_CONST(idx));
+            self.instructions.push(Inst::LOAD_CONST(idx as u32));
             return;
         }
         self.constants.push(value);
         self.instructions
-            .push(Inst::LOAD_CONST(self.constants.len() - 1));
+            .push(Inst::LOAD_CONST(self.constants.len() as u32 - 1));
+    }
+
+    fn emit_get_prop(&mut self, member: &Node) {
+        match member {
+            Node::Symbol(name) => {
+                let id = self.intern(name);
+                self.instructions.push(Inst::GET_PROP_BY_ID(id));
+            }
+            _ => {
+                self.compile_node(member);
+                self.instructions.push(Inst::GET_PROP);
+            }
+        }
+    }
+
+    fn emit_set_prop(&mut self, member: &Node) {
+        match member {
+            Node::Symbol(name) => {
+                let id = self.intern(name);
+                self.instructions.push(Inst::SET_PROP_BY_ID(id));
+            }
+            _ => {
+                self.compile_node(member);
+                self.instructions.push(Inst::SET_PROP);
+            }
+        }
     }
 
     pub fn compile_node(&mut self, node: &Node) {
@@ -265,7 +291,8 @@ impl Compiler {
         for i in values.iter().rev() {
             self.compile_node(i);
         }
-        self.instructions.push(Inst::CONCAT_STR(values.len()));
+        self.instructions
+            .push(Inst::CONCAT_STR(values.len() as u16));
     }
 
     pub fn compile_range(
@@ -323,9 +350,9 @@ impl Compiler {
 
         values.iter().rev().for_each(|node| self.compile_node(node));
         self.instructions.push(if is_tuple {
-            Inst::TUPLE(values.len())
+            Inst::TUPLE(values.len() as u16)
         } else {
-            Inst::LIST(values.len())
+            Inst::LIST(values.len() as u16)
         });
     }
 
@@ -334,7 +361,7 @@ impl Compiler {
             self.compile_node(k);
             self.compile_node(v);
         }
-        self.instructions.push(Inst::DICT(values.len()));
+        self.instructions.push(Inst::DICT(values.len() as u16));
     }
 
     pub fn compile_unary_op(&mut self, op: &TokenKind, target: &Box<Node>, is_prefix: bool) {
@@ -361,8 +388,7 @@ impl Compiler {
                 self.instructions.push(Inst::SET_VAR(id))
             } else if let Node::MemberAccess { expr, member } = &**target {
                 self.compile_node(&**expr);
-                self.compile_node(&**member);
-                self.instructions.push(Inst::GET_PROP);
+                self.emit_get_prop(member);
                 if !is_prefix {
                     self.instructions.push(Inst::DUP);
                 }
@@ -372,8 +398,7 @@ impl Compiler {
                     self.instructions.push(Inst::DUP);
                 }
                 self.compile_node(&**expr);
-                self.compile_node(&**member);
-                self.instructions.push(Inst::SET_PROP);
+                self.emit_set_prop(member);
             } else {
                 panic!("Cannot set equal a value to `{:?}`", **target);
             }
@@ -486,7 +511,7 @@ impl Compiler {
         patch_execute!(
             self.instructions,
             jump_patch,
-            Inst::JUMP_IF_NOT_NIL(self.instructions.len())
+            Inst::JUMP_IF_NOT_NIL(self.instructions.len() as u32)
         );
     }
 
@@ -503,7 +528,7 @@ impl Compiler {
         patch_execute!(
             self.instructions,
             jump_patch,
-            Inst::JUMP_IF_TRUE(self.instructions.len())
+            Inst::JUMP_IF_TRUE(self.instructions.len() as u32)
         );
     }
 
@@ -524,7 +549,7 @@ impl Compiler {
         patch_execute!(
             self.instructions,
             jump_if_false,
-            Inst::JUMP_IF_FALSE(self.instructions.len())
+            Inst::JUMP_IF_FALSE(self.instructions.len() as u32)
         );
 
         self.compile_node(&**false_expr);
@@ -532,7 +557,7 @@ impl Compiler {
         patch_execute!(
             self.instructions,
             jump_end,
-            Inst::JUMP(self.instructions.len())
+            Inst::JUMP(self.instructions.len() as u32)
         );
     }
 
@@ -589,7 +614,7 @@ impl Compiler {
 
         self.instructions.push(Inst::PUSH(Value::NIL));
 
-        let block_end = self.instructions.len();
+        let block_end = self.instructions.len() as u32;
         for i in outs {
             patch_execute!(self.instructions, i, Inst::JUMP(block_end));
         }
@@ -599,13 +624,7 @@ impl Compiler {
 
     pub fn compile_member_access(&mut self, expr: &Box<Node>, member: &Box<Node>) {
         self.compile_node(&**expr);
-        if let Node::Symbol(id) = &**member {
-			let id = self.intern(id);
-			self.instructions.push(Inst::GET_PROP_BY_ID(id));
-		} else{
-			self.compile_node(&**member);
-			self.instructions.push(Inst::GET_PROP);
-		}
+        self.emit_get_prop(member);
     }
 
     pub fn compile_function_call(&mut self, target: &Box<Node>, args: &Vec<Node>) {
@@ -614,7 +633,7 @@ impl Compiler {
         }
 
         self.compile_node(&**target);
-        self.instructions.push(Inst::CALL(args.len()));
+        self.instructions.push(Inst::CALL(args.len() as u16));
     }
 
     pub fn compile_if_statement(
@@ -647,7 +666,7 @@ impl Compiler {
             patch_execute!(
                 self.instructions,
                 jump_if_false,
-                Inst::JUMP_IF_FALSE(self.instructions.len())
+                Inst::JUMP_IF_FALSE(self.instructions.len() as u32)
             );
         };
 
@@ -665,7 +684,7 @@ impl Compiler {
             self.instructions.push(Inst::PUSH(Value::NIL));
         }
 
-        let if_end = self.instructions.len();
+        let if_end = self.instructions.len() as u32;
         for x in if_end_jumps {
             patch_execute!(self.instructions, x, Inst::JUMP(if_end));
         }
@@ -682,8 +701,7 @@ impl Compiler {
             self.compile_node(&**value);
             self.instructions.push(Inst::DUP);
             self.compile_node(&**expr);
-            self.compile_node(&**member);
-            self.instructions.push(Inst::SET_PROP);
+            self.emit_set_prop(member);
         } else {
             panic!("Cannot set equal a value to `{:?}`", **target);
         }
@@ -713,14 +731,12 @@ impl Compiler {
             self.instructions.push(Inst::SET_VAR(hash_u64!(x.as_str())));
         } else if let Node::MemberAccess { expr, member } = &**target {
             self.compile_node(&**expr);
-            self.compile_node(&**member);
-            self.instructions.push(Inst::GET_PROP); // LOAD expr.member
+            self.emit_get_prop(member); // LOAD expr.member
             self.compile_node(&**value); // LOAD 1
             self.instructions.push(operator_inst); // ADD
 
             self.compile_node(&**expr);
-            self.compile_node(&**member);
-            self.instructions.push(Inst::SET_PROP); // SET expr.member
+            self.emit_set_prop(member); // SET expr.member
         } else {
             panic!("Cannot set equal a value to `{:?}`", **target);
         }
@@ -781,14 +797,17 @@ impl Compiler {
 
         self.comment("Function def end");
 
-        let captures = std::mem::take(&mut self.current_captures);
+        let captures = std::mem::take(&mut self.current_captures)
+            .iter()
+            .map(|x| *x as u32)
+            .collect();
         self.current_captures = saved_captures;
 
         patch_execute!(
             self.instructions,
             func_value,
             Inst::MAKE_CLOSURE {
-                entry: func_start,
+                entry: func_start as u32,
                 captures
             }
         );
@@ -796,7 +815,7 @@ impl Compiler {
         patch_execute!(
             self.instructions,
             func_jump_to_end,
-            Inst::JUMP(self.instructions.len())
+            Inst::JUMP(self.instructions.len() as u32)
         );
     }
 
@@ -809,25 +828,25 @@ impl Compiler {
 
         self.compile_node(&*block);
 
-        self.instructions.push(Inst::JUMP(loop_start_index));
+        self.instructions.push(Inst::JUMP(loop_start_index as u32));
 
         patch_execute!(
             self.instructions,
             end_loop_jump,
-            Inst::JUMP_IF_FALSE(self.instructions.len())
+            Inst::JUMP_IF_FALSE(self.instructions.len() as u32)
         );
 
         patch_execute!(
             self.instructions,
             "break",
-            Inst::JUMP(self.instructions.len()),
+            Inst::JUMP(self.instructions.len() as u32),
             loop_start_index
         );
 
         patch_execute!(
             self.instructions,
             "continue",
-            Inst::JUMP(loop_start_index),
+            Inst::JUMP(loop_start_index as u32),
             loop_start_index
         );
 
@@ -849,25 +868,25 @@ impl Compiler {
 
         self.compile_node(&*block);
 
-        self.instructions.push(Inst::JUMP(loop_start_index));
+        self.instructions.push(Inst::JUMP(loop_start_index as u32));
 
         patch_execute!(
             self.instructions,
             for_iter,
-            Inst::FOR_ITER(self.instructions.len())
+            Inst::FOR_ITER(self.instructions.len() as u32)
         );
 
         patch_execute!(
             self.instructions,
             "break",
-            Inst::JUMP(self.instructions.len()),
+            Inst::JUMP(self.instructions.len() as u32),
             loop_start_index
         );
 
         patch_execute!(
             self.instructions,
             "continue",
-            Inst::JUMP(loop_start_index),
+            Inst::JUMP(loop_start_index as u32),
             loop_start_index
         );
 
@@ -881,19 +900,19 @@ impl Compiler {
 
         self.compile_node(&*block);
 
-        self.instructions.push(Inst::JUMP(loop_start_index));
+        self.instructions.push(Inst::JUMP(loop_start_index as u32));
 
         patch_execute!(
             self.instructions,
             "break",
-            Inst::JUMP(self.instructions.len()),
+            Inst::JUMP(self.instructions.len() as u32),
             loop_start_index
         );
 
         patch_execute!(
             self.instructions,
             "continue",
-            Inst::JUMP(loop_start_index),
+            Inst::JUMP(loop_start_index as u32),
             loop_start_index
         );
 
@@ -930,7 +949,7 @@ impl Compiler {
             patch_execute!(
                 self.instructions,
                 jump_if_false,
-                Inst::JUMP_IF_FALSE(self.instructions.len())
+                Inst::JUMP_IF_FALSE(self.instructions.len() as u32)
             );
         }
 
@@ -988,7 +1007,7 @@ impl Compiler {
     pub fn compile_struct_def(&mut self, name: &String, fields: &Vec<(String, String)>) {
         let mut field_map = HashMap::new();
         for (k, v) in fields {
-            field_map.insert(k.as_str().into(), v.as_str().into());
+            field_map.insert(self.intern(k.as_str()), v.as_str().into());
         }
 
         self.instructions
@@ -1007,13 +1026,13 @@ impl Compiler {
             self.compile_node(value);
         }
         self.compile_node(&**target);
-        self.instructions.push(Inst::STRUCT(
-            field_names
-                .iter()
-                .rev()
-                .map(|x| x.as_str().into())
-                .collect(),
-        ));
+
+        let field_name_ids = field_names
+            .iter()
+            .rev()
+            .map(|x| self.intern(x.as_str()))
+            .collect();
+        self.instructions.push(Inst::STRUCT(field_name_ids));
     }
 
     pub fn compile_class_def(
@@ -1084,7 +1103,8 @@ impl Compiler {
         }
 
         self.compile_node(&**target);
-        self.instructions.push(Inst::INIT_CLASS(parameters.len()));
+        self.instructions
+            .push(Inst::INIT_CLASS(parameters.len() as u16));
     }
 }
 

@@ -143,7 +143,7 @@ impl VM {
         self.constants.extend(constants);
     }
 
-    pub fn call_function(&mut self, f: TFunction, mut args_count: usize) {
+    pub fn call_function(&mut self, f: TFunction, mut args_count: u16) {
         if let Some(target) = f.target {
             self.stack.push(target.as_ref().clone());
             args_count += 1;
@@ -247,6 +247,9 @@ impl VM {
                 Inst::GET_PROP_BY_ID(id) => {
                     Some(format!("GET_PROP_BY_ID({})", self.lookup_intern(*id)))
                 }
+                Inst::SET_PROP_BY_ID(id) => {
+                    Some(format!("SET_PROP_BY_ID({})", self.lookup_intern(*id)))
+                }
                 Inst::MAKE_CLASS {
                     name,
                     has_constructor,
@@ -286,7 +289,7 @@ impl VM {
                 ORANGE
             };
 
-            print!("{MAGENTA}{i:>2}{RESET}   {BLACK}{indent}");
+            print!("{MAGENTA}{i:>2}{BLACK} │ {indent}");
 
             if rest.is_empty() {
                 print!("{color}{opcode}{RESET}");
@@ -298,7 +301,7 @@ impl VM {
             }
 
             if let Inst::LOAD_CONST(x) = v {
-                print!("{BLACK}   {:>3?}{RESET}", self.constants[*x]);
+                print!("{BLACK}        │ {:>50?}{RESET}", self.constants[*x as usize]);
             }
             if let Inst::PUSH_SCOPE = v {
                 print!(" {{");
@@ -376,7 +379,7 @@ impl VM {
     pub fn fold_constants(&mut self) {
         for inst in &mut self.instructions.borrow_mut().iter_mut() {
             if let Inst::LOAD_CONST(idx) = inst {
-                *inst = Inst::PUSH(self.constants[*idx].clone());
+                *inst = Inst::PUSH(self.constants[*idx as usize].clone());
             }
         }
     }
@@ -496,12 +499,12 @@ impl VM {
                     let values = rc!(RefCell::new(
                         field_names
                             .iter()
-                            .map(|x| (x.clone(), self.pop()))
+                            .map(|x| (*x, self.pop()))
                             .collect::<HashMap<_, _>>()
                     ));
 
                     for (name, value) in values.borrow().iter() {
-                        if let Some(v_type) = base.fields.get(&*name) {
+                        if let Some(v_type) = base.fields.get(name) {
                             if !value.type_matches(v_type) {
                                 panic!(
                                     "Field '{name}' expects type `{v_type}`, got `{}`.",
@@ -785,7 +788,7 @@ impl VM {
                     self.stack.push(Value::Bool(result));
                 }
 
-                Inst::LOAD_CONST(id) => self.stack.push(self.constants[*id].clone()),
+                Inst::LOAD_CONST(id) => self.stack.push(self.constants[*id as usize].clone()),
                 Inst::STORE_GLOBAL(id) => {
                     let id = *id;
                     let value = self.pop();
@@ -816,7 +819,7 @@ impl VM {
                 Inst::STORE_LOCAL { id, depth } => {
                     if let Some(current_frame) = self.call_stack.last() {
                         let id = *id;
-                        let depth = current_frame.scope_base + *depth;
+                        let depth = current_frame.scope_base + *depth as usize;
                         let value = self.pop();
                         self.locals[depth].borrow_mut().insert(id, (value, false));
                     } else {
@@ -825,7 +828,7 @@ impl VM {
                 }
                 Inst::LOAD_LOCAL { id, depth } => {
                     if let Some(current_frame) = self.call_stack.last() {
-                        if let Some((val, _)) = self.locals[current_frame.scope_base + *depth]
+                        if let Some((val, _)) = self.locals[current_frame.scope_base + *depth as usize]
                             .borrow()
                             .get(id)
                         {
@@ -833,7 +836,7 @@ impl VM {
                         } else {
                             panic!(
                                 "Unknown local variable at depth {}: {}",
-                                current_frame.scope_base + *depth,
+                                current_frame.scope_base + *depth as usize,
                                 self.lookup_intern(*id)
                             );
                         }
@@ -844,7 +847,7 @@ impl VM {
                 Inst::STORE_LOCAL_CONST { id, depth } => {
                     if let Some(current_frame) = self.call_stack.last() {
                         let id = *id;
-                        let depth = current_frame.scope_base + *depth;
+                        let depth = current_frame.scope_base + *depth as usize;
                         let value = self.pop();
                         self.locals[depth].borrow_mut().insert(id, (value, true));
                     } else {
@@ -906,11 +909,11 @@ impl VM {
                 Inst::MAKE_CLOSURE { entry, captures } => {
                     let upvalues = captures
                         .iter()
-                        .map(|&i| Rc::clone(&self.locals[i]))
+                        .map(|&i| Rc::clone(&self.locals[i as usize]))
                         .collect();
 
                     self.stack.push(Value::Function(Box::new(TFunction {
-                        entry: *entry,
+                        entry: *entry as usize,
                         upvalues,
                         handler: None,
                         this: None,
@@ -919,7 +922,7 @@ impl VM {
                 }
                 Inst::LOAD_UPVALUE { scope_idx, id } => {
                     if let Some(frame) = self.call_stack.last() {
-                        let scope = &frame.upvalues[*scope_idx];
+                        let scope = &frame.upvalues[*scope_idx as usize];
                         if let Some((val, _)) = scope.borrow().get(id) {
                             self.stack.push(val.clone());
                         } else {
@@ -929,27 +932,27 @@ impl VM {
                 }
 
                 Inst::JUMP(idx) => {
-                    self.pos = *idx;
+                    self.pos = *idx as usize;
                     continue;
                 }
                 Inst::JUMP_IF_FALSE(idx) => {
                     let idx = *idx;
                     if !self.pop().is_truthy() {
-                        self.pos = idx;
+                        self.pos = idx as usize;
                         continue;
                     }
                 }
                 Inst::JUMP_IF_TRUE(idx) => {
                     let idx = *idx;
                     if self.pop().is_truthy() {
-                        self.pos = idx;
+                        self.pos = idx as usize;
                         continue;
                     }
                 }
                 Inst::JUMP_IF_NOT_NIL(idx) => {
                     let idx = *idx;
                     if self.pop() != Value::NIL {
-                        self.pos = idx;
+                        self.pos = idx as usize;
                         continue;
                     }
                 }
@@ -1063,7 +1066,7 @@ impl VM {
                     let mut target = self.pop();
                     let value = self.pop();
 
-                    target.set_member_id(id, value);
+                    target.set_member_id(self, id, value);
                 }
 
                 Inst::GET_ITER => {
@@ -1087,7 +1090,7 @@ impl VM {
                             *idx += 1;
                         } else {
                             self.iterators.pop();
-                            self.pos = *jump_end;
+                            self.pos = *jump_end as usize;
                             continue;
                         }
                     } else if let Value::Tuple(list) = value {
@@ -1096,7 +1099,7 @@ impl VM {
                             *idx += 1;
                         } else {
                             self.iterators.pop();
-                            self.pos = *jump_end;
+                            self.pos = *jump_end as usize;
                             continue;
                         }
                     } else if let Value::Range {
@@ -1132,7 +1135,7 @@ impl VM {
                         } else {
                             // Range exhausted
                             self.iterators.pop();
-                            self.pos = *jump_end;
+                            self.pos = *jump_end as usize;
                             continue;
                         }
                     } else {
