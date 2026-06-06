@@ -193,10 +193,16 @@ impl VM {
     pub fn print_instructions(&self) {
         let mut depth: i32 = 0;
 
-        let display_func = move |v: &Inst| {
+        let mut display_func = move |v: &Inst| {
             let display = match v {
-                Inst::PUSH_SCOPE => Some(format!("PUSH_SCOPE +")),
-                Inst::POP_SCOPE => Some(format!("POP_SCOPE -")),
+                Inst::PUSH_SCOPE => {
+                    depth += 1;
+                    Some(format!("PUSH_SCOPE +(depth: ({depth}))"))
+                }
+                Inst::POP_SCOPE => {
+                    depth -= 1;
+                    Some(format!("POP_SCOPE -(depth: ({depth}))"))
+                }
                 Inst::LOAD(id) => Some(format!("LOAD({})", self.lookup_intern(*id))),
                 Inst::LOAD_LOCAL { id, depth } => Some(format!(
                     "LOAD_LOCAL({}, depth: {})",
@@ -279,8 +285,11 @@ impl VM {
                 (max_op.max(op), max_arg.max(arg))
             });
 
+        depth = 0;
         for (i, v) in self.instructions.borrow().iter().enumerate() {
-            if let Inst::POP_SCOPE = v {
+            if let Inst::PUSH_SCOPE = v {
+                depth += 1;
+            } else if let Inst::POP_SCOPE = v {
                 depth -= 1;
             }
 
@@ -296,7 +305,12 @@ impl VM {
             };
 
             let mut parts = s.splitn(2, '(');
-            let opcode = parts.next().unwrap();
+            let opcode = parts
+                .next()
+                .unwrap()
+                .replace("+", &format!("{GREEN}  +"))
+                .replace("-", &format!("{RED}   -"));
+
             let rest = parts.next().map_or("", |r| r);
 
             let color = if matches!(v, Inst::EXIT | Inst::RETURN) {
@@ -318,7 +332,11 @@ impl VM {
                 BLUE
             };
 
-            print!("{ORANGE}{i:>2}{BLACK} │ ");
+            if depth < 0 {
+                print!("{ORANGE}{i:>2}{RED} │ ");
+            } else {
+                print!("{ORANGE}{i:>2}{BLACK} │ ");
+            }
 
             let (opcode_width, operand_width) = (max_opcode_width, max_operand_width);
 
@@ -1107,7 +1125,7 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                         break;
                     }
                     if stop_at_return {
-                        self.locals.pop();
+                        // self.locals.pop();
                         break;
                     }
                 }
