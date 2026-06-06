@@ -157,7 +157,8 @@ impl VM {
                 self.stack.push(*this);
                 args_count += 1;
             }
-            let mut args: Vec<_> = (0..args_count).map(|_| self.pop()).collect();
+			let stack_start = self.stack.len() - args_count as usize;
+			let mut args = self.stack.split_off(stack_start);
 
             if let Some(lib) = self.libraries.get(&library) {
                 let value = lib.get_function(method)(self, args);
@@ -341,6 +342,18 @@ impl VM {
 
                     print!(
                         "{DIM_BLACK}{typename}{RESET}({GREEN}{contents}{RESET}){}{BLACK} │ {RESET}",
+                        " ".repeat(padding)
+                    );
+                } else if let Some((typename, rest)) = s.split_once('[') {
+                    let contents = &rest[..rest.len() - 1];
+
+                    print!("{color}{opcode:<opcode_width$}{BLACK} │ ",);
+
+                    let plain_len = typename.len() + contents.len() + 2;
+                    let padding = operand_width.saturating_sub(plain_len);
+
+                    print!(
+                        "{DIM_BLACK}{typename}{RESET}[{GREEN}{contents}{RESET}]{}{BLACK} │ {RESET}",
                         " ".repeat(padding)
                     );
                 } else {
@@ -611,9 +624,15 @@ impl VM {
                         }
 
                         self.stack.push(obj);
+					} else if let Value::StructDef(_) = target {
+                        panic!(
+                            "`new ...()` can only be used to construct classes.
+Use braces `new ...{{}}` to initialize a struct. Got {}",
+                            target.get_type()
+                        )
                     } else {
                         panic!(
-                            "`new` can only be used to construct classes. Got {}",
+                            "`new ...()` can only be used to construct classes. Got {}",
                             target.get_type()
                         )
                     }

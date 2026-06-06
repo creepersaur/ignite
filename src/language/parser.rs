@@ -632,15 +632,6 @@ impl Parser {
     fn parse_struct_init(&mut self, target: Node) -> NodeResult {
         let mut data = vec![];
 
-        if self.pos > 0 {
-            if !matches!(
-                self.tokens[self.pos as usize - 1].kind,
-                TokenKind::Identifier
-            ) {
-                return Ok(target);
-            }
-        }
-
         self.parse_surrounded(
             TokenKind::LBRACE,
             TokenKind::RBRACE,
@@ -692,7 +683,6 @@ impl Parser {
 
         if let Ok(next) = self.current() {
             match next.kind {
-                TokenKind::LBRACE => return self.parse_struct_init(expr),
                 TokenKind::EQUAL => return self.parse_set_variable(expr),
 
                 TokenKind::ADD_SH
@@ -1438,20 +1428,26 @@ impl Parser {
         let target = self.parse_member()?;
         let mut parameters = vec![];
 
-        self.parse_surrounded(
-            TokenKind::LPAREN,
-            TokenKind::RPAREN,
-            Some(TokenKind::COMMA),
-            |this| {
-                parameters.push(this.parse_expression()?);
-                Ok(())
-            },
-        )?;
+        if let Ok(next) = self.current()
+            && next.kind == TokenKind::LPAREN
+        {
+            self.parse_surrounded(
+                TokenKind::LPAREN,
+                TokenKind::RPAREN,
+                Some(TokenKind::COMMA),
+                |this| {
+                    parameters.push(this.parse_expression()?);
+                    Ok(())
+                },
+            )?;
 
-        Ok(Node::ClassInit {
-            target: Box::new(target),
-            parameters,
-        })
+            Ok(Node::ClassInit {
+                target: Box::new(target),
+                parameters,
+            })
+        } else {
+            self.parse_struct_init(target)
+        }
     }
 
     fn parse_range(&mut self) -> NodeResult {

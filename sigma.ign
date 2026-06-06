@@ -1,15 +1,1 @@
-let user = nil
-
-let valid = @.validation {
-    if user == nil {
-        out.validation "No user"
-    }
-
-    if !user.is_active {
-        out.validation "Disabled"
-    }
-
-    out.validation "Welcome"
-}
-
-println(valid)
+println(nil)
