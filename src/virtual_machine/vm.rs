@@ -157,8 +157,8 @@ impl VM {
                 self.stack.push(*this);
                 args_count += 1;
             }
-			let stack_start = self.stack.len() - args_count as usize;
-			let mut args = self.stack.split_off(stack_start);
+            let stack_start = self.stack.len() - args_count as usize;
+            let mut args = self.stack.split_off(stack_start);
 
             if let Some(lib) = self.libraries.get(&library) {
                 let value = lib.get_function(method)(self, args);
@@ -195,8 +195,8 @@ impl VM {
 
         let display_func = move |v: &Inst| {
             let display = match v {
-				Inst::PUSH_SCOPE => Some(format!("PUSH_SCOPE +")),
-				Inst::POP_SCOPE => Some(format!("POP_SCOPE -")),
+                Inst::PUSH_SCOPE => Some(format!("PUSH_SCOPE +")),
+                Inst::POP_SCOPE => Some(format!("POP_SCOPE -")),
                 Inst::LOAD(id) => Some(format!("LOAD({})", self.lookup_intern(*id))),
                 Inst::LOAD_LOCAL { id, depth } => Some(format!(
                     "LOAD_LOCAL({}, depth: {})",
@@ -285,9 +285,7 @@ impl VM {
             }
 
             if let Inst::COMMENT(x) = v {
-                println!(
-                    "{BLACK}\t   --- {x} ---{RESET}",
-                );
+                println!("{BLACK}\t   --- {x} ---{RESET}",);
                 continue;
             }
 
@@ -508,6 +506,15 @@ impl VM {
                         .expect("Cannot DUP, stack underflow.")
                         .clone(),
                 ),
+                Inst::DUP_N(n) => {
+                    let value = self.pop();
+                    self.stack.push(value.clone());
+
+					self.stack.reserve(*n as usize);
+                    for _ in 0..*n {
+                        self.stack.push(value.clone());
+                    }
+                }
                 Inst::SWAP => {
                     let n = self.stack.len();
                     self.stack.swap(n - 1, n - 2);
@@ -624,7 +631,7 @@ impl VM {
                         }
 
                         self.stack.push(obj);
-					} else if let Value::StructDef(_) = target {
+                    } else if let Value::StructDef(_) = target {
                         panic!(
                             "`new ...()` can only be used to construct classes.
 Use braces `new ...{{}}` to initialize a struct. Got {}",

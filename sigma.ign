@@ -1,1 +1,24 @@
-println(nil)
+struct HealthComponent {
+	health: number
+}
+
+struct PlayerComponent {
+	level: number
+}
+
+class Entity {
+	let components = []
+
+	constructor(self, components = []) {
+		self.components = components
+	}
+}
+
+// MAIN
+
+let my_plr = new Entity([
+	new HealthComponent { health: 100 },
+	new PlayerComponent { level: 0 }
+])
+
+println(my_plr)

@@ -9,6 +9,8 @@ impl Compiler {
         self.replace_tostring();
         self.remove_load_pops();
         self.remove_store_load_pairs();
+        self.compress_multiple_pushes();
+        self.compress_multiple_load_consts();
         self.replace(Inst::PUSH(Value::NIL), Inst::PUSH_NIL);
         self.replace(Inst::PUSH(Value::Bool(true)), Inst::PUSH_TRUE);
         self.replace(Inst::PUSH(Value::Bool(false)), Inst::PUSH_FALSE);
@@ -170,6 +172,102 @@ impl Compiler {
         }
 
         self.instructions.retain(|inst| !matches!(inst, Inst::NOP));
+    }
+
+    pub fn compress_multiple_pushes(&mut self) {
+		const MIN_COMPRESS_LENGTH: usize = 3;
+
+        let mut i = 0;
+        let mut start = 0;
+        let mut push_length = 0;
+        let mut push_value = None;
+
+        while i < self.instructions.len() {
+            if let Inst::PUSH(x) = &self.instructions[i] {
+                if let Some(y) = &push_value {
+                    if x == y {
+                        push_length += 1;
+                    } else {
+                        start = i;
+                        push_length = 1;
+                        push_value = Some(x.clone());
+                        if push_length >= MIN_COMPRESS_LENGTH {
+                            self.instructions
+                                .insert(i + 1, Inst::DUP_N(push_length as u16 - 1));
+                        }
+                    }
+                } else {
+                    start = i;
+                    push_length = 1;
+                    push_value = Some(x.clone());
+                }
+            } else if let Some(_) = push_value {
+                if push_length >= MIN_COMPRESS_LENGTH {
+                    self.instructions.drain(start + 1..start + push_length);
+                    self.instructions
+                        .insert(start + 1, Inst::DUP_N(push_length as u16 - 1));
+                }
+                push_value = None;
+            }
+
+            i += 1;
+        }
+
+        if let Some(_) = push_value
+            && push_length >= MIN_COMPRESS_LENGTH
+        {
+            self.instructions.drain(start + 1..start + push_length);
+            self.instructions
+                .insert(start + 1, Inst::DUP_N(push_length as u16 - 1));
+        }
+    }
+
+    pub fn compress_multiple_load_consts(&mut self) {
+		const MIN_COMPRESS_LENGTH: usize = 3;
+
+        let mut i = 0;
+        let mut start = 0;
+        let mut push_length = 0;
+        let mut push_value = None;
+
+        while i < self.instructions.len() {
+            if let Inst::LOAD_CONST(x) = &self.instructions[i] {
+                if let Some(y) = &push_value {
+                    if x == y {
+                        push_length += 1;
+                    } else {
+                        start = i;
+                        push_length = 1;
+                        push_value = Some(x.clone());
+                        if push_length >= MIN_COMPRESS_LENGTH {
+                            self.instructions
+                                .insert(i + 1, Inst::DUP_N(push_length as u16 - 1));
+                        }
+                    }
+                } else {
+                    start = i;
+                    push_length = 1;
+                    push_value = Some(x.clone());
+                }
+            } else if let Some(_) = push_value {
+                if push_length >= MIN_COMPRESS_LENGTH {
+                    self.instructions.drain(start + 1..start + push_length);
+                    self.instructions
+                        .insert(start + 1, Inst::DUP_N(push_length as u16 - 1));
+                }
+                push_value = None;
+            }
+
+            i += 1;
+        }
+
+        if let Some(_) = push_value
+            && push_length >= MIN_COMPRESS_LENGTH
+        {
+            self.instructions.drain(start + 1..start + push_length);
+            self.instructions
+                .insert(start + 1, Inst::DUP_N(push_length as u16 - 1));
+        }
     }
 
     // LOAD followed by POP instantly

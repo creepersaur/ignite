@@ -24,6 +24,7 @@ pub enum Inst {
     PUSH_1,
 
     DUP,
+    DUP_N(u16),
     SWAP,
     ROT3,
     POP,
