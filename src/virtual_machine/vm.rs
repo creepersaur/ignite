@@ -159,6 +159,7 @@ impl VM {
             }
             let stack_start = self.stack.len() - args_count as usize;
             let mut args = self.stack.split_off(stack_start);
+			args.reverse();
 
             if let Some(lib) = self.libraries.get(&library) {
                 let value = lib.get_function(method)(self, args);
@@ -1125,7 +1126,6 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                         break;
                     }
                     if stop_at_return {
-                        // self.locals.pop();
                         break;
                     }
                 }

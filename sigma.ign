@@ -1,26 +1,18 @@
-struct HealthComponent {
-	health: number
+struct Vector2 {
+	x: number,
+	y: number,
 }
 
-struct PlayerComponent {
-	level: number
+struct Circle {
+	position: Vector2,
+	radius: number,
 }
 
-class Entity {
-	let components = []
-
-	constructor(self, components = []) {
-		self.components = components
-	}
+let my_circle = new Circle {
+	position: new Vector2 { x: 0, y: 0 },
+	radius: 50
 }
 
-// MAIN
-
-let my_plr = new Entity([
-	new HealthComponent { health: 100 },
-	new PlayerComponent { level: 0 }
-])
-
-for comp in my_plr.components {
-	println(comp)
-}
+println("Circle:")
+println("│  ", my_circle.position)
+println("│  ", my_circle.radius)
