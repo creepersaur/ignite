@@ -21,4 +21,4 @@ let my_plr = new Entity([
 	new PlayerComponent { level: 0 }
 ])
 
-println(my_plr)
+println(my_plr.components)

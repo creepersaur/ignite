@@ -510,7 +510,7 @@ impl VM {
                     let value = self.pop();
                     self.stack.push(value.clone());
 
-					self.stack.reserve(*n as usize);
+                    self.stack.reserve(*n as usize);
                     for _ in 0..*n {
                         self.stack.push(value.clone());
                     }
@@ -567,7 +567,7 @@ impl VM {
                     ));
 
                     for (name, value) in values.borrow().iter() {
-                        if let Some(v_type) = base.fields.get(name) {
+                        if let Some((v_type, _)) = base.fields.get(name) {
                             if !value.type_matches(v_type) {
                                 panic!(
                                     "Field '{name}' expects type `{v_type}`, got `{}`.",
@@ -593,13 +593,13 @@ impl VM {
                     let mut functions_map = HashMap::new();
                     for method_name in method_names.iter().rev() {
                         let closure = self.pop();
-                        functions_map.insert(method_name.clone().into(), closure);
+                        functions_map.insert(*method_name, closure);
                     }
 
                     let mut values_map = HashMap::new();
                     for (field_name, is_const) in field_names.iter().rev() {
                         let default_val = self.pop();
-                        values_map.insert(field_name.clone().into(), (default_val, *is_const));
+                        values_map.insert(*field_name, (default_val, *is_const));
                     }
 
                     let constructor = if *has_constructor {

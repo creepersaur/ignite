@@ -9,7 +9,7 @@ use bincode::{Decode, Encode};
 #[derive(Encode, Decode, Clone, PartialEq)]
 pub struct TClassObject {
     pub base: Rc<RefCell<TClass>>,
-    pub values: Rc<RefCell<HashMap<Rc<str>, (Value, bool)>>>,
+    pub values: Rc<RefCell<HashMap<u64, (Value, bool)>>>,
 }
 
 impl PartialOrd for TClassObject {
@@ -37,7 +37,7 @@ impl Debug for TClassObject {
 impl IMemberAccessible for TClassObject {
     fn get_member(&self, _vm: &mut VM, member: &Value) -> Value {
         if let Value::String(member) = member {
-            if let Some((v, _is_const)) = self.values.borrow().get(&*member.0) {
+            if let Some((v, _is_const)) = self.values.borrow().get(&hash_u64!(&member.0)) {
                 return v.clone();
             }
 
@@ -46,7 +46,7 @@ impl IMemberAccessible for TClassObject {
                 .borrow()
                 .functions
                 .borrow_mut()
-                .get_mut(&*member.0)
+                .get_mut(&hash_u64!(&member.0))
             {
                 if let Value::Function(f) = v {
                     f.target = Some(Box::new(Value::ClassObject(self.clone())))
@@ -59,9 +59,28 @@ impl IMemberAccessible for TClassObject {
         panic!("Cannot get member `{}` on {self:?}", member.to_string(true));
     }
 
+    fn get_member_id(&self, vm: &mut VM, member: &u64) -> Value {
+        if let Some((v, _is_const)) = self.values.borrow().get(member) {
+            return v.clone();
+        }
+
+        if let Some(v) = self.base.borrow().functions.borrow_mut().get_mut(member) {
+            if let Value::Function(f) = v {
+                f.target = Some(Box::new(Value::ClassObject(self.clone())))
+            }
+
+            return v.clone();
+        }
+
+        panic!(
+            "Cannot get member id `{}` on {self:?}",
+            vm.lookup_intern(*member)
+        );
+    }
+
     fn set_member(&mut self, member: &Value, value: Value) {
         if let Value::String(member) = member {
-            if let Some((v, is_const)) = self.values.borrow_mut().get_mut(&*member.0) {
+            if let Some((v, is_const)) = self.values.borrow_mut().get_mut(&hash_u64!(&member.0)) {
                 if *is_const {
                     panic!("Cannot set constant member `{}` on {self:?}", member.0);
                 }
@@ -70,11 +89,27 @@ impl IMemberAccessible for TClassObject {
             } else {
                 self.values
                     .borrow_mut()
-                    .insert(member.0.clone(), (value, false));
+                    .insert(hash_u64!(&member.0), (value, false));
                 return;
             }
         }
 
         panic!("Cannot set member `{}` on {self:?}", member.to_string(true));
+    }
+
+    fn set_member_id(&mut self, vm: &mut VM, member: &u64, value: Value) {
+        if let Some((v, is_const)) = self.values.borrow_mut().get_mut(member) {
+            if *is_const {
+                panic!(
+                    "Cannot set constant member `{}` on {self:?}",
+                    vm.lookup_intern(*member)
+                );
+            }
+            *v = value;
+            return;
+        } else {
+            self.values.borrow_mut().insert(*member, (value, false));
+            return;
+        }
     }
 }

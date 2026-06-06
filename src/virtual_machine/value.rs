@@ -234,7 +234,8 @@ impl Value {
                             v.to_string(true)
                         };
 
-                        format!("{k}: {value}")
+						let (_, name) = data.base.fields.get(&k).unwrap();
+                        format!("{name}: {value}")
                     })
                     .collect::<Vec<_>>()
                     .join(", ")

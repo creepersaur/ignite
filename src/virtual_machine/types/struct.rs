@@ -56,7 +56,7 @@ impl IMemberAccessible for TStruct {
 
     fn set_member(&mut self, member: &Value, value: Value) {
         if let Value::String(member) = member {
-            if let Some(v_type) = self.base.fields.get(&hash_u64!(&member.0)) {
+            if let Some((v_type, _)) = self.base.fields.get(&hash_u64!(&member.0)) {
                 if !value.type_matches(v_type) {
                     panic!(
                         "Field '{}' expects type `{v_type}`, got `{}`. (Struct '{}')",
@@ -81,7 +81,7 @@ impl IMemberAccessible for TStruct {
     }
 
     fn set_member_id(&mut self, vm: &mut VM, member: &u64, value: Value) {
-        if let Some(v_type) = self.base.fields.get(member) {
+        if let Some((v_type, _)) = self.base.fields.get(member) {
             if !value.type_matches(v_type) {
                 panic!(
                     "Field '{}' expects type `{v_type}`, got `{}`. (Struct '{}')",

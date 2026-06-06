@@ -1023,7 +1023,7 @@ impl Compiler {
     pub fn compile_struct_def(&mut self, name: &String, fields: &Vec<(String, String)>) {
         let mut field_map = HashMap::new();
         for (k, v) in fields {
-            field_map.insert(self.intern(k.as_str()), v.as_str().into());
+            field_map.insert(self.intern(k.as_str()), (v.as_str().into(), k.as_str().into()));
         }
 
         self.instructions
@@ -1072,7 +1072,7 @@ impl Compiler {
             } = node
             {
                 for (i, field_name) in field_name_list.iter().enumerate() {
-                    field_names.push((field_name.as_str().into(), *is_const));
+                    field_names.push((self.intern(field_name), *is_const));
 
                     match field_values.get(i).and_then(|v| v.as_deref()) {
                         Some(val) => self.compile_node(val),
@@ -1097,7 +1097,7 @@ impl Compiler {
                     .as_ref()
                     .map(|n| n.to_string())
                     .unwrap_or_default();
-                method_names.push(method_str.as_str().into());
+                method_names.push(self.intern(&method_str));
 
                 self.compile_function_def(&None, return_type, args, *is_const, block);
             }
