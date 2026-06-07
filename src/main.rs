@@ -123,14 +123,18 @@ fn main() -> Result<(), Box<dyn Error>> {
         if args.contains(&"trace".to_string()) {
             if vm.pos < instructions_clone.borrow().len() {
                 println!(
-                    "Last Instruction ({}): {:?}",
+                    "\nLast Instruction ({}): {:?}",
                     vm.pos,
                     instructions_clone.borrow()[vm.pos]
                 );
             } else {
-                println!("Completed all instructions")
+                println!("\nCompleted all instructions")
             }
         }
+
+        if args.contains(&"stack".to_string()) {
+			println!("\nStack: {:?}", vm.stack);
+		}
     }
 
     Ok(())

@@ -317,7 +317,7 @@ impl Compiler {
     }
 
     pub fn compile_list(&mut self, values: &Vec<Node>, is_tuple: bool) {
-        let mut folded_values = Vec::with_capacity(values.len());
+        let mut folded_values = Vec::with_capacity(values.len() * 2);
         let mut all_literals = true;
 
         for node in values {

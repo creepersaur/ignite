@@ -185,15 +185,23 @@ impl VM {
     }
 
     pub fn fast_call(&mut self, func: NativeFunction, args_count: u16) -> Value {
-        let stack_start = self.stack.len() - args_count as usize;
-        let mut args = &self.stack[stack_start..];
+		let stack_len = self.stack.len();
+        let stack_start = stack_len - args_count as usize;
+        let args = &mut self.stack[stack_start..];
+		if args_count > 1 {
+			args.reverse();
+		}
 
-        match func {
+        let value = match func {
             NativeFunction::Print => IOLib::write_fast(args),
             NativeFunction::Println => IOLib::write_line_fast(args),
 
             _ => panic!("Unknown fast_call function: {func:?}"),
-        }
+        };
+
+		self.stack.truncate(stack_len - args_count as usize);
+
+		value
     }
 
     pub fn lookup_intern(&self, id: u64) -> Rc<str> {
