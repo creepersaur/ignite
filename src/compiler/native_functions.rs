@@ -1,9 +1,10 @@
 use bincode::{Decode, Encode};
 
+#[repr(u8)]
 #[derive(Debug, Clone, Encode, Decode, Copy, PartialEq)]
 pub enum NativeFunction {
-    Println = 0,
-    Print = 1,
+    Println,
+    Print,
 }
 
 impl NativeFunction {
