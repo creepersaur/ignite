@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use bincode::{Decode, Encode};
 
-use crate::virtual_machine::{libs::types::TypeValue, value::Value};
+use crate::{compiler::native_functions::NativeFunction, virtual_machine::{libs::types::TypeValue, value::Value}};
 
 #[allow(unused, non_camel_case_types)]
 #[derive(Encode, Decode, Debug, Clone, PartialEq)]
@@ -114,6 +114,7 @@ pub enum Inst {
 	GET_PROP_BY_ID(u64),
     SET_PROP_BY_ID(u64),
 
+	FAST_CALL(NativeFunction, u16),
     CALL(u16),
     CALL_VOID(u16),
     RETURN,

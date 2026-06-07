@@ -83,30 +83,42 @@ impl IOLib {
         Value::NIL
     }
 
-    fn write(_vm: &mut VM, args: Vec<Value>) -> Value {
-        let msg = args
-            .iter()
-            .map(|x| x.to_string(false))
-            .rev()
-            .collect::<Vec<_>>()
-            .join(" ");
+    pub fn write_fast(args: &[Value]) -> Value {
+        let mut msg = String::new();
+
+        for (i, x) in args.iter().rev().enumerate() {
+            if i > 0 {
+                msg.push(' ');
+            }
+            msg.push_str(&x.to_string(false));
+        }
 
         print!("{msg}");
 
         Value::NIL
     }
 
-    fn write_line(_vm: &mut VM, args: Vec<Value>) -> Value {
-        let msg = args
-            .iter()
-            .map(|x| x.to_string(false))
-            .rev()
-            .collect::<Vec<_>>()
-            .join(" ");
+    pub fn write_line_fast(args: &[Value]) -> Value {
+        let mut msg = String::new();
+
+        for (i, x) in args.iter().rev().enumerate() {
+            if i > 0 {
+                msg.push(' ');
+            }
+            msg.push_str(&x.to_string(false));
+        }
 
         println!("{msg}");
 
         Value::NIL
+    }
+
+    fn write(_vm: &mut VM, args: Vec<Value>) -> Value {
+		Self::write_fast(&args)
+	}
+
+    fn write_line(_vm: &mut VM, args: Vec<Value>) -> Value {
+		Self::write_line_fast(&args)
     }
 }
 

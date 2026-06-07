@@ -1,18 +1,2 @@
-struct Vector2 {
-	x: number,
-	y: number,
-}
-
-struct Circle {
-	position: Vector2,
-	radius: number,
-}
-
-let my_circle = new Circle {
-	position: new Vector2 { x: 0, y: 0 },
-	radius: 50
-}
-
-println("Circle:")
-println("│  ", my_circle.position)
-println("│  ", my_circle.radius)
+println("hello")
+println("world")

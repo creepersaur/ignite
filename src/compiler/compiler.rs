@@ -1,4 +1,5 @@
 use crate::{
+    compiler::native_functions::NativeFunction,
     hash_u64,
     language::{nodes::Node, token::TokenKind},
     patch, patch_execute, rc,
@@ -648,8 +649,24 @@ impl Compiler {
             self.compile_node(i);
         }
 
-        self.compile_node(&**target);
-        self.instructions.push(Inst::CALL(args.len() as u16));
+        if let Node::Variable(x) = &**target
+            && let Some(f) = NativeFunction::is_native(&x)
+            && {
+                let mut is_native = true;
+                for scope in self.scopes.iter() {
+                    if scope.contains(x.as_str()) {
+                        is_native = false;
+                    }
+                }
+                is_native
+            }
+        {
+            self.instructions
+                .push(Inst::FAST_CALL(f, args.len() as u16))
+        } else {
+            self.compile_node(&**target);
+            self.instructions.push(Inst::CALL(args.len() as u16));
+        }
     }
 
     pub fn compile_if_statement(
@@ -1023,7 +1040,10 @@ impl Compiler {
     pub fn compile_struct_def(&mut self, name: &String, fields: &Vec<(String, String)>) {
         let mut field_map = HashMap::new();
         for (k, v) in fields {
-            field_map.insert(self.intern(k.as_str()), (v.as_str().into(), k.as_str().into()));
+            field_map.insert(
+                self.intern(k.as_str()),
+                (v.as_str().into(), k.as_str().into()),
+            );
         }
 
         self.instructions

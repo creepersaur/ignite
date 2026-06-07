@@ -1,26 +1,29 @@
-use crate::virtual_machine::{
-    chunk::Chunk,
-    inst::Inst,
-    libs::{
-        lib::Library,
-        namespaces::{fs_lib::FSLib, io_lib::IOLib, math_lib::MathLib},
-        type_lib::TypeLib,
-        types::{
-            TypeValue, dict_lib::DictLib, list_lib::ListLib, string_lib::StringLib,
-            tuple_lib::TupleLib,
+use crate::{
+    compiler::native_functions::NativeFunction,
+    virtual_machine::{
+        chunk::Chunk,
+        inst::Inst,
+        libs::{
+            lib::Library,
+            namespaces::{fs_lib::FSLib, io_lib::IOLib, math_lib::MathLib},
+            type_lib::TypeLib,
+            types::{
+                TypeValue, dict_lib::DictLib, list_lib::ListLib, string_lib::StringLib,
+                tuple_lib::TupleLib,
+            },
         },
+        namespaces::standard_namespace::load_standard_namespace,
+        types::{
+            classes::{class::TClass, class_object::TClassObject},
+            dict::TDict,
+            r#enum::TEnum,
+            function::TFunction,
+            list::TList,
+            string::TString,
+            r#struct::TStruct,
+        },
+        value::Value,
     },
-    namespaces::standard_namespace::load_standard_namespace,
-    types::{
-        classes::{class::TClass, class_object::TClassObject},
-        dict::TDict,
-        r#enum::TEnum,
-        function::TFunction,
-        list::TList,
-        string::TString,
-        r#struct::TStruct,
-    },
-    value::Value,
 };
 use lz4_flex::frame::{FrameDecoder, FrameEncoder};
 use simply_colored::*;
@@ -159,7 +162,7 @@ impl VM {
             }
             let stack_start = self.stack.len() - args_count as usize;
             let mut args = self.stack.split_off(stack_start);
-			args.reverse();
+            args.reverse();
 
             if let Some(lib) = self.libraries.get(&library) {
                 let value = lib.get_function(method)(self, args);
@@ -178,6 +181,18 @@ impl VM {
                 upvalues: f.upvalues,
             });
             self.pos = f.entry;
+        }
+    }
+
+    pub fn fast_call(&mut self, func: NativeFunction, args_count: u16) -> Value {
+        let stack_start = self.stack.len() - args_count as usize;
+        let mut args = &self.stack[stack_start..];
+
+        match func {
+            NativeFunction::Print => IOLib::write_fast(args),
+            NativeFunction::Println => IOLib::write_line_fast(args),
+
+            _ => panic!("Unknown fast_call function: {func:?}"),
         }
     }
 
@@ -309,8 +324,8 @@ impl VM {
             let opcode = parts
                 .next()
                 .unwrap()
-                .replace("+", &format!("{GREEN}  +"))
-                .replace("-", &format!("{RED}   -"));
+                .replace("+", &format!("{GREEN}+{BLUE}"))
+                .replace("-", &format!("{RED}-{BLUE} "));
 
             let rest = parts.next().map_or("", |r| r);
 
@@ -1115,6 +1130,10 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                             _ => panic!("({}) Tried calling non-function: {func:?}", self.pos),
                         }
                     }
+                }
+                Inst::FAST_CALL(func, args) => {
+                    let value = self.fast_call(*func, *args);
+                    self.stack.push(value);
                 }
                 Inst::RETURN => {
                     if let Some(frame) = self.call_stack.last() {
