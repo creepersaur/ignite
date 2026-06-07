@@ -1,1 +1,11 @@
-let x = 10
+let cache = [0, 1]
+
+fn fibonacci(n) {
+	while cache.len() <= n {
+		cache.push(cache[cache.len() - 1] + cache[cache.len() - 2])
+	}
+
+	return cache[n]
+}
+
+fibonacci(120)

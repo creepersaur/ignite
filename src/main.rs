@@ -115,7 +115,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         let instructions_clone = vm.instructions.clone();
 
         if args.contains(&"bench".to_string()) {
-            bench(&mut vm);
+            bench(&mut vm, false);
+        } else if args.contains(&"bench_cold".to_string()) {
+            bench(&mut vm, true);
         } else {
             let _ = catch_unwind(AssertUnwindSafe(|| vm.run(false, false)));
         }
@@ -140,13 +142,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn bench(vm: &mut VM) {
+fn bench(vm: &mut VM, coldstart: bool) {
     let runs = 1_000_000;
     let mut total = 0u128;
     let full_start = std::time::Instant::now();
 
     for _ in 0..runs {
-        vm.reset();
+        vm.reset(coldstart);
 
         let start = std::time::Instant::now();
         vm.run(false, false);

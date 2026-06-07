@@ -481,14 +481,15 @@ impl VM {
     }
 
     #[inline(always)]
-    pub fn reset(&mut self) {
+    pub fn reset(&mut self, hard: bool) {
         self.stack.clear();
         self.iterators.clear();
         self.call_stack.truncate(1);
         self.locals.truncate(1);
         self.locals[0].borrow_mut().clear();
-        // self.globals.clear();
-        // self.globals.extend(Self::initialize_globals());
+        if hard {
+            self.globals = Self::initialize_globals();
+        }
 
         self.pos = 0;
     }
