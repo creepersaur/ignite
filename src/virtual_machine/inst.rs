@@ -115,6 +115,7 @@ pub enum Inst {
     SET_PROP_BY_ID(u64),
 
 	FAST_CALL(NativeFunction, u16),
+	FAST_CALL_VOID(NativeFunction, u16),
     CALL(u16),
     CALL_VOID(u16),
     RETURN,

@@ -472,16 +472,15 @@ impl VM {
         }
     }
 
+	#[inline(always)]
     pub fn reset(&mut self) {
         self.stack.clear();
         self.iterators.clear();
         self.call_stack.truncate(1);
-
-        self.globals.clear();
-        self.globals.extend(Self::initialize_globals());
-
         self.locals.truncate(1);
         self.locals[0].borrow_mut().clear();
+        // self.globals.clear();
+        // self.globals.extend(Self::initialize_globals());
 
         self.pos = 0;
     }
@@ -1134,6 +1133,9 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                 Inst::FAST_CALL(func, args) => {
                     let value = self.fast_call(*func, *args);
                     self.stack.push(value);
+                }
+                Inst::FAST_CALL_VOID(func, args) => {
+                    self.fast_call(*func, *args);
                 }
                 Inst::RETURN => {
                     if let Some(frame) = self.call_stack.last() {

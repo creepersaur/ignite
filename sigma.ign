@@ -1,2 +1,1 @@
-println("hello")
-println("world")
+print(nil)

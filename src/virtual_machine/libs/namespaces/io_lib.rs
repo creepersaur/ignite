@@ -83,6 +83,12 @@ impl IOLib {
         Value::NIL
     }
 
+    fn flush(_vm: &mut VM, _args: Vec<Value>) -> Value {
+        let _ = stdout().flush();
+
+        Value::NIL
+    }
+
     pub fn write_fast(args: &[Value]) -> Value {
         let mut msg = String::new();
 
@@ -114,11 +120,11 @@ impl IOLib {
     }
 
     fn write(_vm: &mut VM, args: Vec<Value>) -> Value {
-		Self::write_fast(&args)
-	}
+        Self::write_fast(&args)
+    }
 
     fn write_line(_vm: &mut VM, args: Vec<Value>) -> Value {
-		Self::write_line_fast(&args)
+        Self::write_line_fast(&args)
     }
 }
 
@@ -138,6 +144,7 @@ impl Library for IOLib {
             // OUTPUT
             x if x == hash_u64!("clear") => Box::new(Self::clear),
             x if x == hash_u64!("reset") => Box::new(Self::reset),
+            x if x == hash_u64!("flush") => Box::new(Self::flush),
             x if x == hash_u64!("write") => Box::new(Self::write),
             x if x == hash_u64!("write_line") => Box::new(Self::write_line),
 

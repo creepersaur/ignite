@@ -150,7 +150,7 @@ fn bench(vm: &mut VM) {
     }
 
     println!(
-        "(run + reset) total: {:.5}s",
+        "\n(run + reset) total: {:.5}s",
         full_start.elapsed().as_secs_f64()
     );
     println!("(run) total: {:.5}s", total as f64 / 1e9);

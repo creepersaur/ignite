@@ -32,7 +32,14 @@ impl Compiler {
                 None
             }
         });
-    }
+		self.replace_pattern_2_with(|a, b| {
+			if let Inst::FAST_CALL(func, args) = a && let Inst::TRY_POP = b {
+				Some(Inst::FAST_CALL_VOID(*func, *args))
+			} else {
+				None
+			}
+		});
+	}
 
     pub fn finalize_bytecode(&mut self) {
         for inst in self.instructions.iter_mut() {
@@ -115,7 +122,7 @@ impl Compiler {
 
         for i in indices {
             self.instructions[i] = replacement.clone();
-            self.instructions.remove(i + 1);
+            self.instructions[i + 1] = Inst::NOP;
         }
     }
 
@@ -129,7 +136,7 @@ impl Compiler {
 
         for (i, replacement) in indices {
             self.instructions[i] = replacement;
-            self.instructions.remove(i + 1);
+            self.instructions[i + 1] = Inst::NOP;
         }
     }
 

@@ -17,6 +17,7 @@ pub fn std_io() -> Value {
     // Output
     namespace_lib_function!(namespace, "clear");
     namespace_lib_function!(namespace, "reset");
+    namespace_lib_function!(namespace, "flush");
     namespace_lib_function!(namespace, "write");
     namespace_lib_function!(namespace, "write_line");
 
