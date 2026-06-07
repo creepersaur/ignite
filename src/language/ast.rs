@@ -36,7 +36,6 @@ impl AST {
                 Self::prune_node(node);
             }
             Node::Block { body, .. } => Self::prune_block(body),
-            Node::SingleLineBlock { body } => Self::prune_node(body),
             Node::IfStatement {
                 block,
                 elifs,
@@ -361,9 +360,6 @@ impl AST {
             Node::Block { body, name } => Node::Block {
                 name,
                 body: body.into_iter().map(Self::fold_constants).collect(),
-            },
-            Node::SingleLineBlock { body } => Node::SingleLineBlock {
-                body: Box::new(Self::fold_constants(*body)),
             },
 
             Node::ListNode(items) => {

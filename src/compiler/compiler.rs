@@ -246,12 +246,6 @@ impl Compiler {
 
             Node::Block { name, body } => self.compile_block(name, body),
 
-            Node::SingleLineBlock { body } => {
-                self.push_scope();
-                self.compile_node(&**body);
-                self.pop_scope();
-            }
-
             Node::Loop { block } => self.compile_loop(block),
 
             Node::WhileLoop { condition, block } => self.compile_while_loop(condition, block),

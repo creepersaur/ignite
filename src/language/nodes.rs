@@ -95,9 +95,6 @@ pub enum Node {
         name: Option<String>,
         body: Vec<Node>,
     },
-    SingleLineBlock {
-        body: Box<Node>,
-    },
 
     // Arguments are in the tuple -> (name: String, type: Option<String>)
     FunctionDefinition {

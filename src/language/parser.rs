@@ -1087,8 +1087,12 @@ impl Parser {
             && x.kind == TokenKind::FATARROW
         {
             self.advance();
-            return Ok(Node::SingleLineBlock {
-                body: Box::new(self.parse_expression()?),
+            return Ok(Node::Block {
+                name: None,
+                body: vec![Node::OutStatement {
+                    block_name: None,
+                    value: Some(Box::new(self.parse_expression()?)),
+                }],
             });
         }
 

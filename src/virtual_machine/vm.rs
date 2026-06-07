@@ -185,12 +185,12 @@ impl VM {
     }
 
     pub fn fast_call(&mut self, func: NativeFunction, args_count: u16) -> Value {
-		let stack_len = self.stack.len();
+        let stack_len = self.stack.len();
         let stack_start = stack_len - args_count as usize;
         let args = &mut self.stack[stack_start..];
-		if args_count > 1 {
-			args.reverse();
-		}
+        if args_count > 1 {
+            args.reverse();
+        }
 
         let value = match func {
             NativeFunction::Print => IOLib::write_fast(args),
@@ -199,9 +199,9 @@ impl VM {
             _ => panic!("Unknown fast_call function: {func:?}"),
         };
 
-		self.stack.truncate(stack_len - args_count as usize);
+        self.stack.truncate(stack_len - args_count as usize);
 
-		value
+        value
     }
 
     pub fn lookup_intern(&self, id: u64) -> Rc<str> {
@@ -221,11 +221,11 @@ impl VM {
             let display = match v {
                 Inst::PUSH_SCOPE => {
                     depth += 1;
-                    Some(format!("PUSH_SCOPE +(depth: ({depth}))"))
+                    Some(format!("PUSH_SCOPE  +(depth: ({depth}))"))
                 }
                 Inst::POP_SCOPE => {
                     depth -= 1;
-                    Some(format!("POP_SCOPE -(depth: ({depth}))"))
+                    Some(format!("POP_SCOPE   -(depth: ({depth}))"))
                 }
                 Inst::LOAD(id) => Some(format!("LOAD({})", self.lookup_intern(*id))),
                 Inst::LOAD_LOCAL { id, depth } => Some(format!(
@@ -329,11 +329,13 @@ impl VM {
             };
 
             let mut parts = s.splitn(2, '(');
-            let opcode = parts
-                .next()
-                .unwrap()
+
+            let (opcode_width, operand_width) = (max_opcode_width, max_operand_width);
+            let opcode = parts.next().unwrap();
+            let opcode = format!("{opcode:<opcode_width$}");
+            let opcode = opcode
                 .replace("+", &format!("{GREEN}+{BLUE}"))
-                .replace("-", &format!("{RED}-{BLUE} "));
+                .replace("-", &format!("{RED}-{BLUE}"));
 
             let rest = parts.next().map_or("", |r| r);
 
@@ -361,8 +363,6 @@ impl VM {
             } else {
                 print!("{ORANGE}{i:>2}{BLACK} │ ");
             }
-
-            let (opcode_width, operand_width) = (max_opcode_width, max_operand_width);
 
             if rest.is_empty() {
                 print!(
@@ -480,7 +480,7 @@ impl VM {
         }
     }
 
-	#[inline(always)]
+    #[inline(always)]
     pub fn reset(&mut self) {
         self.stack.clear();
         self.iterators.clear();
