@@ -90,31 +90,26 @@ impl IOLib {
     }
 
     pub fn write_fast(args: &[Value]) -> Value {
-        let mut msg = String::new();
-
+        let mut out = stdout().lock();
         for (i, x) in args.iter().rev().enumerate() {
             if i > 0 {
-                msg.push(' ');
+                out.write(b" ").unwrap();
             }
-            msg.push_str(&x.to_string(false));
+            out.write_all(x.to_string(false).as_bytes()).unwrap();
         }
-
-        print!("{msg}");
 
         Value::NIL
     }
 
     pub fn write_line_fast(args: &[Value]) -> Value {
-        let mut msg = String::new();
-
+        let mut out = stdout().lock();
         for (i, x) in args.iter().rev().enumerate() {
             if i > 0 {
-                msg.push(' ');
+                out.write(b" ").unwrap();
             }
-            msg.push_str(&x.to_string(false));
+            out.write_all(x.to_string(false).as_bytes()).unwrap();
         }
-
-        println!("{msg}");
+		out.write(b"\n").unwrap();
 
         Value::NIL
     }
