@@ -1,67 +1,13 @@
-const GRAVITY = 9.81
+fn outer() {
+	let x = 10
 
-struct Vector2 {
-    x: number,
-    y: number,
+	return fn() {
+		x += 1
+
+		println(x)
+	}
 }
 
-class Player {
-    let name = ""
-    let position = new Vector2 { x: 0, y: 0 }
-    let velocity = new Vector2 { x: 0, y: 0 }
-
-    constructor(self, name) {
-        self.name = name
-    }
-
-    fn move(self, dx, dy) {
-        self.position.x += dx
-        self.position.y += dy
-    }
-
-    fn jump(self, force) {
-        self.velocity.y = force
-    }
-
-    fn update(self, dt) {
-        self.velocity.y -= GRAVITY * dt
-        self.position.y += self.velocity.y * dt
-    }
-
-    fn print_info(self) {
-        println($"Player: {self.name}")
-        println($"Position: ({self.position.x}, {self.position.y})")
-        println($"Velocity: ({self.velocity.x}, {self.velocity.y})")
-    }
-}
-
-using Std::Math::{sqrt, PI, sin}
-
-fn distance(a, b) {
-    let dx = b.x - a.x
-    let dy = b.y - a.y
-
-    return sqrt(dx * dx + dy * dy)
-}
-
-let player = new Player("Steve")
-
-player.move(10, 5)
-player.jump(20)
-player.update(0.16)
-
-player.print_info()
-
-let origin = new Vector2 {
-    x: 0,
-    y: 0,
-}
-
-println($"Distance from origin: {distance(origin, player.position)}")
-
-for i in 0..5 {
-    println($"wave {i}: {sin(i * PI / 4)}")
-}
-
-let name = Std.IO.read_line("What is your name? ")
-println($"Hello {name}")
+let inner = outer()
+inner()
+inner()

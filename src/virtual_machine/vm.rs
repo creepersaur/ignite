@@ -25,9 +25,9 @@ use crate::{
         value::Value,
     },
 };
+use core::panic;
 use lz4_flex::frame::{FrameDecoder, FrameEncoder};
 use simply_colored::*;
-use core::panic;
 use std::{cell::RefCell, collections::HashMap, io::Read, rc::Rc};
 
 const ORANGE: &str = "\x1b[38;2;255;150;60m";
@@ -252,8 +252,14 @@ impl VM {
                     Some(format!("STORE_GLOBAL_CONST({})", self.lookup_intern(*id)))
                 }
                 Inst::SET_GLOBAL(id) => Some(format!("SET_GLOBAL({})", self.lookup_intern(*id))),
-                Inst::SET_LOCAL {id, scope_idx} => Some(format!("SET_LOCAL({}, depth: {scope_idx})", self.lookup_intern(*id))),
-                Inst::SET_UPVALUE {id, scope_idx} => Some(format!("SET_UPVALUE({}, depth: {scope_idx})", self.lookup_intern(*id))),
+                Inst::SET_LOCAL { id, scope_idx } => Some(format!(
+                    "SET_LOCAL({}, depth: {scope_idx})",
+                    self.lookup_intern(*id)
+                )),
+                Inst::SET_UPVALUE { id, scope_idx } => Some(format!(
+                    "SET_UPVALUE({}, depth: {scope_idx})",
+                    self.lookup_intern(*id)
+                )),
                 Inst::LOAD_UPVALUE { id, scope_idx } => Some(format!(
                     "LOAD_UPVALUE({}, depth: {})",
                     self.lookup_intern(*id),
@@ -937,7 +943,7 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                         let value = self.pop();
                         self.locals[depth].borrow_mut().insert(id, (value, false));
                     } else {
-                        panic!("Too little CallFrames in call_stack (LOAD_LOCAL)")
+                        panic!("Too little CallFrames in call_stack (STORE_LOCAL)")
                     }
                 }
                 Inst::LOAD_LOCAL { id, depth } => {
@@ -992,18 +998,62 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                     }
                 }
                 Inst::SET_GLOBAL(id) => {
-					let new_value = self.pop();
+                    let new_value = self.pop();
 
-					if let Some((value, is_const)) = self.globals.get_mut(id) {
-						if *is_const {
-							panic!("Cannot set constant global `{}`", self.lookup_intern(*id))
-						}
+                    if let Some((value, is_const)) = self.globals.get_mut(id) {
+                        if *is_const {
+                            panic!("Cannot set constant global `{}`", self.lookup_intern(*id))
+                        }
 
-						*value = new_value;
-					} else {
-						panic!("Tried setting unknown global `{}`", self.lookup_intern(*id))
-					}
-				}
+                        *value = new_value;
+                    } else {
+                        panic!("Tried setting unknown global `{}`", self.lookup_intern(*id))
+                    }
+                }
+                Inst::SET_LOCAL { id, scope_idx } => {
+                    if let Some(current_frame) = self.call_stack.last() {
+                        let depth = current_frame.scope_base + *scope_idx as usize;
+                        let new_value = self.pop();
+
+                        if let Some((value, is_const)) = self.locals[depth].borrow_mut().get_mut(id)
+                        {
+                            if *is_const {
+                                panic!("Cannot set constant local `{}`", self.lookup_intern(*id))
+                            }
+
+                            *value = new_value;
+                        } else {
+                            panic!(
+                                "Tried setting unknown local variable `{}`",
+                                self.lookup_intern(*id)
+                            )
+                        }
+                    } else {
+                        panic!("Too little CallFrames in call_stack (SET_LOCAL)")
+                    }
+                }
+                Inst::SET_UPVALUE { id, scope_idx } => {
+                    let new_value = self.pop();
+
+                    if let Some(current_frame) = self.call_stack.last() {
+                        if let Some((value, is_const)) =
+                            current_frame.upvalues[*scope_idx as usize].borrow_mut().get_mut(id)
+                        {
+                            if *is_const {
+                                panic!("Cannot set constant local `{}`", self.lookup_intern(*id))
+                            }
+
+                            *value = new_value;
+                        } else {
+                            panic!(
+                                "Tried setting unknown local variable `{}`",
+                                self.lookup_intern(*id)
+                            )
+                        }
+                    } else {
+                        panic!("Too little CallFrames in call_stack (SET_LOCAL)")
+                    }
+                }
 
                 Inst::MAKE_CLOSURE { entry, captures } => {
                     let upvalues = captures
