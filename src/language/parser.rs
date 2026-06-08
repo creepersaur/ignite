@@ -1397,7 +1397,16 @@ impl Parser {
             if let Ok(next) = self.current() {
                 match next.kind {
                     TokenKind::LET => let_statements.push(self.parse_let(false)?),
-                    TokenKind::CONST => let_statements.push(self.parse_let(true)?),
+                    TokenKind::CONST => {
+                        if let Some(next) = self.peek()
+                            && next.kind == TokenKind::FN
+                        {
+							self.advance()?;
+                            functions.push(self.parse_function_def(false, true)?)
+                        } else {
+                            let_statements.push(self.parse_let(true)?)
+                        }
+                    }
                     TokenKind::CONSTRUCTOR => {
                         constructor = Some(Box::new(self.parse_function_def(true, false)?))
                     }

@@ -8,14 +8,17 @@ impl Compiler {
     pub fn optimize(&mut self) {
         self.replace_tostring();
         self.remove_load_pops();
-        self.remove_store_load_pairs();
+
         self.compress_multiple_pushes();
         self.compress_multiple_load_consts();
+
         self.replace(Inst::PUSH(Value::NIL), Inst::PUSH_NIL);
         self.replace(Inst::PUSH(Value::Bool(true)), Inst::PUSH_TRUE);
         self.replace(Inst::PUSH(Value::Bool(false)), Inst::PUSH_FALSE);
         self.replace(Inst::PUSH(Value::Number(0.0)), Inst::PUSH_0);
         self.replace(Inst::PUSH(Value::Number(1.0)), Inst::PUSH_1);
+
+        // Push type
         self.replace_with(|_, x| {
             if let Inst::PUSH(Value::Type(t)) = x {
                 Some(Inst::PUSH_TYPE(*t))
@@ -23,6 +26,8 @@ impl Compiler {
                 None
             }
         });
+
+        // Jump straight ahead
         self.replace_with(|i, v| {
             if let Inst::JUMP(n) = v
                 && *n == i as u32 + 1
@@ -32,14 +37,33 @@ impl Compiler {
                 None
             }
         });
-		self.replace_pattern_2_with(|a, b| {
-			if let Inst::FAST_CALL(func, args) = a && let Inst::TRY_POP = b {
-				Some(Inst::FAST_CALL_VOID(*func, *args))
-			} else {
-				None
-			}
-		});
-	}
+
+        // FAST_CALL_VOID
+        self.replace_pattern_2_with(|a, b| {
+            if let Inst::FAST_CALL(func, args) = a
+                && let Inst::TRY_POP = b
+            {
+                Some(Inst::FAST_CALL_VOID(*func, *args))
+            } else {
+                None
+            }
+        });
+
+        // Remove DUP-SET-TRY_POP
+        self.replace_pattern_3_with(|a, b, c| {
+            if let Inst::DUP = a {
+                if matches!(
+                    b,
+                    Inst::SET_GLOBAL(_) | Inst::SET_LOCAL { .. } | Inst::SET_UPVALUE { .. }
+                ) && matches!(c, Inst::TRY_POP | Inst::POP)
+                {
+                    return Some(b.clone());
+                }
+            }
+
+            None
+        });
+    }
 
     pub fn finalize_bytecode(&mut self) {
         for inst in self.instructions.iter_mut() {
@@ -50,6 +74,8 @@ impl Compiler {
 
         self.remove_nops();
         self.trim_end_pops();
+
+        self.remove_store_load_pairs();
     }
 
     pub fn trim_end_pops(&mut self) {
@@ -140,6 +166,21 @@ impl Compiler {
         }
     }
 
+    fn replace_pattern_3_with(&mut self, replacer: impl Fn(&Inst, &Inst, &Inst) -> Option<Inst>) {
+        let indices: Vec<_> = self
+            .instructions
+            .windows(3)
+            .enumerate()
+            .filter_map(|(i, w)| replacer(&w[0], &w[1], &w[2]).map(|r| (i, r)))
+            .collect();
+
+        for (i, replacement) in indices {
+            self.instructions[i] = replacement;
+            self.instructions[i + 1] = Inst::NOP;
+            self.instructions[i + 2] = Inst::NOP;
+        }
+    }
+
     pub fn remove_nops(&mut self) {
         let mut old_to_new: Vec<usize> = Vec::with_capacity(self.instructions.len());
         let mut new_idx = 0;
@@ -182,7 +223,7 @@ impl Compiler {
     }
 
     pub fn compress_multiple_pushes(&mut self) {
-		const MIN_COMPRESS_LENGTH: usize = 3;
+        const MIN_COMPRESS_LENGTH: usize = 3;
 
         let mut i = 0;
         let mut start = 0;
@@ -230,7 +271,7 @@ impl Compiler {
     }
 
     pub fn compress_multiple_load_consts(&mut self) {
-		const MIN_COMPRESS_LENGTH: usize = 3;
+        const MIN_COMPRESS_LENGTH: usize = 3;
 
         let mut i = 0;
         let mut start = 0;
@@ -313,7 +354,7 @@ impl Compiler {
         }
     }
 
-    // STORE followed by LOAD instantly
+    // STORE/SET followed by LOAD instantly
     pub fn remove_store_load_pairs(&mut self) {
         let mut i = 0;
         while i < self.instructions.len().saturating_sub(1) {
@@ -328,7 +369,19 @@ impl Compiler {
                         depth: depth_b,
                     },
                 ) => *id_a == *id_b && *depth_a == *depth_b,
+
                 (Inst::STORE_GLOBAL(id_a), Inst::LOAD_GLOBAL(id_b)) => *id_a == *id_b,
+
+                (Inst::SET_UPVALUE { id: id_a, .. }, Inst::LOAD_UPVALUE { id: id_b, .. }) => {
+                    *id_a == *id_b
+                }
+
+                (Inst::SET_GLOBAL(id_a), Inst::LOAD_GLOBAL(id_b)) => *id_a == *id_b,
+
+                (Inst::SET_LOCAL { id: id_a, .. }, Inst::LOAD_LOCAL { id: id_b, .. }) => {
+                    *id_a == *id_b
+                }
+
                 _ => false,
             };
 

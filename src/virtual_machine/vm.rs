@@ -27,6 +27,7 @@ use crate::{
 };
 use lz4_flex::frame::{FrameDecoder, FrameEncoder};
 use simply_colored::*;
+use core::panic;
 use std::{cell::RefCell, collections::HashMap, io::Read, rc::Rc};
 
 const ORANGE: &str = "\x1b[38;2;255;150;60m";
@@ -250,7 +251,9 @@ impl VM {
                 Inst::STORE_GLOBAL_CONST(id) => {
                     Some(format!("STORE_GLOBAL_CONST({})", self.lookup_intern(*id)))
                 }
-                Inst::SET_VAR(id) => Some(format!("SET_VAR({})", self.lookup_intern(*id))),
+                Inst::SET_GLOBAL(id) => Some(format!("SET_GLOBAL({})", self.lookup_intern(*id))),
+                Inst::SET_LOCAL {id, scope_idx} => Some(format!("SET_LOCAL({}, depth: {scope_idx})", self.lookup_intern(*id))),
+                Inst::SET_UPVALUE {id, scope_idx} => Some(format!("SET_UPVALUE({}, depth: {scope_idx})", self.lookup_intern(*id))),
                 Inst::LOAD_UPVALUE { id, scope_idx } => Some(format!(
                     "LOAD_UPVALUE({}, depth: {})",
                     self.lookup_intern(*id),
@@ -988,35 +991,19 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                         );
                     }
                 }
-                Inst::SET_VAR(name) => {
-                    let mut found_idx = None;
+                Inst::SET_GLOBAL(id) => {
+					let new_value = self.pop();
 
-                    for i in (0..self.locals.len()).rev() {
-                        if let Some((_, is_const)) = self.locals[i].borrow().get(name) {
-                            if *is_const {
-                                panic!("Cannot set a constant `{name}`");
-                            } else {
-                                found_idx = Some(i);
-                            }
-                            break;
-                        }
-                    }
-                    if let Some(scope) = found_idx {
-                        let value = self.pop();
-                        if let Some(slot) = self.locals[scope].borrow_mut().get_mut(&name) {
-                            slot.0 = value;
-                        }
-                    } else if let Some((_, is_const)) = self.globals.get(name) {
-                        if *is_const {
-                            panic!("Cannot set a global constant `{name}`");
-                        } else {
-                            let value = self.pop();
-                            if let Some(slot) = self.globals.get_mut(&name) {
-                                slot.0 = value;
-                            }
-                        }
-                    }
-                }
+					if let Some((value, is_const)) = self.globals.get_mut(id) {
+						if *is_const {
+							panic!("Cannot set constant global `{}`", self.lookup_intern(*id))
+						}
+
+						*value = new_value;
+					} else {
+						panic!("Tried setting unknown global `{}`", self.lookup_intern(*id))
+					}
+				}
 
                 Inst::MAKE_CLOSURE { entry, captures } => {
                     let upvalues = captures

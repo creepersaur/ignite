@@ -73,7 +73,10 @@ pub enum Inst {
     LOAD_GLOBAL(u64),
     STORE_GLOBAL(u64),
     STORE_GLOBAL_CONST(u64),
-    SET_VAR(u64),
+
+	SET_GLOBAL(u64),
+	SET_LOCAL { id: u64, scope_idx: u16 },
+	SET_UPVALUE { id: u64, scope_idx: u16 },
 
     PUSH_SCOPE,
     POP_SCOPE,

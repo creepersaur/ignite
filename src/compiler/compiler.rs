@@ -117,6 +117,40 @@ impl Compiler {
         self.instructions.push(Inst::LOAD_GLOBAL(id));
     }
 
+    pub fn emit_set_var(&mut self, name: &str) {
+        for (depth, scope) in self.scopes.iter().enumerate().rev() {
+            if scope.contains(name) {
+                let id = self.intern(name);
+
+                if depth == 0 {
+                    self.instructions.push(Inst::SET_GLOBAL(id));
+                } else if depth < self.scope_base {
+                    let absolute = depth; // absolute index into locals at runtime
+                    if !self.current_captures.contains(&absolute) {
+                        self.current_captures.push(absolute);
+                    }
+
+                    let scope_idx = self
+                        .current_captures
+                        .iter()
+                        .position(|&d| d == absolute)
+                        .unwrap() as u16;
+                    self.instructions.push(Inst::SET_UPVALUE { id, scope_idx });
+                } else {
+                    let relative = depth - self.scope_base;
+                    self.instructions.push(Inst::SET_LOCAL {
+                        id,
+                        scope_idx: relative as u16,
+                    });
+                }
+                return;
+            }
+        }
+
+        let id = self.intern(name);
+        self.instructions.push(Inst::LOAD_GLOBAL(id));
+    }
+
     pub fn emit_load_const(&mut self, value: Value) {
         if let Some((idx, _)) = self
             .constants
@@ -379,8 +413,7 @@ impl Compiler {
                 if is_prefix {
                     self.instructions.push(Inst::DUP);
                 }
-                let id = self.intern(x.as_str());
-                self.instructions.push(Inst::SET_VAR(id))
+                self.emit_set_var(x.as_str());
             } else if let Node::MemberAccess { expr, member } = &**target {
                 self.compile_node(&**expr);
                 self.emit_get_prop(member);
@@ -723,7 +756,7 @@ impl Compiler {
         if let Node::Variable(x) = &**target {
             self.compile_node(&**value);
             self.instructions.push(Inst::DUP);
-            self.instructions.push(Inst::SET_VAR(hash_u64!(x.as_str())));
+            self.emit_set_var(x.as_str());
         } else if let Node::MemberAccess { expr, member } = &**target {
             self.compile_node(&**value);
             self.instructions.push(Inst::DUP);
@@ -755,7 +788,7 @@ impl Compiler {
             self.compile_node(&**target);
             self.compile_node(&**value);
             self.instructions.push(operator_inst);
-            self.instructions.push(Inst::SET_VAR(hash_u64!(x.as_str())));
+            self.emit_set_var(x.as_str());
         } else if let Node::MemberAccess { expr, member } = &**target {
             self.compile_node(&**expr);
             self.emit_get_prop(member); // LOAD expr.member
