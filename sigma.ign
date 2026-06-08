@@ -1,13 +1,6 @@
-fn outer() {
+let x = 5
+
+@ {
 	let x = 10
-
-	return fn() {
-		x += 1
-
-		println(x)
-	}
-}
-
-let inner = outer()
-inner()
-inner()
+	println(x)
+} // x gets dropped

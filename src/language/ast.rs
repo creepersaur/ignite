@@ -10,23 +10,40 @@ impl AST {
     }
 
     pub fn is_terminator(node: &Node) -> bool {
-        if let Node::BreakStatement(_) = node {
-            true
-        } else if let Node::ReturnStatement(_) = node {
-            true
-        } else if let Node::OutStatement { .. } = node {
-            true
-        } else if let Node::ContinueStatement = node {
-            true
-        } else {
-            false
+        match node {
+            Node::ExprStmt(x) => Self::is_terminator(&**x),
+
+            Node::BreakStatement(_) => true,
+            Node::ReturnStatement(_) => true,
+            Node::OutStatement { .. } => true,
+            Node::ContinueStatement => true,
+
+            Node::Block { body, .. } => {
+                if let Some(last) = body.last() {
+                    return Self::is_terminator(last);
+                }
+                false
+            }
+
+            _ => false,
         }
     }
 
     pub fn optimize(&mut self) {
-        for node in self.nodes.iter_mut() {
+        let mut terminator = None;
+
+        for (i, node) in self.nodes.iter_mut().enumerate() {
             Self::prune_node(node);
             *node = Self::fold_constants(node.clone());
+
+            if Self::is_terminator(node) {
+                terminator = Some(i);
+                break;
+            }
+        }
+
+        if let Some(last) = terminator {
+            self.nodes.truncate(last + 1);
         }
     }
 
