@@ -596,7 +596,7 @@ impl VM {
                     let map = name_vec
                         .iter()
                         .rev()
-                        .map(|x| (x.as_str().into(), self.pop()))
+                        .map(|x| (hash_u64!(x.as_str()), self.pop()))
                         .collect::<HashMap<_, _>>();
 
                     self.stack

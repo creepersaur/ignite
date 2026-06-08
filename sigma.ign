@@ -1,6 +1,13 @@
-let x = 5
+enum CursorType {
+	Default = nil,
+	Hand,
+	Pointer,
+	Grab,
+}
 
-@ {
-	let x = 10
-	println(x)
-} // x gets dropped
+let cursor = CursorType::Hand
+
+match cursor {
+	CursorType::Pointer => println("its a pointer"),
+	CursorType::Hand => println("its a hand")
+}

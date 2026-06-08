@@ -1570,8 +1570,6 @@ impl Parser {
             .expect_and_consume(TokenKind::Identifier)?
             .get_text(&self.source);
 
-        self.expect_and_consume(TokenKind::LBRACE)?;
-
         let mut items = vec![];
         let mut id = 0;
 
