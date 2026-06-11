@@ -1,13 +1,11 @@
-enum CursorType {
-	Default = nil,
-	Hand,
-	Pointer,
-	Grab,
+class Vector3 {
+	constructor(self, x = 0, y = 0, z = 0) {
+		self.x = x
+		self.y = y
+		self.z = z
+	}
+
+	fn __tostring__(self) => $"({self.x}, {self.y}, {self.z})"
 }
 
-let cursor = CursorType::Hand
-
-match cursor {
-	CursorType::Pointer => println("its a pointer"),
-	CursorType::Hand => println("its a hand")
-}
+print(string(new Vector3(10, 20, 30)) + "Hello")

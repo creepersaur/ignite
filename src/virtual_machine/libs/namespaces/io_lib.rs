@@ -109,17 +109,51 @@ impl IOLib {
             }
             out.write_all(x.to_string(false).as_bytes()).unwrap();
         }
-		out.write(b"\n").unwrap();
+        out.write(b"\n").unwrap();
 
         Value::NIL
     }
 
-    fn write(_vm: &mut VM, args: Vec<Value>) -> Value {
-        Self::write_fast(&args)
+    pub fn write(vm: &mut VM, args: Vec<Value>) -> Value {
+        let mut out = stdout().lock();
+        for (i, x) in args.iter().rev().enumerate() {
+            if i > 0 {
+                out.write(b" ").unwrap();
+            }
+            if let Value::ClassObject(obj) = x {
+                if let Some(Value::Function(f)) = obj
+                    .base
+                    .borrow()
+                    .functions
+                    .borrow()
+                    .get(&hash_u64!("__tostring__"))
+                {
+                    vm.stack.push(x.clone());
+                    vm.call_function(*f.clone(), 1);
+                    vm.run(false, true);
+
+                    let str = vm.pop();
+                    out.write_all(str.to_string(false).as_bytes()).unwrap();
+                }
+            } else {
+                out.write_all(x.to_string(false).as_bytes()).unwrap();
+            }
+        }
+
+        Value::NIL
     }
 
-    fn write_line(_vm: &mut VM, args: Vec<Value>) -> Value {
-        Self::write_line_fast(&args)
+    pub fn write_line(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let mut out = stdout().lock();
+        for (i, x) in args.iter().rev().enumerate() {
+            if i > 0 {
+                out.write(b" ").unwrap();
+            }
+            out.write_all(x.to_string(false).as_bytes()).unwrap();
+        }
+        out.write(b"\n").unwrap();
+
+        Value::NIL
     }
 }
 

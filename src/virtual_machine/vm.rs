@@ -189,8 +189,46 @@ impl VM {
         let stack_len = self.stack.len();
         let stack_start = stack_len - args_count as usize;
         let args = &mut self.stack[stack_start..];
+
         if args_count > 1 {
             args.reverse();
+        }
+
+        // Stuff that needs `__tostring__` go in here ;-;
+        'requires_tostring: {
+            if args.iter().any(|x| {
+                if let Value::ClassObject(obj) = x
+                    && obj
+                        .base
+                        .borrow()
+                        .functions
+                        .borrow()
+                        .contains_key(&hash_u64!("__tostring__"))
+                {
+                    true
+                } else {
+                    false
+                }
+            }) {
+                let value = match func {
+                    NativeFunction::Print => {
+                        let args = args.into();
+                        IOLib::write(self, args)
+                    }
+                    NativeFunction::Println => {
+                        let args = args.into();
+                        IOLib::write_line(self, args)
+                    }
+
+                    _ => {
+                        break 'requires_tostring;
+                    }
+                };
+
+                self.stack.truncate(stack_len - args_count as usize);
+
+                return value;
+            }
         }
 
         let value = match func {
@@ -516,9 +554,24 @@ impl VM {
                 Inst::EXIT => return,
                 Inst::NOP => {}
                 Inst::COMMENT(_) => {}
-                Inst::PRINT => println!("{}", self.pop().to_string(false)),
                 Inst::TO_STRING => {
                     let s = self.pop();
+
+                    if let Value::ClassObject(obj) = &s {
+                        if let Some(f) = obj
+                            .base
+                            .borrow()
+                            .functions
+                            .borrow()
+                            .get(&hash_u64!("__tostring__"))
+                        {
+                            self.stack.push(s.clone());
+                            if let Value::Function(f) = f {
+                                self.call_function((**f).clone(), 1);
+                            }
+                        }
+                    }
+
                     self.stack.push(Value::string(s))
                 }
                 Inst::POP => {
@@ -1036,8 +1089,9 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                     let new_value = self.pop();
 
                     if let Some(current_frame) = self.call_stack.last() {
-                        if let Some((value, is_const)) =
-                            current_frame.upvalues[*scope_idx as usize].borrow_mut().get_mut(id)
+                        if let Some((value, is_const)) = current_frame.upvalues[*scope_idx as usize]
+                            .borrow_mut()
+                            .get_mut(id)
                         {
                             if *is_const {
                                 panic!("Cannot set constant local `{}`", self.lookup_intern(*id))
@@ -1170,6 +1224,23 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                                     }
                                 }
                                 self.stack.push(Value::Bool(value.is_truthy()))
+                            }
+
+                            Value::Type(TypeValue::String) => {
+                                if let Value::ClassObject(obj) = &args[0]
+                                    && let Some(Value::Function(func)) = obj
+                                        .base
+                                        .borrow()
+                                        .functions
+                                        .borrow()
+                                        .get(&hash_u64!("__tostring__"))
+                                {
+                                    self.stack.push(args[0].clone());
+                                    self.call_function(*func.clone(), 1);
+                                    self.run(false, true);
+                                } else {
+                                    self.stack.push(Value::string(&args[0]));
+                                }
                             }
 
                             _ => panic!("({}) Tried calling non-function: {func:?}", self.pos),
