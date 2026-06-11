@@ -6,6 +6,13 @@ class Vector3 {
 	}
 
 	fn __tostring__(self) => $"({self.x}, {self.y}, {self.z})"
+
+	fn __mul__(self, other) => new Vector3(
+			self.x + other.x,
+			self.y + other.y,
+			self.z + other.z,
+		)
+	}
 }
 
-print(string(new Vector3(10, 20, 30)) + "Hello")
+println(new Vector3(1, 0, 0) + new Vector3(0, 1, 0))

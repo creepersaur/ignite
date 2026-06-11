@@ -243,6 +243,46 @@ impl VM {
         value
     }
 
+    pub fn handle_operator_overload(
+        &mut self,
+        handled: &mut bool,
+        a: &Value,
+        b: &Value,
+        function: u64,
+        reflected_function: u64,
+    ) {
+        if let Value::ClassObject(obj) = a {
+            if let Some(Value::Function(func)) =
+                obj.base.borrow().functions.borrow().get(&function).cloned()
+            {
+                *handled = true;
+                self.stack.push(b.clone());
+                self.stack.push(a.clone());
+
+                self.call_function(*func, 2);
+                self.run(false, true);
+            }
+        }
+
+        if !*handled && let Value::ClassObject(obj) = b {
+            if let Some(Value::Function(func)) = obj
+                .base
+                .borrow()
+                .functions
+                .borrow()
+                .get(&reflected_function)
+                .cloned()
+            {
+                *handled = true;
+                self.stack.push(a.clone());
+                self.stack.push(b.clone());
+
+                self.call_function(*func, 2);
+                self.run(false, true);
+            }
+        }
+    }
+
     pub fn lookup_intern(&self, id: u64) -> Rc<str> {
         if !self.expose_interns {
             return rc_str!("<unknown>");
@@ -406,9 +446,9 @@ impl VM {
             };
 
             if depth < 0 {
-                print!("{ORANGE}{i:>2}{RED} │ ");
+                print!("{ORANGE}{i:>3}{RED} │ ");
             } else {
-                print!("{ORANGE}{i:>2}{BLACK} │ ");
+                print!("{ORANGE}{i:>3}{BLACK} │ ");
             }
 
             if rest.is_empty() {
@@ -776,81 +816,140 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
 
                 Inst::ADD => {
                     let (a, b) = &self.pop_two();
+                    let mut handled = false;
 
-                    if let (Value::Number(a), Value::Number(b)) = (a, b) {
-                        self.stack.push(Value::Number(a + b));
-                    } else if let (Value::String(a), Value::String(b)) = (a, b) {
-                        self.stack.push(Value::String(TString::new(format!(
-                            "{}{}",
-                            a.to_string(),
-                            b.to_string()
-                        ))));
-                    } else if let (Value::String(a), Value::Char(b)) = (a, b) {
-                        self.stack.push(Value::String(TString::new(format!(
-                            "{}{}",
-                            a.to_string(),
-                            b
-                        ))));
-                    } else if let (Value::Char(a), Value::String(b)) = (a, b) {
-                        self.stack.push(Value::String(TString::new(format!(
-                            "{}{}",
-                            a,
-                            b.to_string()
-                        ))));
-                    } else {
-                        panic!("Cannot add {} and {}", a.get_type(), b.get_type());
+                    self.handle_operator_overload(
+                        &mut handled,
+                        a,
+                        b,
+                        hash_u64!("__add__"),
+                        hash_u64!("__radd__"),
+                    );
+
+                    if !handled {
+                        match (a, b) {
+                            (Value::Number(a), Value::Number(b)) => {
+                                self.stack.push(Value::Number(a + b))
+                            }
+                            (Value::String(a), Value::String(b)) => self.stack.push(Value::String(
+                                TString::new(format!("{}{}", a.to_string(), b.to_string())),
+                            )),
+                            (Value::String(a), Value::Char(b)) => self.stack.push(Value::String(
+                                TString::new(format!("{}{}", a.to_string(), b)),
+                            )),
+                            (Value::Char(a), Value::String(b)) => self.stack.push(Value::String(
+                                TString::new(format!("{}{}", a, b.to_string())),
+                            )),
+
+                            (a, b) => panic!("Cannot add {} and {}", a.get_type(), b.get_type()),
+                        }
                     }
                 }
                 Inst::SUB => {
                     let (a, b) = &self.pop_two();
+                    let mut handled = false;
 
-                    if let (Value::Number(a), Value::Number(b)) = (a, b) {
-                        self.stack.push(Value::Number(a - b));
-                    } else {
-                        panic!("Cannot subtract {} by {}", a.get_type(), b.get_type());
+                    self.handle_operator_overload(
+                        &mut handled,
+                        a,
+                        b,
+                        hash_u64!("__sub__"),
+                        hash_u64!("__rsub__"),
+                    );
+
+                    if !handled {
+                        if let (Value::Number(a), Value::Number(b)) = (a, b) {
+                            self.stack.push(Value::Number(a - b));
+                        } else {
+                            panic!("Cannot subtract {} by {}", a.get_type(), b.get_type());
+                        }
                     }
                 }
                 Inst::MUL => {
                     let (a, b) = &self.pop_two();
+                    let mut handled = false;
 
-                    if let (Value::Number(a), Value::Number(b)) = (a, b) {
-                        self.stack.push(Value::Number(a * b));
-                    } else if let (Value::String(a), Value::Number(b)) = (a, b) {
-                        self.stack
-                            .push(Value::String(TString::new(a.0.repeat(*b as usize))));
-                    } else {
-                        panic!("Cannot multiply `{}` with `{}`", a.get_type(), b.get_type());
+                    self.handle_operator_overload(
+                        &mut handled,
+                        a,
+                        b,
+                        hash_u64!("__mul__"),
+                        hash_u64!("__rmul__"),
+                    );
+
+                    if !handled {
+                        if let (Value::Number(a), Value::Number(b)) = (a, b) {
+                            self.stack.push(Value::Number(a * b));
+                        } else if let (Value::String(a), Value::Number(b)) = (a, b) {
+                            self.stack
+                                .push(Value::String(TString::new(a.0.repeat(*b as usize))));
+                        } else {
+                            panic!("Cannot multiply `{}` with `{}`", a.get_type(), b.get_type());
+                        }
                     }
                 }
                 Inst::DIV => {
                     let (a, b) = &self.pop_two();
+                    let mut handled = false;
 
-                    if let (Value::Number(a), Value::Number(b)) = (a, b) {
-                        if *b == 0.0 {
-                            panic!("Cannot divide by Zero");
+                    self.handle_operator_overload(
+                        &mut handled,
+                        a,
+                        b,
+                        hash_u64!("__div__"),
+                        hash_u64!("__rdiv__"),
+                    );
+
+                    if !handled {
+                        if let (Value::Number(a), Value::Number(b)) = (a, b) {
+                            if *b == 0.0 {
+                                panic!("Cannot divide by Zero");
+                            } else {
+                                self.stack.push(Value::Number(a / b));
+                            }
                         } else {
-                            self.stack.push(Value::Number(a / b));
+                            panic!("Cannot divide `{}` by `{}`", a.get_type(), b.get_type());
                         }
-                    } else {
-                        panic!("Cannot divide `{}` by `{}`", a.get_type(), b.get_type());
                     }
                 }
                 Inst::POW => {
                     let (a, b) = &self.pop_two();
+                    let mut handled = false;
 
-                    if let (Value::Number(a), Value::Number(b)) = (a, b) {
-                        self.stack.push(Value::Number(a.powf(*b)));
-                    } else {
-                        panic!("Cannot POW `{}` and `{}`", a.get_type(), b.get_type());
+                    self.handle_operator_overload(
+                        &mut handled,
+                        a,
+                        b,
+                        hash_u64!("__pow__"),
+                        hash_u64!("__rpow__"),
+                    );
+
+                    if !handled {
+                        if let (Value::Number(a), Value::Number(b)) = (a, b) {
+                            self.stack.push(Value::Number(a.powf(*b)));
+                        } else {
+                            panic!("Cannot POW `{}` and `{}`", a.get_type(), b.get_type());
+                        }
                     }
                 }
                 Inst::MOD => {
                     let (a, b) = &self.pop_two();
+                    let mut handled = false;
 
-                    if let (Value::Number(a), Value::Number(b)) = (a, b) {
-                        self.stack.push(Value::Number(a % b));
-                    } else {
-                        panic!("Cannot MOD `{}` and `{}`", a.get_type(), b.get_type());
+                    self.handle_operator_overload(
+                        &mut handled,
+                        a,
+                        b,
+                        hash_u64!("__mod__"),
+                        hash_u64!("__rmod__"),
+                    );
+
+                    if !handled {
+                        if let (Value::Number(a), Value::Number(b)) = (a, b) {
+                            self.stack.push(Value::Number(a % b));
+                        } else {
+                            panic!("Cannot MOD `{}` and `{}`", a.get_type(), b.get_type());
+                        }
                     }
                 }
 

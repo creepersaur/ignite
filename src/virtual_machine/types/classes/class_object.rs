@@ -20,7 +20,7 @@ impl PartialOrd for TClassObject {
 
 impl TClassObject {
     pub fn new(base: Rc<RefCell<TClass>>) -> Self {
-        let values = base.borrow().values.clone();
+        let values = rc!(RefCell::new(base.borrow().values.borrow().clone()));
         Self { base, values }
     }
 }
