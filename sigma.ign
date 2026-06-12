@@ -1,18 +1,19 @@
-class Vector3 {
-	constructor(self, x = 0, y = 0, z = 0) {
+class Thing {
+	constructor(self, x) {
 		self.x = x
-		self.y = y
-		self.z = z
 	}
 
-	fn __tostring__(self) => $"({self.x}, {self.y}, {self.z})"
+	fn __add__(self, other) {
+		if typeof(other) == "number" {
+			new Thing(self.x + other)
+		} else {
+			new Thing(self.x + other.x)
+		}
+	}
 
-	fn __mul__(self, other) => new Vector3(
-			self.x + other.x,
-			self.y + other.y,
-			self.z + other.z,
-		)
+	fn __radd__(self, other) {
+		return Thing::__add__(self, other)
 	}
 }
 
-println(new Vector3(1, 0, 0) + new Vector3(0, 1, 0))
+println(10 + new Thing(5))

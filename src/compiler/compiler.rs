@@ -672,7 +672,7 @@ impl Compiler {
     }
 
     pub fn compile_function_call(&mut self, target: &Box<Node>, args: &Vec<Node>) {
-        for i in args.iter() {
+        for i in args.iter().rev() {
             self.compile_node(i);
         }
 
@@ -996,24 +996,43 @@ impl Compiler {
         self.compile_node(expr);
 
         for (idx, (condition, value)) in branches.iter().enumerate() {
-            if idx <= branches.len() {
-                self.instructions.push(Inst::DUP);
+            if let Node::Variable(var) = condition {
+                self.push_scope();
+
+                if idx + 1 < branches.len() {
+                    self.instructions.push(Inst::DUP);
+                }
+                self.emit_store_local(&var, false);
+                self.compile_node(value);
+
+                self.pop_scope();
+            } else {
+                if idx + 1 < branches.len() {
+                    self.instructions.push(Inst::DUP);
+                }
+                self.compile_node(condition);
+                self.instructions.push(Inst::MATCH);
+
+                let jump_if_false = patch!(self.instructions);
+
+                self.compile_node(value);
+				let _ = patch!(self.instructions, "match_exit");
+
+                patch_execute!(
+                    self.instructions,
+                    jump_if_false,
+                    Inst::JUMP_IF_FALSE(self.instructions.len() as u32)
+                );
             }
-            self.compile_node(condition);
-            self.instructions.push(Inst::MATCH);
-
-            let jump_if_false = patch!(self.instructions);
-
-            self.compile_node(value);
-
-            patch_execute!(
-                self.instructions,
-                jump_if_false,
-                Inst::JUMP_IF_FALSE(self.instructions.len() as u32)
-            );
         }
 
         self.instructions.push(Inst::DEFAULT_NIL);
+
+        patch_execute!(
+            self.instructions,
+            "match_exit",
+            Inst::JUMP(self.instructions.len() as u32)
+        );
     }
 
     pub fn compile_using(
