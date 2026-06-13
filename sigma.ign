@@ -1,19 +1,4 @@
-class Thing {
-	constructor(self, x) {
-		self.x = x
-	}
-
-	fn __add__(self, other) {
-		if typeof(other) == "number" {
-			new Thing(self.x + other)
-		} else {
-			new Thing(self.x + other.x)
-		}
-	}
-
-	fn __radd__(self, other) {
-		return Thing::__add__(self, other)
-	}
+fn hello() {
+	123
 }
-
-println(10 + new Thing(5))
+print(hello(1, 2))

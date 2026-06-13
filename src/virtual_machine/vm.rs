@@ -38,6 +38,8 @@ const GREEN: &str = "\x1b[38;2;62;198;140m"; // #3ec68c
 pub struct CallFrame {
     scope_base: usize,
     return_addr: usize,
+    stack_len: usize,
+    args_count: usize,
     upvalues: Vec<Rc<RefCell<HashMap<u64, (Value, bool)>>>>,
 }
 
@@ -65,6 +67,8 @@ impl VM {
             call_stack: vec![CallFrame {
                 scope_base: 0,
                 return_addr: 0,
+                stack_len: 0,
+                args_count: 0,
                 upvalues: Vec::with_capacity(20),
             }],
             constants: Vec::with_capacity(150),
@@ -151,6 +155,8 @@ impl VM {
     }
 
     pub fn call_function(&mut self, f: TFunction, mut args_count: u16) {
+        let stack_len = self.stack.len();
+        let stack_start = stack_len - args_count as usize;
         if let Some(target) = f.target {
             self.stack.push(target.as_ref().clone());
             args_count += 1;
@@ -179,6 +185,8 @@ impl VM {
             self.call_stack.push(CallFrame {
                 scope_base: self.locals.len(),
                 return_addr: self.pos,
+                stack_len: self.stack.len(),
+                args_count: args_count as usize,
                 upvalues: f.upvalues,
             });
             self.pos = f.entry;
@@ -1354,11 +1362,19 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                     self.fast_call(*func, *args);
                 }
                 Inst::RETURN => {
+                    let result = self.pop();
+
                     if let Some(frame) = self.call_stack.last() {
                         self.pos = *&frame.return_addr;
                         self.locals.truncate(frame.scope_base);
+
+                        self.stack
+                            .truncate(frame.stack_len - frame.args_count as usize);
+                        self.stack.push(result);
+
                         self.call_stack.pop();
                     } else {
+                        self.stack.push(result);
                         self.locals.pop();
                         break;
                     }
