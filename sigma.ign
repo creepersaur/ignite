@@ -1,4 +1,8 @@
-fn hello() {
-	123
+class Vector2 {
+	constructor(self, x = 0, y = 0) {
+		self.x = x
+		self.y = y
+	}
 }
-print(hello(1, 2))
+
+println(new Vector2(10 + 20, 0))

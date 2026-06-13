@@ -278,7 +278,7 @@ impl Compiler {
                 else_block,
             } => self.compile_if_statement(condition, block, elifs, else_block),
 
-            Node::Block { name, body } => self.compile_block(name, body),
+            Node::Block { name, body } => self.compile_block(name, body, true),
 
             Node::Loop { block } => self.compile_loop(block),
 
@@ -610,11 +610,14 @@ impl Compiler {
         self.emit_load_local(names[0].as_str());
     }
 
-    pub fn compile_block(&mut self, name: &Option<String>, body: &Vec<Node>) {
+    pub fn compile_block(&mut self, name: &Option<String>, body: &Vec<Node>, make_scope: bool) {
         let out_text = format!("out:{}", name.clone().unwrap_or("".to_string()));
         let block_start = self.instructions.len();
 
-        self.push_scope();
+        if make_scope {
+            self.push_scope();
+        }
+
         for i in body {
             if let Node::ExprStmt(expr) = i {
                 if let Node::OutStatement { block_name, value } = expr.as_ref() {
@@ -663,7 +666,9 @@ impl Compiler {
             block_start
         );
 
-        self.pop_scope();
+        if make_scope {
+            self.pop_scope();
+        }
     }
 
     pub fn compile_member_access(&mut self, expr: &Box<Node>, member: &Box<Node>) {
@@ -715,7 +720,11 @@ impl Compiler {
             self.compile_node(&condition);
             let jump_if_false = patch!(self.instructions);
 
-            self.compile_node(&block);
+            if let Node::Block { name, body } = block {
+                self.compile_block(name, body, false);
+            } else {
+                self.compile_node(&block);
+            }
 
             self.pop_scope();
 
@@ -882,11 +891,17 @@ impl Compiler {
     pub fn compile_while_loop(&mut self, condition: &Box<Node>, block: &Box<Node>) {
         let loop_start_index = self.instructions.len();
 
+        self.push_scope();
+
         self.compile_node(&*condition);
 
         let end_loop_jump = patch!(self.instructions);
 
-        self.compile_node(&*block);
+        if let Node::Block { name, body } = &**block {
+            self.compile_block(name, body, false);
+        } else {
+            self.compile_node(&**block);
+        }
 
         self.instructions.push(Inst::JUMP(loop_start_index as u32));
 
@@ -910,6 +925,8 @@ impl Compiler {
             loop_start_index
         );
 
+        self.pop_scope();
+
         self.instructions.push(Inst::DEFAULT_NIL);
     }
 
@@ -926,7 +943,11 @@ impl Compiler {
         let for_iter = patch!(self.instructions);
         self.emit_store_local(var_name.as_str(), false);
 
-        self.compile_node(&*block);
+        if let Node::Block { name, body } = &**block {
+            self.compile_block(name, body, false);
+        } else {
+            self.compile_node(&**block);
+        }
 
         self.instructions.push(Inst::JUMP(loop_start_index as u32));
 
@@ -993,19 +1014,16 @@ impl Compiler {
     }
 
     pub fn compile_match(&mut self, expr: &Box<Node>, branches: &Vec<(Node, Node)>) {
+        self.push_scope();
         self.compile_node(expr);
 
         for (idx, (condition, value)) in branches.iter().enumerate() {
             if let Node::Variable(var) = condition {
-                self.push_scope();
-
                 if idx + 1 < branches.len() {
                     self.instructions.push(Inst::DUP);
                 }
                 self.emit_store_local(&var, false);
                 self.compile_node(value);
-
-                self.pop_scope();
             } else {
                 if idx + 1 < branches.len() {
                     self.instructions.push(Inst::DUP);
@@ -1016,7 +1034,7 @@ impl Compiler {
                 let jump_if_false = patch!(self.instructions);
 
                 self.compile_node(value);
-				let _ = patch!(self.instructions, "match_exit");
+                let _ = patch!(self.instructions, "match_exit");
 
                 patch_execute!(
                     self.instructions,
@@ -1033,6 +1051,8 @@ impl Compiler {
             "match_exit",
             Inst::JUMP(self.instructions.len() as u32)
         );
+
+        self.pop_scope();
     }
 
     pub fn compile_using(

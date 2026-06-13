@@ -52,7 +52,12 @@ impl AST {
             Node::ExprStmt(node) => {
                 Self::prune_node(node);
             }
-            Node::Block { body, .. } => Self::prune_block(body),
+            Node::Block { body, .. } => {
+                Self::prune_block(body);
+                if body.len() == 0 {
+                    *node = Node::NIL;
+                }
+            }
             Node::IfStatement {
                 block,
                 elifs,
@@ -63,6 +68,12 @@ impl AST {
                     if x == true {
                         Self::prune_node(block);
                         *node = *block.clone();
+                        return;
+                    } else if let Some(else_block) = else_block {
+                        *node = *else_block.clone();
+                        return;
+                    } else {
+                        *node = Node::NIL;
                         return;
                     }
                 }
@@ -168,6 +179,82 @@ impl AST {
             Node::EnumDef { items, .. } => {
                 for (_, value) in items.iter_mut() {
                     Self::prune_node(value);
+                }
+            }
+            Node::MatchStatement { expr, branches } => {
+                Self::prune_node(expr);
+                for (condition, value) in branches {
+                    Self::prune_node(condition);
+                    Self::prune_node(value);
+                }
+            }
+            Node::ClassInit { target, parameters } => {
+                Self::prune_node(target);
+                for i in parameters {
+                    Self::prune_node(i);
+                }
+            }
+            Node::ComparisonChain { expressions, .. } => {
+                expressions.iter_mut().for_each(|x| Self::prune_node(x));
+            }
+            Node::NullCoalesce { left, right } => {
+                Self::prune_node(left);
+                Self::prune_node(right);
+            }
+            Node::ElvisCoalesce { left, right } => {
+                Self::prune_node(left);
+                Self::prune_node(right);
+            }
+            Node::TernaryOp {
+                condition,
+                true_expr,
+                false_expr,
+            } => {
+                Self::prune_node(condition);
+                Self::prune_node(true_expr);
+                Self::prune_node(false_expr);
+            }
+            Node::FString(parts) => {
+                for part in parts {
+                    Self::prune_node(part);
+                }
+            }
+            Node::ClassDef {
+                let_statements,
+                functions,
+                constructor,
+                ..
+            } => {
+                for stmt in let_statements {
+                    Self::prune_node(stmt);
+                }
+
+                for func in functions {
+                    Self::prune_node(func);
+                }
+
+                if let Some(cons) = constructor {
+                    Self::prune_node(cons);
+                }
+            }
+            Node::StructInit { target, fields } => {
+                Self::prune_node(target);
+
+                for (_, value) in fields {
+                    Self::prune_node(value);
+                }
+            }
+            Node::InterfaceDef {
+                let_statements,
+                functions,
+                ..
+            } => {
+                for stmt in let_statements {
+                    Self::prune_node(stmt);
+                }
+
+                for func in functions {
+                    Self::prune_node(func);
                 }
             }
 
@@ -508,6 +595,112 @@ impl AST {
                 items: items
                     .into_iter()
                     .map(|(k, v)| (k, Self::fold_constants(v)))
+                    .collect(),
+            },
+
+            Node::ComparisonChain {
+                expressions,
+                operators,
+            } => Node::ComparisonChain {
+                expressions: expressions.into_iter().map(Self::fold_constants).collect(),
+                operators,
+            },
+
+            Node::NullCoalesce { left, right } => {
+                let left = Self::fold_constants(*left);
+                let right = Self::fold_constants(*right);
+
+                match left {
+                    Node::NIL => right,
+                    other => Node::NullCoalesce {
+                        left: Box::new(other),
+                        right: Box::new(right),
+                    },
+                }
+            }
+
+            Node::ElvisCoalesce { left, right } => Node::ElvisCoalesce {
+                left: Box::new(Self::fold_constants(*left.clone())),
+                right: Box::new(Self::fold_constants(*right.clone())),
+            },
+
+            Node::TernaryOp {
+                condition,
+                true_expr,
+                false_expr,
+            } => {
+                let condition = Self::fold_constants(*condition);
+
+                match condition {
+                    Node::BooleanLiteral(true) => Self::fold_constants(*true_expr),
+
+                    Node::BooleanLiteral(false) => Self::fold_constants(*false_expr),
+
+                    condition => Node::TernaryOp {
+                        condition: Box::new(condition),
+                        true_expr: Box::new(Self::fold_constants(*true_expr)),
+                        false_expr: Box::new(Self::fold_constants(*false_expr)),
+                    },
+                }
+            }
+
+            Node::FString(parts) => {
+                Node::FString(parts.into_iter().map(Self::fold_constants).collect())
+            }
+
+            Node::ClassDef {
+                name,
+                interfaces,
+                let_statements,
+                functions,
+                constructor,
+            } => Node::ClassDef {
+                name,
+                interfaces,
+                let_statements: let_statements
+                    .iter()
+                    .map(|x| Self::fold_constants(x.clone()))
+                    .collect(),
+                functions: functions
+                    .iter()
+                    .map(|x| Self::fold_constants(x.clone()))
+                    .collect(),
+                constructor: if let Some(x) = constructor {
+                    Some(Box::new(Self::fold_constants(*x.clone())))
+                } else {
+                    None
+                },
+            },
+
+            Node::StructInit { target, fields } => Node::StructInit {
+                target: Box::new(Self::fold_constants(*target)),
+                fields: fields
+                    .iter()
+                    .map(|(name, value)| (name.clone(), Self::fold_constants(value.clone())))
+                    .collect(),
+            },
+
+            Node::InterfaceDef {
+                name,
+                let_statements,
+                functions,
+            } => Node::InterfaceDef {
+                name,
+                let_statements: let_statements
+                    .iter()
+                    .map(|x| Self::fold_constants(x.clone()))
+                    .collect(),
+                functions: functions
+                    .iter()
+                    .map(|x| Self::fold_constants(x.clone()))
+                    .collect(),
+            },
+
+            Node::ClassInit { target, parameters } => Node::ClassInit {
+                target: Box::new(Self::fold_constants(*target.clone())),
+                parameters: parameters
+                    .iter()
+                    .map(|x| Self::fold_constants(x.clone()))
                     .collect(),
             },
 
