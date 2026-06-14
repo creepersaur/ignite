@@ -1,8 +1,1 @@
-class Vector2 {
-	constructor(self, x = 0, y = 0) {
-		self.x = x
-		self.y = y
-	}
-}
-
-println(new Vector2(10 + 20, 0))
+println(typeof("hello"))

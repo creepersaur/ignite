@@ -12,6 +12,12 @@ impl TypeLib {
         Value::String(TString::new(value.get_type()))
     }
 
+    pub fn typeof_fast(args: &[Value]) -> Value {
+        let value = get_args!(args);
+
+        Value::String(TString::new(value.get_type()))
+    }
+
     // TYPES
 
     pub fn string(_vm: &mut VM, args: Vec<Value>) -> Value {

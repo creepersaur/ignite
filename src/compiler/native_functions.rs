@@ -5,6 +5,7 @@ use bincode::{Decode, Encode};
 pub enum NativeFunction {
     Println,
     Print,
+	Typeof,
 }
 
 impl NativeFunction {
@@ -12,6 +13,7 @@ impl NativeFunction {
         match name {
             "println" => Some(NativeFunction::Println),
             "print" => Some(NativeFunction::Print),
+            "typeof" => Some(NativeFunction::Typeof),
 
             _ => None,
         }

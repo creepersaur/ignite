@@ -242,6 +242,7 @@ impl VM {
         let value = match func {
             NativeFunction::Print => IOLib::write_fast(args),
             NativeFunction::Println => IOLib::write_line_fast(args),
+			NativeFunction::Typeof => TypeLib::typeof_fast(args),
 
             _ => panic!("Unknown fast_call function: {func:?}"),
         };
