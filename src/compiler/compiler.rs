@@ -282,7 +282,11 @@ impl Compiler {
 
             Node::Loop { block } => self.compile_loop(block),
 
-            Node::WhileLoop { condition, block } => self.compile_while_loop(condition, block),
+            Node::WhileLoop {
+                condition,
+                block,
+                else_block,
+            } => self.compile_while_loop(condition, block, else_block),
 
             Node::BreakStatement(value) => self.compile_break(value),
 
@@ -888,7 +892,12 @@ impl Compiler {
         );
     }
 
-    pub fn compile_while_loop(&mut self, condition: &Box<Node>, block: &Box<Node>) {
+    pub fn compile_while_loop(
+        &mut self,
+        condition: &Box<Node>,
+        block: &Box<Node>,
+        else_block: &Option<Box<Node>>,
+    ) {
         let loop_start_index = self.instructions.len();
 
         self.push_scope();
@@ -907,22 +916,25 @@ impl Compiler {
 
         patch_execute!(
             self.instructions,
+            "continue",
+            Inst::JUMP(loop_start_index as u32),
+            loop_start_index
+        );
+
+        patch_execute!(
+            self.instructions,
             end_loop_jump,
             Inst::JUMP_IF_FALSE(self.instructions.len() as u32)
         );
 
-        patch_execute!(
-            self.instructions,
-            "break",
-            Inst::JUMP(self.instructions.len() as u32),
-            loop_start_index
-        );
+        if let Some(block) = else_block {
+            self.compile_node(&**block);
+        }
 
         patch_execute!(
             self.instructions,
-            "continue",
-            Inst::JUMP(loop_start_index as u32),
-            loop_start_index
+            "break",
+            Inst::JUMP(self.instructions.len() as u32)
         );
 
         self.pop_scope();

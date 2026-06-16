@@ -55,6 +55,10 @@ impl Parser {
         }
     }
 
+    pub fn check_current(&self, kind: TokenKind) -> Result<bool, String> {
+        Ok(self.current()?.kind == kind)
+    }
+
     fn expect_and_consume(&mut self, kind: TokenKind) -> Result<Token, String> {
         self.skip_new_lines();
 
@@ -98,18 +102,14 @@ impl Parser {
 
         loop {
             self.skip_new_lines();
-            if let Ok(next) = self.current()
-                && next.kind == right
-            {
+            if self.check_current(right.clone())? {
                 break;
             }
 
             f(self)?;
 
             if let Some(ref sep) = separator {
-                if let Ok(next) = self.current()
-                    && next.kind == *sep
-                {
+                if self.check_current(sep.clone())? {
                     self.advance()?;
                 } else {
                     break;
@@ -134,7 +134,6 @@ impl Parser {
 
             _ => {
                 let expr = self.parse_expression()?;
-
                 Ok(Node::ExprStmt(Box::new(expr)))
             }
         }
@@ -554,31 +553,15 @@ impl Parser {
 
         let mut values = vec![];
 
-        loop {
-            self.skip_new_lines();
-
-            if let Ok(next) = self.current() {
-                if next.kind == TokenKind::RBRACK {
-                    break;
-                }
-            } else {
-                return Err(format!(
-                    "Unexpected end of input [EOF] while parsing list. Expected `]`."
-                ));
-            }
-
-            values.push(self.parse_expression()?);
-
-            if let Ok(next) = self.current()
-                && next.kind == TokenKind::COMMA
-            {
-                self.advance()?;
-            } else {
-                break;
-            }
-        }
-
-        self.advance()?;
+        self.parse_surrounded(
+            TokenKind::LBRACK,
+            TokenKind::RBRACK,
+            Some(TokenKind::COMMA),
+            |this| {
+                values.push(this.parse_expression()?);
+				Ok(())
+			},
+        );
 
         Ok(Node::ListNode(values))
     }
@@ -996,9 +979,7 @@ impl Parser {
             for i in names.iter() {
                 values.push(Some(Box::new(self.parse_expression()?)));
 
-                if let Ok(next) = self.current()
-                    && next.kind == TokenKind::COMMA
-                {
+                if self.check_current(TokenKind::COMMA)? {
                     self.advance();
                 } else {
                     break;
@@ -1261,14 +1242,10 @@ impl Parser {
         let mut else_block = None;
 
         loop {
-            if let Ok(next) = self.current()
-                && next.kind == TokenKind::ELSE
-            {
+            if self.check_current(TokenKind::ELSE)? {
                 self.advance()?;
 
-                if let Ok(next) = self.current()
-                    && next.kind == TokenKind::IF
-                {
+                if self.check_current(TokenKind::IF)? {
                     self.advance()?;
 
                     let elif_condition = self.parse_expression()?;
@@ -1308,9 +1285,20 @@ impl Parser {
     fn parse_while(&mut self) -> NodeResult {
         self.advance()?;
 
+        let condition = self.parse_ternary_op()?;
+        let block = self.parse_block()?;
+
+        let else_block = if self.check_current(TokenKind::ELSE)? {
+            self.advance()?;
+            Some(Box::new(self.parse_block()?))
+        } else {
+            None
+        };
+
         Ok(Node::WhileLoop {
-            condition: Box::new(self.parse_ternary_op()?),
-            block: Box::new(self.parse_block()?),
+            condition: Box::new(condition),
+            block: Box::new(block),
+            else_block,
         })
     }
 
@@ -1346,9 +1334,7 @@ impl Parser {
         self.skip_new_lines();
 
         let mut interfaces = vec![];
-        if let Ok(next) = self.current()
-            && next.kind == TokenKind::COLON
-        {
+        if self.check_current(TokenKind::COLON)? {
             self.expect_and_consume(TokenKind::COLON)?;
             interfaces.push(rc!(self
                 .expect_and_consume(TokenKind::Identifier)?
@@ -1401,7 +1387,7 @@ impl Parser {
                         if let Some(next) = self.peek()
                             && next.kind == TokenKind::FN
                         {
-							self.advance()?;
+                            self.advance()?;
                             functions.push(self.parse_function_def(false, true)?)
                         } else {
                             let_statements.push(self.parse_let(true)?)

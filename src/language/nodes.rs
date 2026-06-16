@@ -125,6 +125,7 @@ pub enum Node {
     WhileLoop {
         condition: Box<Node>,
         block: Box<Node>,
+        else_block: Option<Box<Node>>,
     },
     ForLoop {
         var_name: Rc<String>,

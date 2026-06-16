@@ -568,9 +568,14 @@ impl AST {
             Node::Loop { block } => Node::Loop {
                 block: Box::new(Self::fold_constants(*block)),
             },
-            Node::WhileLoop { condition, block } => Node::WhileLoop {
+            Node::WhileLoop {
+                condition,
+                block,
+                else_block,
+            } => Node::WhileLoop {
                 condition: Box::new(Self::fold_constants(*condition)),
                 block: Box::new(Self::fold_constants(*block)),
+                else_block: else_block.map(|x| Box::new(Self::fold_constants(*x))),
             },
             Node::ForLoop {
                 var_name,
@@ -665,11 +670,7 @@ impl AST {
                     .iter()
                     .map(|x| Self::fold_constants(x.clone()))
                     .collect(),
-                constructor: if let Some(x) = constructor {
-                    Some(Box::new(Self::fold_constants(*x.clone())))
-                } else {
-                    None
-                },
+                constructor: constructor.map(|x| Box::new(Self::fold_constants(*x))),
             },
 
             Node::StructInit { target, fields } => Node::StructInit {
