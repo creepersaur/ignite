@@ -3,7 +3,13 @@ use std::{cell::RefCell, fmt::Debug, rc::Rc};
 use crate::{
     misc::to_index::to_index,
     virtual_machine::{
-        libs::types::{list_lib::{LIST_FUNCTION_IDS, LIST_FUNCTIONS}, tuple_lib::{TUPLE_FUNCTION_IDS, TUPLE_FUNCTIONS}}, traits::member_accessible::IMemberAccessible, types::function::TFunction, value::Value,
+        libs::types::{
+            list_lib::{LIST_FUNCTION_IDS, LIST_FUNCTIONS},
+            tuple_lib::{TUPLE_FUNCTION_IDS, TUPLE_FUNCTIONS},
+        },
+        traits::member_accessible::IMemberAccessible,
+        types::function::TFunction,
+        value::Value,
         vm::VM,
     },
 };
@@ -27,6 +33,18 @@ impl TList {
             values,
             is_tuple: true,
         }
+    }
+    pub fn empty() -> Self {
+        Self {
+            values: Rc::new(RefCell::new(vec![])),
+            is_tuple: false,
+        }
+    }
+}
+
+impl From<Vec<Value>> for TList {
+    fn from(value: Vec<Value>) -> Self {
+        Self::new(Rc::new(RefCell::new(value)))
     }
 }
 
@@ -79,7 +97,10 @@ impl IMemberAccessible for TList {
             }
         }
 
-        panic!("Cannot get member `{}` on {self:?}", vm.lookup_intern(*member));
+        panic!(
+            "Cannot get member `{}` on {self:?}",
+            vm.lookup_intern(*member)
+        );
     }
 
     fn set_member(&mut self, member: &Value, value: Value) {
@@ -95,6 +116,9 @@ impl IMemberAccessible for TList {
     }
 
     fn set_member_id(&mut self, vm: &mut VM, member: &u64, _value: Value) {
-        panic!("Cannot set member `{}` on {self:?}", vm.lookup_intern(*member));
+        panic!(
+            "Cannot set member `{}` on {self:?}",
+            vm.lookup_intern(*member)
+        );
     }
 }

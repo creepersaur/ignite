@@ -242,7 +242,7 @@ impl VM {
         let value = match func {
             NativeFunction::Print => IOLib::write_fast(args),
             NativeFunction::Println => IOLib::write_line_fast(args),
-			NativeFunction::Typeof => TypeLib::typeof_fast(args),
+            NativeFunction::Typeof => TypeLib::typeof_fast(args),
 
             _ => panic!("Unknown fast_call function: {func:?}"),
         };
@@ -1348,6 +1348,43 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                                     self.run(false, true);
                                 } else {
                                     self.stack.push(Value::string(&args[0]));
+                                }
+                            }
+
+                            Value::Type(TypeValue::List) => {
+                                if args.len() == 0 {
+                                    self.stack.push(Value::List(TList::empty()));
+                                } else {
+                                    let mut new_list = None;
+                                    let value = &args[0];
+
+                                    if let Value::String(s) = value {
+                                        if args.len() == 2
+                                            && let Value::Number(n) = &args[1]
+                                        {
+                                            new_list = Some(TList::from(
+                                                std::iter::repeat(s.0.chars())
+                                                    .take(*n as usize)
+                                                    .flatten()
+                                                    .map(|x| Value::Char(x))
+                                                    .collect::<Vec<_>>(),
+                                            ));
+                                        } else {
+                                            new_list = Some(TList::from(
+                                                s.0.chars()
+                                                    .map(|x| Value::Char(x))
+                                                    .collect::<Vec<_>>(),
+                                            ));
+                                        }
+                                    }
+
+                                    if let Some(new_list) = new_list {
+                                        self.stack.push(Value::List(new_list));
+                                    } else {
+                                        panic!(
+                                            "Cannot convert to list. Improper arguments received."
+                                        )
+                                    }
                                 }
                             }
 
