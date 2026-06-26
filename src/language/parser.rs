@@ -19,7 +19,7 @@ type NodeResult = Result<Node, String>;
 pub struct Parser {
     source: String,
     tokens: Vec<Token>,
-    pos: i32,
+    pub pos: i32,
 }
 
 impl Parser {
@@ -43,6 +43,9 @@ impl Parser {
         if self.pos < self.tokens.len() as i32 {
             Ok(self.tokens[self.pos as usize].clone())
         } else {
+            // println!("EOF at pos {}", self.pos);
+            // println!("{:?}", std::backtrace::Backtrace::capture());
+
             Err("Expected more tokens. Got [EOF]. (Current)".to_string())
         }
     }
@@ -492,12 +495,10 @@ impl Parser {
     }
 
     fn skip_new_lines(&mut self) {
-        while let Ok(next) = self.current() {
-            if matches!(next.kind, TokenKind::NEWLINE) {
-                self.advance().unwrap();
-            } else {
-                break;
-            }
+        while let Ok(next) = self.current()
+            && matches!(next.kind, TokenKind::NEWLINE)
+        {
+            self.advance().unwrap();
         }
     }
 
@@ -549,8 +550,6 @@ impl Parser {
     }
 
     fn parse_list(&mut self) -> NodeResult {
-        self.advance()?;
-
         let mut values = vec![];
 
         self.parse_surrounded(
@@ -561,7 +560,7 @@ impl Parser {
                 values.push(this.parse_expression()?);
                 Ok(())
             },
-        );
+        )?;
 
         Ok(Node::ListNode(values))
     }
@@ -1326,7 +1325,7 @@ impl Parser {
             var_name,
             expr,
             block,
-			else_block,
+            else_block,
         })
     }
 

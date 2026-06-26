@@ -179,6 +179,8 @@ impl Lexer {
             "enum" => ENUM,
             "struct" => STRUCT,
             // "interface" => INTERFACE,
+            "import" => IMPORT,
+            "export" => EXPORT,
 
             // Punctuation
             "(" => LPAREN, // Parenthesis ()

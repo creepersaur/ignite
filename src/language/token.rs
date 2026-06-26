@@ -63,6 +63,8 @@ pub enum TokenKind {
     ENUM,
     // INTERFACE,
     STRUCT,
+	IMPORT,
+	EXPORT,
 
     // Punctuation
     LPAREN, // Parenthesis ()
