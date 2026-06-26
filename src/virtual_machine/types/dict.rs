@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::HashMap, fmt::Debug, rc::Rc};
 
 use crate::virtual_machine::{
-    libs::types::dict_lib::{DICT_FUNCTION_IDS, DICT_FUNCTIONS}, traits::member_accessible::IMemberAccessible,
+    libs::types::dict_lib::DICT_FUNCTION_IDS, traits::member_accessible::IMemberAccessible,
     types::function::TFunction, value::Value, vm::VM,
 };
 use bincode::{Decode, Encode};
@@ -33,12 +33,6 @@ impl Debug for TDict {
 // MEMBER ACCESS
 impl IMemberAccessible for TDict {
     fn get_member(&self, _vm: &mut VM, member: &Value) -> Value {
-        if let Value::String(member) = member {
-            if DICT_FUNCTIONS.contains(&&*member.0) {
-                return lib_function!(self, "dict", member.0.clone(), Value::Dict);
-            }
-        }
-
         if let Some(x) = self.values.borrow().get(member) {
             return x.clone();
         }

@@ -33,8 +33,8 @@ impl AST {
         let mut terminator = None;
 
         for (i, node) in self.nodes.iter_mut().enumerate() {
-            Self::prune_node(node);
             *node = Self::fold_constants(node.clone());
+            Self::prune_node(node);
 
             if Self::is_terminator(node) {
                 terminator = Some(i);
@@ -288,6 +288,31 @@ impl AST {
                 body.truncate(idx + 1);
                 return;
             }
+        }
+    }
+
+    pub fn is_truthy(node: &Node) -> Option<bool> {
+        match node {
+            Node::NIL => Some(false),
+            Node::BooleanLiteral(x) => Some(*x),
+            Node::NumberLiteral(_) => Some(true),
+            Node::StringLiteral(_) => Some(true),
+            Node::TupleNode(_) => Some(true),
+            Node::ListNode(_) => Some(true),
+            Node::DictNode(_) => Some(true),
+            Node::FString(_) => Some(true),
+            Node::RangeNode { .. } => Some(true),
+            Node::Type(_) => Some(true),
+
+            _ => None,
+        }
+    }
+
+    pub fn fold_boolean(node: Node) -> Node {
+        if let Some(truthy) = Self::is_truthy(&Self::fold_constants(node.clone())) {
+            Node::BooleanLiteral(truthy)
+        } else {
+            node
         }
     }
 
@@ -570,7 +595,7 @@ impl AST {
                 elifs,
                 else_block,
             } => Node::IfStatement {
-                condition: Box::new(Self::fold_constants(*condition)),
+                condition: Box::new(Self::fold_boolean(*condition)),
                 block: Box::new(Self::fold_constants(*block)),
                 elifs: elifs
                     .into_iter()
@@ -587,7 +612,7 @@ impl AST {
                 block,
                 else_block,
             } => Node::WhileLoop {
-                condition: Box::new(Self::fold_constants(*condition)),
+                condition: Box::new(Self::fold_boolean(*condition)),
                 block: Box::new(Self::fold_constants(*block)),
                 else_block: else_block.map(|x| Box::new(Self::fold_constants(*x))),
             },
@@ -649,21 +674,16 @@ impl AST {
                 condition,
                 true_expr,
                 false_expr,
-            } => {
-                let condition = Self::fold_constants(*condition);
+            } => match Self::fold_boolean(*condition) {
+                Node::BooleanLiteral(true) => Self::fold_constants(*true_expr),
+                Node::BooleanLiteral(false) => Self::fold_constants(*false_expr),
 
-                match condition {
-                    Node::BooleanLiteral(true) => Self::fold_constants(*true_expr),
-
-                    Node::BooleanLiteral(false) => Self::fold_constants(*false_expr),
-
-                    condition => Node::TernaryOp {
-                        condition: Box::new(condition),
-                        true_expr: Box::new(Self::fold_constants(*true_expr)),
-                        false_expr: Box::new(Self::fold_constants(*false_expr)),
-                    },
-                }
-            }
+                condition => Node::TernaryOp {
+                    condition: Box::new(condition),
+                    true_expr: Box::new(Self::fold_constants(*true_expr)),
+                    false_expr: Box::new(Self::fold_constants(*false_expr)),
+                },
+            },
 
             Node::FString(parts) => {
                 Node::FString(parts.into_iter().map(Self::fold_constants).collect())

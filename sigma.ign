@@ -1,2 +1,1 @@
-let x = 10
-print(5)
+println = 5

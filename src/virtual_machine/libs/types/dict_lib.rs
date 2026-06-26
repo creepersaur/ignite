@@ -1,7 +1,3 @@
-// return Value::Number(self.values.borrow().len() as f64)
-
-use std::{cell::RefCell, collections::HashMap};
-
 use crate::{
     get_args,
     virtual_machine::{
@@ -11,13 +7,10 @@ use crate::{
         vm::VM,
     },
 };
+use std::{cell::RefCell, collections::HashMap};
 
 macro_rules! dict_functions {
     ($($name:literal),* $(,)?) => {
-        pub const DICT_FUNCTIONS: &[&str] = &[
-            $($name),*
-        ];
-
         pub const DICT_FUNCTION_IDS: &[u64] = &[
             $(hash_u64!($name)),*
         ];

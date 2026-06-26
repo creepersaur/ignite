@@ -118,7 +118,7 @@ impl Compiler {
     }
 
     pub fn emit_set_var(&mut self, name: &str) {
-        for (depth, scope) in self.scopes.iter().enumerate().rev() {
+        for (depth, scope) in self.scopes.iter_mut().enumerate().rev() {
             if scope.contains(name) {
                 let id = self.intern(name);
 
@@ -144,11 +144,13 @@ impl Compiler {
                     });
                 }
                 return;
+            } else {
+                scope.insert(name.to_string());
             }
         }
 
         let id = self.intern(name);
-        self.instructions.push(Inst::LOAD_GLOBAL(id));
+        self.instructions.push(Inst::SET_GLOBAL(id));
     }
 
     pub fn emit_load_const(&mut self, value: Value) {
@@ -296,7 +298,7 @@ impl Compiler {
                 var_name,
                 expr,
                 block,
-				else_block
+                else_block,
             } => self.compile_for(var_name, expr, block, else_block),
 
             Node::MatchStatement { expr, branches } => self.compile_match(expr, branches),
@@ -862,7 +864,11 @@ impl Compiler {
             self.emit_store_local(arg_name.as_str(), false);
         }
 
-        self.compile_node(block);
+        if let Node::Block { name, body } = &**block {
+            self.compile_block(name, body, false);
+        } else {
+            self.compile_node(&**block);
+        }
 
         self.instructions.push(Inst::RETURN);
         self.pop_scope();
@@ -943,7 +949,13 @@ impl Compiler {
         self.instructions.push(Inst::DEFAULT_NIL);
     }
 
-    pub fn compile_for(&mut self, var_name: &Rc<String>, expr: &Box<Node>, block: &Box<Node>, else_block: &Option<Box<Node>>) {
+    pub fn compile_for(
+        &mut self,
+        var_name: &Rc<String>,
+        expr: &Box<Node>,
+        block: &Box<Node>,
+        else_block: &Option<Box<Node>>,
+    ) {
         self.comment("For loop start:");
 
         self.push_scope();
@@ -970,9 +982,9 @@ impl Compiler {
             Inst::FOR_ITER(self.instructions.len() as u32)
         );
 
-		if let Some(block) = else_block {
-			self.compile_node(&**block);
-		}
+        if let Some(block) = else_block {
+            self.compile_node(&**block);
+        }
 
         patch_execute!(
             self.instructions,

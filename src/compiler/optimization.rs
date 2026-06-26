@@ -73,9 +73,8 @@ impl Compiler {
         }
 
         self.remove_nops();
-        self.trim_end_pops();
-
         self.remove_store_load_pairs();
+        self.trim_end_pops();
     }
 
     pub fn trim_end_pops(&mut self) {
