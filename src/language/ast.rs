@@ -115,15 +115,29 @@ impl AST {
             Node::Loop { block, .. } => {
                 Self::prune_node(block);
             }
-            Node::ForLoop { block, expr, .. } => {
+            Node::ForLoop {
+                block,
+                expr,
+                else_block,
+                ..
+            } => {
                 Self::prune_node(expr);
                 Self::prune_node(block);
+                if let Some(x) = else_block {
+                    Self::prune_node(x);
+                }
             }
             Node::WhileLoop {
-                block, condition, ..
+                block,
+                condition,
+                else_block,
+                ..
             } => {
                 Self::prune_node(condition);
                 Self::prune_node(block);
+                if let Some(x) = else_block {
+                    Self::prune_node(x);
+                }
             }
             Node::BinOp { left, right, .. } => {
                 Self::prune_node(left);
@@ -581,10 +595,12 @@ impl AST {
                 var_name,
                 expr,
                 block,
+                else_block,
             } => Node::ForLoop {
                 var_name,
                 expr: Box::new(Self::fold_constants(*expr)),
                 block: Box::new(Self::fold_constants(*block)),
+                else_block: else_block.map(|x| Box::new(Self::fold_constants(*x))),
             },
 
             Node::MatchStatement { expr, branches } => Node::MatchStatement {

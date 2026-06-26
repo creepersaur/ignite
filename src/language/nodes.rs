@@ -131,6 +131,7 @@ pub enum Node {
         var_name: Rc<String>,
         expr: Box<Node>,
         block: Box<Node>,
+        else_block: Option<Box<Node>>,
     },
 
     // Logical Operations

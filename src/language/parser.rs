@@ -559,8 +559,8 @@ impl Parser {
             Some(TokenKind::COMMA),
             |this| {
                 values.push(this.parse_expression()?);
-				Ok(())
-			},
+                Ok(())
+            },
         );
 
         Ok(Node::ListNode(values))
@@ -1315,10 +1315,18 @@ impl Parser {
         let expr = Box::new(self.parse_ternary_op()?);
         let block = Box::new(self.parse_block()?);
 
+        let else_block = if self.check_current(TokenKind::ELSE)? {
+            self.advance()?;
+            Some(Box::new(self.parse_block()?))
+        } else {
+            None
+        };
+
         Ok(Node::ForLoop {
             var_name,
             expr,
             block,
+			else_block,
         })
     }
 

@@ -296,7 +296,8 @@ impl Compiler {
                 var_name,
                 expr,
                 block,
-            } => self.compile_for(var_name, expr, block),
+				else_block
+            } => self.compile_for(var_name, expr, block, else_block),
 
             Node::MatchStatement { expr, branches } => self.compile_match(expr, branches),
 
@@ -942,7 +943,7 @@ impl Compiler {
         self.instructions.push(Inst::DEFAULT_NIL);
     }
 
-    pub fn compile_for(&mut self, var_name: &Rc<String>, expr: &Box<Node>, block: &Box<Node>) {
+    pub fn compile_for(&mut self, var_name: &Rc<String>, expr: &Box<Node>, block: &Box<Node>, else_block: &Option<Box<Node>>) {
         self.comment("For loop start:");
 
         self.push_scope();
@@ -969,11 +970,15 @@ impl Compiler {
             Inst::FOR_ITER(self.instructions.len() as u32)
         );
 
+		if let Some(block) = else_block {
+			self.compile_node(&**block);
+		}
+
         patch_execute!(
             self.instructions,
             "break",
             Inst::JUMP(self.instructions.len() as u32),
-            loop_start_index
+            self.instructions.len()
         );
 
         patch_execute!(
