@@ -70,19 +70,23 @@ fn main() -> Result<(), Box<dyn Error>> {
         for i in nodes.iter() {
             compiler.compile_node(i);
         }
-        if args.contains(&"opt".to_string()) {
+        if args.contains(&"opt".to_string()) || args.contains(&"no_debug".to_string()) {
             vm.constants = compiler.constants.clone();
             vm.instructions = rc!(RefCell::new(compiler.instructions.clone()));
             vm.intern_table = compiler.intern_table.clone();
 
-            if args.contains(&"inst".to_string()) && !args.contains(&"no_pre".to_string()) {
+            if (args.contains(&"inst".to_string()) || args.contains(&"no_debug".to_string()))
+                && !args.contains(&"no_pre".to_string())
+            {
                 println!("\n[Pre-optimization] Compiled instructions:");
                 println!("───────────────────────────────────────────");
 
                 vm.print_instructions();
             }
 
-            compiler.optimize();
+            if args.contains(&"opt".to_string()) {
+                compiler.optimize();
+            }
         }
 
         if args.contains(&"no_debug".to_string()) {
@@ -135,8 +139,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
 
         if args.contains(&"stack".to_string()) {
-			println!("\nStack: {:?}", vm.stack);
-		}
+            println!("\nStack: {:?}", vm.stack);
+        }
     }
 
     Ok(())

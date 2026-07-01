@@ -625,6 +625,23 @@ impl Compiler {
             self.push_scope();
         }
 
+        if body.len() == 1
+            && let Node::OutStatement { block_name, value } = &body[0]
+            && block_name.is_none()
+        {
+            if let Some(value) = value {
+                self.compile_node(&**value);
+            } else {
+                self.instructions.push(Inst::PUSH(Value::NIL))
+            }
+
+            if make_scope {
+                self.pop_scope();
+            }
+
+            return;
+        }
+
         for i in body {
             if let Node::ExprStmt(expr) = i {
                 if let Node::OutStatement { block_name, value } = expr.as_ref() {

@@ -1,1 +1,1 @@
-print(list())
+fn add() => 10
