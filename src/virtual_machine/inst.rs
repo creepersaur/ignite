@@ -2,7 +2,10 @@ use std::rc::Rc;
 
 use bincode::{Decode, Encode};
 
-use crate::{compiler::native_functions::NativeFunction, virtual_machine::{libs::types::TypeValue, value::Value}};
+use crate::{
+    compiler::native_functions::NativeFunction,
+    virtual_machine::{libs::types::TypeValue, value::Value},
+};
 
 #[allow(unused, non_camel_case_types)]
 #[derive(Encode, Decode, Debug, Clone, PartialEq)]
@@ -29,6 +32,10 @@ pub enum Inst {
     ROT3,
     POP,
     TRY_POP,
+
+    // Modules
+    EXPORT(u64, bool),
+    IMPORT(Rc<str>),
 
     // Collections
     RANGE_INCLUSIVE,
@@ -74,9 +81,15 @@ pub enum Inst {
     STORE_GLOBAL(u64),
     STORE_GLOBAL_CONST(u64),
 
-	SET_GLOBAL(u64),
-	SET_LOCAL { id: u64, scope_idx: u16 },
-	SET_UPVALUE { id: u64, scope_idx: u16 },
+    SET_GLOBAL(u64),
+    SET_LOCAL {
+        id: u64,
+        scope_idx: u16,
+    },
+    SET_UPVALUE {
+        id: u64,
+        scope_idx: u16,
+    },
 
     PUSH_SCOPE,
     POP_SCOPE,
@@ -114,11 +127,11 @@ pub enum Inst {
     // Get/Set property (member access)
     GET_PROP,
     SET_PROP,
-	GET_PROP_BY_ID(u64),
+    GET_PROP_BY_ID(u64),
     SET_PROP_BY_ID(u64),
 
-	FAST_CALL(NativeFunction, u16),
-	FAST_CALL_VOID(NativeFunction, u16),
+    FAST_CALL(NativeFunction, u16),
+    FAST_CALL_VOID(NativeFunction, u16),
     CALL(u16),
     CALL_VOID(u16),
     RETURN,

@@ -7,10 +7,7 @@ use std::{
 };
 
 use crate::virtual_machine::{
-    libs::types::TypeValue,
-    namespaces::namespace::TNamespace,
-    traits::member_accessible::IMemberAccessible,
-    types::{
+    libs::types::TypeValue, modules::Module, namespaces::namespace::TNamespace, traits::member_accessible::IMemberAccessible, types::{
         classes::{r#class::TClass, class_object::TClassObject},
         dict::TDict,
         r#enum::TEnum,
@@ -19,8 +16,7 @@ use crate::virtual_machine::{
         string::TString,
         r#struct::TStruct,
         structdef::TStructDef,
-    },
-    vm::VM,
+    }, vm::VM,
 };
 
 #[allow(unused)]
@@ -57,6 +53,9 @@ pub enum Value {
         step: Box<Value>,
         inclusive: bool,
     },
+
+	// Modules
+	Module(Rc<RefCell<Module>>)
 }
 
 impl ToString for Value {
@@ -95,6 +94,7 @@ impl Value {
             Value::Range { .. } => "range",
             Value::StructDef(..) => "structdef",
             Value::Struct(data) => &data.base.name,
+            Value::Module(_) => "module",
         };
         t.to_owned()
     }
@@ -243,6 +243,8 @@ impl Value {
 
             Value::Class(def) => format!("class:{}", def.borrow().name),
             Value::ClassObject(data) => format!("object:{}", data.base.borrow().name),
+
+            Value::Module(module) => format!("module(\"{}\")", module.borrow().name),
         }
     }
 
@@ -254,11 +256,11 @@ impl Value {
         }
     }
 
-    pub fn as_number(&self) -> f64 {
+    pub fn as_number(&self, perform_task: &str) -> f64 {
         if let Value::Number(x) = self {
             *x
         } else {
-            panic!("Cannot convert `{self:?}` to number.")
+            panic!("Attempt to perform {perform_task} on `{self:?}`.")
         }
     }
 
@@ -335,6 +337,7 @@ impl Value {
             Value::Struct(x) => x.get_member_id(vm, &member),
             Value::Class(x) => x.borrow().get_member_id(vm, &member),
             Value::ClassObject(x) => x.get_member_id(vm, &member),
+            Value::Module(x) => x.borrow().get_member_id(vm, &member),
 
             _ => panic!("Cannot get property on `{self:?}`"),
         }
@@ -426,6 +429,9 @@ impl Hash for Value {
             Self::ClassObject(data) => {
                 data.base.borrow().name.hash(state);
                 data.values.as_ptr().hash(state);
+            }
+            Self::Module(module) => {
+				module.borrow().path.hash(state);
             }
         }
     }

@@ -1,10 +1,11 @@
 use crate::{
     compiler::native_functions::NativeFunction,
     hash_u64,
-    language::{nodes::Node, token::TokenKind},
-    patch, patch_execute, rc,
+    language::{lexer::Lexer, nodes::Node, parser::Parser, token::TokenKind},
+    patch, patch_execute, rc, rc_str,
     virtual_machine::{
         inst::Inst::{self, RANGE_EXCLUSIVE, RANGE_INCLUSIVE},
+        modules::Module,
         types::{list::TList, structdef::TStructDef},
         value::Value,
     },
@@ -12,6 +13,7 @@ use crate::{
 use std::{
     cell::RefCell,
     collections::{HashMap, HashSet},
+    path::PathBuf,
     rc::Rc,
 };
 
@@ -23,10 +25,13 @@ pub struct Compiler {
     pub scopes: Vec<HashSet<String>>,
     pub scope_base: usize,
     pub current_captures: Vec<usize>,
+
+    pub entry_path: Rc<str>,
+    pub modules: HashMap<Rc<str>, Rc<RefCell<Module>>>,
 }
 
 impl Compiler {
-    pub fn new() -> Self {
+    pub fn new(entry_file: Rc<str>) -> Self {
         Self {
             offset: 0,
             constants: vec![],
@@ -35,6 +40,33 @@ impl Compiler {
             intern_table: HashMap::new(),
             scope_base: 0,
             current_captures: vec![],
+
+            entry_path: entry_file.clone(),
+            modules: {
+                let mut map = HashMap::new();
+                map.insert(
+                    entry_file.clone(),
+                    Rc::new(RefCell::new(Module {
+                        name: PathBuf::from(entry_file.to_string())
+                            .file_name()
+                            .unwrap()
+                            .to_str()
+                            .unwrap()
+                            .into(),
+                        path: entry_file.clone(),
+                        cached: true,
+                        exports: HashMap::new(),
+                        instructions: Rc::new(RefCell::new(vec![])),
+                    })),
+                );
+                map
+            },
+        }
+    }
+
+    pub fn cache_entry_instructions(&mut self) {
+        if let Some(entry_mod) = self.modules.get(&self.entry_path) {
+            entry_mod.borrow_mut().instructions = Rc::new(RefCell::new(self.instructions.clone()))
         }
     }
 
@@ -239,6 +271,9 @@ impl Compiler {
                 false_expr,
             } => self.compile_ternary_op(condition, true_expr, false_expr),
 
+            Node::Exported(node) => self.compile_export(node),
+            Node::ImportStatement { files } => self.compile_import(files),
+
             Node::LetStatement {
                 names,
                 values,
@@ -323,6 +358,80 @@ impl Compiler {
 }
 
 impl Compiler {
+    pub fn compile_export(&mut self, node: &Box<Node>) {
+        self.compile_node(node);
+
+        match node.as_ref() {
+            Node::LetStatement {
+                names, is_const, ..
+            } => {
+                for i in names {
+                    let id = self.intern(i);
+                    self.instructions.push(Inst::EXPORT(id, *is_const));
+                }
+            }
+            Node::FunctionDefinition { name, is_const, .. } => {
+                let id = self.intern(name.as_ref().unwrap());
+				self.emit_load_local(name.as_ref().unwrap());
+                self.instructions.push(Inst::EXPORT(id, *is_const));
+            }
+
+            _ => panic!("Tried exporting unknown statement"),
+        }
+    }
+
+    pub fn compile_import(&mut self, files: &Vec<(String, Option<String>)>) {
+        for (path, alias) in files {
+            let old_instructions = self.instructions.clone();
+            self.instructions = vec![];
+
+            let path_buf = PathBuf::from(path);
+            let full_path = std::fs::canonicalize(path)
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .to_string();
+            let text = std::fs::read_to_string(&full_path)
+                .expect(&format!("Failed to find file \"{path}\""));
+            let tokens = Lexer::new(&text).get_tokens();
+
+            let mut parser = Parser::new(text, tokens);
+            let mut nodes = vec![];
+
+            while parser.current().is_ok() {
+                nodes.push(parser.parse().unwrap());
+            }
+
+            for i in nodes.iter() {
+                self.compile_node(i);
+            }
+
+            let new_instructions = self.instructions.clone();
+            let path = rc_str!(full_path);
+
+            self.modules.insert(
+                path.clone(),
+                Rc::new(RefCell::new(Module {
+                    name: path_buf.file_name().unwrap().to_str().unwrap().into(),
+                    path: path.clone(),
+                    cached: false,
+                    exports: HashMap::new(),
+                    instructions: Rc::new(RefCell::new(new_instructions)),
+                })),
+            );
+
+            self.instructions = old_instructions;
+
+            self.instructions.push(Inst::IMPORT(path));
+
+            if let Some(alias) = alias {
+                self.emit_store_local(alias, false);
+            } else {
+                self.instructions.push(Inst::POP);
+            }
+        }
+    }
+
     pub fn compile_fstring(&mut self, values: &Vec<Node>) {
         for i in values.iter().rev() {
             self.compile_node(i);

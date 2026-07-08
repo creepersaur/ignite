@@ -1,1 +1,5 @@
-export let name = "hello"
+export fn hello() {
+	for i in 0..10 {
+		println(i)
+	}
+}

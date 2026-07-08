@@ -45,7 +45,7 @@ impl TypeLib {
         } else if let Value::NIL = value {
             Value::Number(0.0)
         } else {
-            Value::Number(value.as_number())
+            Value::Number(value.as_number("convertion"))
         }
     }
 

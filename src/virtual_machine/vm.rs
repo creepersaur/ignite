@@ -12,6 +12,7 @@ use crate::{
                 tuple_lib::TupleLib,
             },
         },
+        modules::Module,
         namespaces::standard_namespace::load_standard_namespace,
         types::{
             classes::{class::TClass, class_object::TClassObject},
@@ -28,7 +29,7 @@ use crate::{
 use core::panic;
 use lz4_flex::frame::{FrameDecoder, FrameEncoder};
 use simply_colored::*;
-use std::{cell::RefCell, collections::HashMap, io::Read, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, io::Read, path::PathBuf, rc::Rc};
 
 const ORANGE: &str = "\x1b[38;2;255;150;60m";
 const BLUE: &str = "\x1b[38;2;115;165;255m"; // #73a5ff
@@ -41,27 +42,49 @@ pub struct CallFrame {
     stack_len: usize,
     args_count: usize,
     upvalues: Vec<Rc<RefCell<HashMap<u64, (Value, bool)>>>>,
+    module: Rc<RefCell<Module>>,
 }
 
 pub struct VM {
     pub pos: usize,
+    pub modules: HashMap<Rc<str>, Rc<RefCell<Module>>>,
     pub instructions: Rc<RefCell<Vec<Inst>>>,
     pub stack: Vec<Value>,
     pub call_stack: Vec<CallFrame>,
+
     pub constants: Vec<Value>,
     pub globals: HashMap<u64, (Value, bool)>,
     pub locals: Vec<Rc<RefCell<HashMap<u64, (Value, bool)>>>>,
     pub libraries: HashMap<u64, Box<dyn Library>>,
     pub iterators: Vec<(Value, usize)>,
+
     pub intern_table: HashMap<u64, Rc<str>>,
     pub expose_interns: bool,
 }
 
 #[allow(unused)]
 impl VM {
-    pub fn new() -> Self {
+    pub fn new(file_path: &str) -> Self {
+        let first_module = Rc::new(RefCell::new(Module {
+            name: PathBuf::from(file_path)
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .into(),
+            path: rc_str!(file_path),
+            cached: true,
+            exports: HashMap::new(),
+            instructions: rc!(RefCell::new(vec![])),
+        }));
+
         Self {
             pos: 0,
+            modules: {
+                let mut map = HashMap::new();
+                map.insert(rc_str!(file_path), first_module.clone());
+                map
+            },
             instructions: rc!(RefCell::new(vec![])),
             stack: Vec::with_capacity(600),
             call_stack: vec![CallFrame {
@@ -70,6 +93,7 @@ impl VM {
                 stack_len: 0,
                 args_count: 0,
                 upvalues: Vec::with_capacity(20),
+                module: first_module,
             }],
             constants: Vec::with_capacity(150),
             globals: Self::initialize_globals(),
@@ -188,6 +212,7 @@ impl VM {
                 stack_len: self.stack.len(),
                 args_count: args_count as usize,
                 upvalues: f.upvalues,
+                module: f.module.unwrap().clone(),
             });
             self.pos = f.entry;
         }
@@ -315,6 +340,12 @@ impl VM {
                     depth -= 1;
                     Some(format!("POP_SCOPE   -(depth: ({depth}))"))
                 }
+
+                Inst::EXPORT(id, is_const) => Some(format!(
+                    "EXPORT({}, const: {is_const})",
+                    self.lookup_intern(*id)
+                )),
+
                 Inst::LOAD(id) => Some(format!("LOAD({})", self.lookup_intern(*id))),
                 Inst::LOAD_LOCAL { id, depth } => Some(format!(
                     "LOAD_LOCAL({}, depth: {})",
@@ -448,6 +479,8 @@ impl VM {
                     | Inst::RANGE_INCLUSIVE
             ) {
                 GREEN
+            } else if matches!(v, Inst::IMPORT { .. }) {
+                MAGENTA
             } else if matches!(v, Inst::NOP) {
                 BLACK
             } else {
@@ -591,13 +624,11 @@ impl VM {
     }
 
     pub fn run(&mut self, debug: bool, stop_at_return: bool) {
-        let instructions = self.instructions.clone();
-
-        while self.pos < instructions.borrow().len() {
+        while self.pos < self.instructions.borrow().len() {
             if debug {
                 println!("{BLACK}{} ...{RESET}", self.pos);
             }
-            let current = &instructions.borrow()[self.pos];
+            let current = { self.instructions.borrow()[self.pos].clone() };
 
             match current {
                 Inst::EXIT => return,
@@ -646,7 +677,7 @@ impl VM {
                 }
 
                 Inst::PUSH(value) => self.stack.push(value.clone()),
-                Inst::PUSH_TYPE(t) => self.stack.push(Value::Type(*t)),
+                Inst::PUSH_TYPE(t) => self.stack.push(Value::Type(t)),
                 Inst::PUSH_NIL => self.stack.push(Value::NIL),
                 Inst::PUSH_TRUE => self.stack.push(Value::Bool(true)),
                 Inst::PUSH_FALSE => self.stack.push(Value::Bool(false)),
@@ -663,8 +694,8 @@ impl VM {
                     let value = self.pop();
                     self.stack.push(value.clone());
 
-                    self.stack.reserve(*n as usize);
-                    for _ in 0..*n {
+                    self.stack.reserve(n as usize);
+                    for _ in 0..n {
                         self.stack.push(value.clone());
                     }
                 }
@@ -680,17 +711,17 @@ impl VM {
 
                 // Collections
                 Inst::LIST(length) => {
-                    let values = (0..*length).map(|_| self.pop()).collect();
+                    let values = (0..length).map(|_| self.pop()).collect();
                     self.stack
                         .push(Value::List(TList::new(rc!(RefCell::new(values)))));
                 }
                 Inst::TUPLE(length) => {
-                    let values = (0..*length).map(|_| self.pop()).collect();
+                    let values = (0..length).map(|_| self.pop()).collect();
                     self.stack
                         .push(Value::Tuple(TList::new_tuple(rc!(RefCell::new(values)))));
                 }
                 Inst::DICT(length) => {
-                    let values = (0..*length).map(|_| self.pop_two()).collect();
+                    let values = (0..length).map(|_| self.pop_two()).collect();
                     self.stack
                         .push(Value::Dict(TDict::new(rc!(RefCell::new(values)))));
                 }
@@ -755,7 +786,7 @@ impl VM {
                         values_map.insert(*field_name, (default_val, *is_const));
                     }
 
-                    let constructor = if *has_constructor {
+                    let constructor = if has_constructor {
                         Some(Box::new(self.pop()))
                     } else {
                         None
@@ -963,11 +994,11 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                 }
 
                 Inst::NEG => {
-                    let num = self.pop().as_number();
+                    let num = self.pop().as_number("arithmetic (negation)");
                     self.stack.push(Value::Number(-num));
                 }
                 Inst::POS => {
-                    let num = self.pop().as_number();
+                    let num = self.pop().as_number("arithmetic (positation)");
                     self.stack.push(Value::Number(num));
                 }
 
@@ -1069,24 +1100,24 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                     self.stack.push(Value::Bool(result));
                 }
 
-                Inst::LOAD_CONST(id) => self.stack.push(self.constants[*id as usize].clone()),
+                Inst::LOAD_CONST(id) => self.stack.push(self.constants[id as usize].clone()),
                 Inst::STORE_GLOBAL(id) => {
-                    let id = *id;
+                    let id = id;
                     let value = self.pop();
                     self.globals.insert(id, (value, false));
                 }
                 Inst::STORE_GLOBAL_CONST(id) => {
-                    let id = *id;
+                    let id = id;
                     let value = self.pop();
                     self.globals.insert(id, (value, true));
                 }
                 Inst::LOAD_GLOBAL(id) => {
                     self.stack.push(
                         self.globals
-                            .get(id)
+                            .get(&id)
                             .expect(&format!(
                                 "Global `{}` doesn't exist.",
-                                self.lookup_intern(*id)
+                                self.lookup_intern(id)
                             ))
                             .0
                             .clone(),
@@ -1099,8 +1130,8 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                 }
                 Inst::STORE_LOCAL { id, depth } => {
                     if let Some(current_frame) = self.call_stack.last() {
-                        let id = *id;
-                        let depth = current_frame.scope_base + *depth as usize;
+                        let id = id;
+                        let depth = current_frame.scope_base + depth as usize;
                         let value = self.pop();
                         self.locals[depth].borrow_mut().insert(id, (value, false));
                     } else {
@@ -1110,16 +1141,16 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                 Inst::LOAD_LOCAL { id, depth } => {
                     if let Some(current_frame) = self.call_stack.last() {
                         if let Some((val, _)) = self.locals
-                            [current_frame.scope_base + *depth as usize]
+                            [current_frame.scope_base + depth as usize]
                             .borrow()
-                            .get(id)
+                            .get(&id)
                         {
                             self.stack.push(val.clone());
                         } else {
                             panic!(
                                 "Unknown local variable at depth {}: {}",
-                                current_frame.scope_base + *depth as usize,
-                                self.lookup_intern(*id)
+                                current_frame.scope_base + depth as usize,
+                                self.lookup_intern(id)
                             );
                         }
                     } else {
@@ -1128,8 +1159,8 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                 }
                 Inst::STORE_LOCAL_CONST { id, depth } => {
                     if let Some(current_frame) = self.call_stack.last() {
-                        let id = *id;
-                        let depth = current_frame.scope_base + *depth as usize;
+                        let id = id;
+                        let depth = current_frame.scope_base + depth as usize;
                         let value = self.pop();
                         self.locals[depth].borrow_mut().insert(id, (value, true));
                     } else {
@@ -1141,7 +1172,7 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                     let mut found = None;
 
                     for scope in self.locals.iter().rev() {
-                        if let Some(val) = scope.borrow().get(name) {
+                        if let Some(val) = scope.borrow().get(&name) {
                             found = Some(val.clone());
                             break;
                         }
@@ -1149,44 +1180,45 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
 
                     if let Some((val, _)) = found {
                         self.stack.push(val);
-                    } else if let Some((val, _)) = self.globals.get(name) {
+                    } else if let Some((val, _)) = self.globals.get(&name) {
                         self.stack.push(val.clone());
                     } else {
                         panic!(
                             "Unknown local/global variable: {}",
-                            self.lookup_intern(*name)
+                            self.lookup_intern(name)
                         );
                     }
                 }
                 Inst::SET_GLOBAL(id) => {
                     let new_value = self.pop();
 
-                    if let Some((value, is_const)) = self.globals.get_mut(id) {
+                    if let Some((value, is_const)) = self.globals.get_mut(&id) {
                         if *is_const {
-                            panic!("Cannot set constant global `{}`", self.lookup_intern(*id))
+                            panic!("Cannot set constant global `{}`", self.lookup_intern(id))
                         }
 
                         *value = new_value;
                     } else {
-                        panic!("Tried setting unknown global `{}`", self.lookup_intern(*id))
+                        panic!("Tried setting unknown global `{}`", self.lookup_intern(id))
                     }
                 }
                 Inst::SET_LOCAL { id, scope_idx } => {
                     if let Some(current_frame) = self.call_stack.last() {
-                        let depth = current_frame.scope_base + *scope_idx as usize;
+                        let depth = current_frame.scope_base + scope_idx as usize;
                         let new_value = self.pop();
 
-                        if let Some((value, is_const)) = self.locals[depth].borrow_mut().get_mut(id)
+                        if let Some((value, is_const)) =
+                            self.locals[depth].borrow_mut().get_mut(&id)
                         {
                             if *is_const {
-                                panic!("Cannot set constant local `{}`", self.lookup_intern(*id))
+                                panic!("Cannot set constant local `{}`", self.lookup_intern(id))
                             }
 
                             *value = new_value;
                         } else {
                             panic!(
                                 "Tried setting unknown local variable `{}`",
-                                self.lookup_intern(*id)
+                                self.lookup_intern(id)
                             )
                         }
                     } else {
@@ -1197,19 +1229,19 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                     let new_value = self.pop();
 
                     if let Some(current_frame) = self.call_stack.last() {
-                        if let Some((value, is_const)) = current_frame.upvalues[*scope_idx as usize]
+                        if let Some((value, is_const)) = current_frame.upvalues[scope_idx as usize]
                             .borrow_mut()
-                            .get_mut(id)
+                            .get_mut(&id)
                         {
                             if *is_const {
-                                panic!("Cannot set constant local `{}`", self.lookup_intern(*id))
+                                panic!("Cannot set constant local `{}`", self.lookup_intern(id))
                             }
 
                             *value = new_value;
                         } else {
                             panic!(
                                 "Tried setting unknown local variable `{}`",
-                                self.lookup_intern(*id)
+                                self.lookup_intern(id)
                             )
                         }
                     } else {
@@ -1224,44 +1256,45 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                         .collect();
 
                     self.stack.push(Value::Function(Box::new(TFunction {
-                        entry: *entry as usize,
+                        entry: entry as usize,
                         upvalues,
                         handler: None,
                         this: None,
                         target: None,
+                        module: Some(self.call_stack.last().unwrap().module.clone()),
                     })));
                 }
                 Inst::LOAD_UPVALUE { scope_idx, id } => {
                     if let Some(frame) = self.call_stack.last() {
-                        let scope = &frame.upvalues[*scope_idx as usize];
-                        if let Some((val, _)) = scope.borrow().get(id) {
+                        let scope = &frame.upvalues[scope_idx as usize];
+                        if let Some((val, _)) = scope.borrow().get(&id) {
                             self.stack.push(val.clone());
                         } else {
-                            panic!("Unknown upvalue: {}", self.lookup_intern(*id));
+                            panic!("Unknown upvalue: {}", self.lookup_intern(id));
                         }
                     }
                 }
 
                 Inst::JUMP(idx) => {
-                    self.pos = *idx as usize;
+                    self.pos = idx as usize;
                     continue;
                 }
                 Inst::JUMP_IF_FALSE(idx) => {
-                    let idx = *idx;
+                    let idx = idx;
                     if !self.pop().is_truthy() {
                         self.pos = idx as usize;
                         continue;
                     }
                 }
                 Inst::JUMP_IF_TRUE(idx) => {
-                    let idx = *idx;
+                    let idx = idx;
                     if self.pop().is_truthy() {
                         self.pos = idx as usize;
                         continue;
                     }
                 }
                 Inst::JUMP_IF_NOT_NIL(idx) => {
-                    let idx = *idx;
+                    let idx = idx;
                     if self.pop() != Value::NIL {
                         self.pos = idx as usize;
                         continue;
@@ -1269,12 +1302,20 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                 }
 
                 Inst::CALL(args) => {
-                    let arg_count = *args;
+                    let arg_count = args;
                     let func = self.pop();
 
                     if let Value::Function(f) = func {
                         let should_skip = f.handler.is_none();
                         self.call_function(*f, arg_count);
+                        self.instructions = self
+                            .call_stack
+                            .last()
+                            .unwrap()
+                            .module
+                            .borrow()
+                            .instructions
+                            .clone();
                         if should_skip {
                             continue;
                         }
@@ -1393,11 +1434,11 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                     }
                 }
                 Inst::FAST_CALL(func, args) => {
-                    let value = self.fast_call(*func, *args);
+                    let value = self.fast_call(func, args);
                     self.stack.push(value);
                 }
                 Inst::FAST_CALL_VOID(func, args) => {
-                    self.fast_call(*func, *args);
+                    self.fast_call(func, args);
                 }
                 Inst::RETURN => {
                     let result = self.pop();
@@ -1411,6 +1452,14 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                         self.stack.push(result);
 
                         self.call_stack.pop();
+                        self.instructions = self
+                            .call_stack
+                            .last()
+                            .unwrap()
+                            .module
+                            .borrow()
+                            .instructions
+                            .clone();
                     } else {
                         self.stack.push(result);
                         self.locals.pop();
@@ -1438,14 +1487,14 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                 Inst::GET_PROP_BY_ID(id) => {
                     let target = self.pop();
 
-                    let value = target.get_member_id(self, id);
+                    let value = target.get_member_id(self, &id);
                     self.stack.push(value);
                 }
                 Inst::SET_PROP_BY_ID(id) => {
                     let mut target = self.pop();
                     let value = self.pop();
 
-                    target.set_member_id(self, id, value);
+                    target.set_member_id(self, &id, value);
                 }
 
                 Inst::GET_ITER => {
@@ -1469,7 +1518,7 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                             *idx += 1;
                         } else {
                             self.iterators.pop();
-                            self.pos = *jump_end as usize;
+                            self.pos = jump_end as usize;
                             continue;
                         }
                     } else if let Value::Tuple(list) = value {
@@ -1478,7 +1527,7 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                             *idx += 1;
                         } else {
                             self.iterators.pop();
-                            self.pos = *jump_end as usize;
+                            self.pos = jump_end as usize;
                             continue;
                         }
                     } else if let Value::Range {
@@ -1488,9 +1537,9 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                         inclusive,
                     } = value
                     {
-                        let s = start.as_number();
-                        let e = end.as_number();
-                        let step_val = step.as_number();
+                        let s = start.as_number("number convertion (start)");
+                        let e = end.as_number("number convertion (end)");
+                        let step_val = step.as_number("number convertion (step)");
 
                         let current_value = s + (*idx as f64 * step_val);
 
@@ -1514,7 +1563,7 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                         } else {
                             // Range exhausted
                             self.iterators.pop();
-                            self.pos = *jump_end as usize;
+                            self.pos = jump_end as usize;
                             continue;
                         }
                     } else {
@@ -1543,10 +1592,57 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                 }
 
                 Inst::CONCAT_STR(n) => {
-                    let values = (0..*n)
+                    let values = (0..n)
                         .map(|_| self.pop().to_string(false))
                         .collect::<String>();
                     self.stack.push(Value::String(TString::new(values)))
+                }
+
+                // MODULES
+                Inst::EXPORT(id, is_const) => {
+                    let call_frame = self.call_stack.last().unwrap();
+                    let module = call_frame.module.clone();
+                    let value = self.pop();
+
+                    module.borrow_mut().exports.insert(id, (value, is_const));
+                }
+                Inst::IMPORT(path) => {
+                    let module = self.modules.get(&path).cloned();
+
+                    if let Some(module) = module {
+                        if !module.borrow().cached {
+                            module.borrow_mut().cached = true;
+
+                            let buf = self.instructions.clone();
+
+                            let old_pos = self.pos;
+                            self.call_stack.push(CallFrame {
+                                scope_base: self.locals.len(),
+                                return_addr: old_pos,
+                                stack_len: self.stack.len(),
+                                args_count: 0,
+                                upvalues: Vec::new(),
+                                module: module.clone(),
+                            });
+
+                            let mod_cloned = module.clone();
+                            let mod_instructions = {
+                                let module = mod_cloned.borrow();
+                                module.instructions.clone()
+                            };
+                            self.instructions = mod_instructions;
+
+                            self.run(false, false);
+
+                            self.call_stack.pop();
+                            self.pos = old_pos;
+                            self.instructions = buf;
+                        }
+
+                        self.stack.push(Value::Module(module.clone()))
+                    } else {
+                        panic!("Tried loading unknown module");
+                    }
                 }
 
                 _ => panic!("Unimplemented instruction: {current:?}"),

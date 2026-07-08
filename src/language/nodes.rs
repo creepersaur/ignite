@@ -70,6 +70,11 @@ pub enum Node {
     },
 
     // STATEMENTS
+    Exported(Box<Node>),
+    ImportStatement {
+        files: Vec<(String, Option<String>)>,
+    },
+
     LetStatement {
         names: Vec<Rc<String>>,
         values: Vec<Option<Box<Node>>>,

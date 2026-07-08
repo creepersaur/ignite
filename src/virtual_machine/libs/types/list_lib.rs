@@ -68,7 +68,7 @@ impl ListLib {
         if let Value::List(x) = list {
             x.values
                 .borrow_mut()
-                .insert(index.as_number() as usize, new_value);
+                .insert(index.as_number("number key convertion") as usize, new_value);
         } else {
             panic!("Can only use list.insert on Lists");
         }

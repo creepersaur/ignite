@@ -7,7 +7,7 @@ use std::{
     rc::Rc,
 };
 
-use crate::virtual_machine::value::Value;
+use crate::virtual_machine::{modules::Module, value::Value};
 
 #[derive(Encode, Decode, Clone)]
 pub struct TFunction {
@@ -16,16 +16,18 @@ pub struct TFunction {
     pub this: Option<Box<Value>>,
     pub target: Option<Box<Value>>,
     pub upvalues: Vec<Rc<RefCell<HashMap<u64, (Value, bool)>>>>,
+	pub module: Option<Rc<RefCell<Module>>>
 }
 
 impl TFunction {
-    pub fn new(entry: usize) -> Self {
+    pub fn new(entry: usize, module: Rc<RefCell<Module>>) -> Self {
         Self {
             entry,
             handler: None,
             this: None,
             target: None,
             upvalues: vec![],
+			module: Some(module.clone()),
         }
     }
 
@@ -36,6 +38,7 @@ impl TFunction {
             target: None,
             this,
             upvalues: vec![],
+			module: None,
         }
     }
 
@@ -46,6 +49,7 @@ impl TFunction {
             target: None,
             this,
             upvalues: vec![],
+			module: None,
         }
     }
 }

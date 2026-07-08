@@ -56,7 +56,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // COMPILER
     /////////////////////
 
-    let mut vm = VM::new();
+    let mut vm = VM::new("sigma.ign");
     if args.contains(&"no_expose".to_string()) {
         vm.expose_interns = false;
     }
@@ -66,10 +66,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     } else if args.contains(&"bc2".to_string()) {
         vm.read_bytecode_file("bytecode2.igb");
     } else {
-        let mut compiler = Compiler::new();
+        let mut compiler = Compiler::new("sigma.ign".into());
+
         for i in nodes.iter() {
             compiler.compile_node(i);
         }
+
         if args.contains(&"opt".to_string()) || args.contains(&"no_debug".to_string()) {
             vm.constants = compiler.constants.clone();
             vm.instructions = rc!(RefCell::new(compiler.instructions.clone()));
@@ -93,6 +95,9 @@ fn main() -> Result<(), Box<dyn Error>> {
             compiler.finalize_bytecode();
         }
 
+        compiler.cache_entry_instructions();
+
+        vm.modules = compiler.modules;
         vm.constants = compiler.constants;
         vm.instructions = rc!(RefCell::new(compiler.instructions));
         vm.intern_table = compiler.intern_table;

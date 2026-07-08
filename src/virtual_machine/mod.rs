@@ -1,6 +1,7 @@
 pub mod chunk;
 pub mod inst;
 pub mod libs;
+pub mod modules;
 pub mod namespaces;
 pub mod traits;
 pub mod types;

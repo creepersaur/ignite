@@ -210,6 +210,7 @@ impl Compiler {
                         this: f.this.clone(),
                         target: f.target.clone(),
                         upvalues: f.upvalues.clone(),
+						module: f.module.clone()
                     })
                 }
                 Inst::MAKE_CLOSURE { entry, .. } => *entry = old_to_new[*entry as usize] as u32,

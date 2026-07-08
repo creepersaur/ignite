@@ -1,5 +1,6 @@
 #![allow(unused)]
 
+use core::panic;
 use std::{collections::HashMap, thread::current};
 
 use crate::{
@@ -136,6 +137,8 @@ impl Parser {
 
         match self.current()?.kind {
             TokenKind::USING => self.parse_using(),
+            TokenKind::EXPORT => self.parse_export(),
+            TokenKind::IMPORT => self.parse_import(),
 
             TokenKind::FN => self.parse_function_def(false, false),
             TokenKind::ENUM => self.parse_enum(),
@@ -929,6 +932,98 @@ impl Parser {
 
 // STATEMENTS
 impl Parser {
+    fn parse_export(&mut self) -> NodeResult {
+        self.advance()?;
+
+        let expr_stmt = |inner: Node| Node::ExprStmt(Box::new(inner));
+
+        if let Ok(x) = self.current() {
+            Ok(Node::Exported(Box::new(match x.kind {
+                TokenKind::LET => self.parse_let(false)?,
+                TokenKind::CONST => self.parse_const()?,
+                TokenKind::FN => self.parse_function_def(false, false)?,
+
+                _ => panic!("Unexpected export before parsing statement/expression"),
+            })))
+        } else {
+            panic!("Unexpected [EOF] while parsing export");
+        }
+    }
+
+    fn parse_import(&mut self) -> NodeResult {
+        self.advance()?;
+
+        let mut files = vec![];
+
+        self.skip_new_lines();
+
+        if let Ok(next) = self.current() {
+            if let TokenKind::StringLiteral(path) = next.kind {
+                self.advance()?;
+                self.skip_new_lines();
+
+                let alias = if let Ok(next) = self.check_current(TokenKind::AS)
+                    && next
+                {
+                    self.advance()?;
+                    Some(
+                        self.expect_and_consume(TokenKind::Identifier)?
+                            .get_text(&self.source),
+                    )
+                } else {
+                    None
+                };
+
+                files.push((path, alias));
+            } else {
+                return Err(format!(
+                    "Expected string literal for file path, got `{:?}`",
+                    next.kind
+                ));
+            }
+        } else {
+            return Err(format!("Expected string literal for file path, got [EOF]."));
+        }
+
+        loop {
+            if let Ok(check) = self.check_current(TokenKind::COMMA)
+                && check
+            {
+                self.advance()?;
+            } else {
+                break;
+            }
+
+            if let Ok(next) = self.current() {
+                if let TokenKind::StringLiteral(path) = next.kind {
+                    self.advance()?;
+                    self.skip_new_lines();
+
+                    let alias = if let Ok(next) = self.check_current(TokenKind::AS)
+                        && next
+                    {
+                        self.advance()?;
+                        Some(
+                            self.expect_and_consume(TokenKind::Identifier)?
+                                .get_text(&self.source),
+                        )
+                    } else {
+                        None
+                    };
+
+                    files.push((path, alias));
+                } else {
+                    return Err(format!(
+                        "Expected string literal for file path, got `{:?}`",
+                        next.kind
+                    ));
+                }
+            }
+        }
+
+        Ok(Node::ImportStatement { files })
+    }
+
     fn parse_const(&mut self) -> NodeResult {
         if let Some(x) = self.peek()
             && x.kind == TokenKind::FN
