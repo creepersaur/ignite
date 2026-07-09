@@ -7,6 +7,7 @@ use crate::{language::token::TokenKind, virtual_machine::libs::types::TypeValue}
 pub enum Node {
     // Expressions vs Statements
     ExprStmt(Box<Node>),
+    Multiple(Vec<Node>),
 
     // LITERALS
     NIL,
@@ -73,6 +74,7 @@ pub enum Node {
     Exported(Box<Node>),
     ImportStatement {
         files: Vec<(String, Option<String>)>,
+        pop_module: bool,
     },
 
     LetStatement {

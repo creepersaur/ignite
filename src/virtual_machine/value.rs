@@ -305,6 +305,7 @@ impl Value {
             Value::Struct(x) => x.get_member(vm, &member),
             Value::Class(x) => x.borrow().get_member(vm, &member),
             Value::ClassObject(x) => x.get_member(vm, &member),
+            Value::Module(x) => x.borrow().get_member(vm, &member),
 
             _ => panic!("Cannot get property on `{self:?}`"),
         }
@@ -321,6 +322,7 @@ impl Value {
             Value::Struct(x) => x.set_member(&member, value),
             Value::Class(x) => x.borrow_mut().set_member(&member, value),
             Value::ClassObject(x) => x.set_member(&member, value),
+            Value::Module(x) => x.borrow_mut().set_member(&member, value),
 
             _ => panic!("Cannot get property on `{self:?}`"),
         }

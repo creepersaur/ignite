@@ -181,6 +181,7 @@ impl Lexer {
             // "interface" => INTERFACE,
             "import" => IMPORT,
             "export" => EXPORT,
+			"from" => FROM,
 
             // Punctuation
             "(" => LPAREN, // Parenthesis ()

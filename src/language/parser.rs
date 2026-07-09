@@ -954,6 +954,7 @@ impl Parser {
         self.advance()?;
 
         let mut files = vec![];
+        let mut members = vec![];
 
         self.skip_new_lines();
 
@@ -975,9 +976,58 @@ impl Parser {
                 };
 
                 files.push((path, alias));
+            } else if let TokenKind::Identifier = next.kind {
+                members.push(self.advance()?.get_text(&self.source));
+
+                loop {
+                    if let Ok(check) = self.check_current(TokenKind::COMMA)
+                        && check
+                    {
+                        self.advance()?;
+                    } else {
+                        break;
+                    }
+
+                    if let Ok(next) = self.current()
+                        && next.kind == TokenKind::Identifier
+                    {
+                        members.push(self.advance()?.get_text(&self.source));
+                    } else {
+                        return Err(format!(
+                            "Expected identifier for import member name, got `{:?}`",
+                            next.kind
+                        ));
+                    }
+                }
+
+                self.expect_and_consume(TokenKind::FROM);
+
+                if let Ok(next) = self.current() {
+                    if let TokenKind::StringLiteral(path) = next.kind {
+                        self.advance()?;
+                        self.skip_new_lines();
+
+                        return Ok(Node::Multiple(vec![
+                            Node::ImportStatement {
+                                files: vec![(path, None)],
+                                pop_module: false,
+                            },
+                            Node::UsingStatement {
+                                sequence: vec![],
+                                imports: members.iter().map(|x| (x.clone(), None)).collect(),
+                                wildcard: false,
+                            },
+                        ]));
+                    } else {
+                        return Err(format!(
+                            "Expected string literal for file path, got `{:?}`",
+                            next.kind
+                        ));
+                    }
+                }
             } else {
                 return Err(format!(
-                    "Expected string literal for file path, got `{:?}`",
+                    "Expected file path or members for import, got `{:?}`",
                     next.kind
                 ));
             }
@@ -1021,7 +1071,10 @@ impl Parser {
             }
         }
 
-        Ok(Node::ImportStatement { files })
+        Ok(Node::ImportStatement {
+            files,
+            pop_module: true,
+        })
     }
 
     fn parse_const(&mut self) -> NodeResult {

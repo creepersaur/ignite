@@ -34,7 +34,7 @@ pub enum Inst {
     TRY_POP,
 
     // Modules
-    EXPORT(u64, bool),
+    EXPORT(u64),
     IMPORT(Rc<str>),
 
     // Collections

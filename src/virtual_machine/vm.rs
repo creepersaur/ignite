@@ -206,10 +206,6 @@ impl VM {
         let stack_start = stack_len - args_count as usize;
         let args = &mut self.stack[stack_start..];
 
-        if args_count > 1 {
-            args.reverse();
-        }
-
         // Stuff that needs `__tostring__` go in here ;-;
         'requires_tostring: {
             if args.iter().any(|x| {
@@ -324,8 +320,8 @@ impl VM {
                     Some(format!("POP_SCOPE   -(depth: ({depth}))"))
                 }
 
-                Inst::EXPORT(id, is_const) => Some(format!(
-                    "EXPORT({}, const: {is_const})",
+                Inst::EXPORT(id) => Some(format!(
+                    "EXPORT({})",
                     self.lookup_intern(*id)
                 )),
 
@@ -1576,12 +1572,11 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                 }
 
                 // MODULES
-                Inst::EXPORT(id, is_const) => {
+                Inst::EXPORT(id) => {
                     let call_frame = self.call_stack.last().unwrap();
                     let module = call_frame.module.clone();
-                    let value = self.pop();
 
-                    module.borrow_mut().exports.insert(id, (value, is_const));
+                    module.borrow_mut().exports.insert(id);
                 }
                 Inst::IMPORT(path) => {
                     let module = self.modules.get(&path).cloned();

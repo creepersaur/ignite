@@ -2,18 +2,31 @@ use crate::virtual_machine::{
     inst::Inst, traits::member_accessible::IMemberAccessible, value::Value, vm::VM,
 };
 use bincode::{Decode, Encode};
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{
+    cell::RefCell,
+    collections::{HashMap, HashSet},
+    fmt::Debug,
+    rc::Rc,
+};
 
-#[derive(Encode, Decode, Debug, Clone, PartialEq)]
+#[derive(Encode, Decode, Clone, PartialEq)]
 pub struct Module {
     pub name: Rc<str>,
     pub path: Rc<str>,
 
-	pub globals: Rc<RefCell<HashMap<u64, (Value, bool)>>>,
-    pub exports: HashMap<u64, (Value, bool)>,
+    pub globals: Rc<RefCell<HashMap<u64, (Value, bool)>>>,
+    pub exports: HashSet<u64>,
 
-	pub instructions: Rc<RefCell<Vec<Inst>>>,
+    pub instructions: Rc<RefCell<Vec<Inst>>>,
     pub cached: bool,
+}
+
+impl Debug for Module {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&format!("Module(\"{}\")", self.name)).unwrap();
+
+        Ok(())
+    }
 }
 
 impl PartialOrd for Module {
@@ -25,7 +38,10 @@ impl PartialOrd for Module {
 impl IMemberAccessible for Module {
     fn get_member(&self, _vm: &mut VM, member: &Value) -> Value {
         if let Value::String(member) = member {
-            if let Some((v, _)) = self.exports.get(&hash_u64!(&member.0)) {
+            let id = &hash_u64!(&member.0);
+            if self.exports.contains(id)
+                && let Some((v, _)) = self.globals.borrow().get(id)
+            {
                 return v.clone();
             }
         }
@@ -38,7 +54,9 @@ impl IMemberAccessible for Module {
     }
 
     fn get_member_id(&self, vm: &mut VM, member: &u64) -> Value {
-        if let Some((v, _)) = self.exports.get(member) {
+        if self.exports.contains(member)
+            && let Some((v, _)) = self.globals.borrow().get(member)
+        {
             return v.clone();
         }
 
@@ -51,7 +69,10 @@ impl IMemberAccessible for Module {
 
     fn set_member(&mut self, member: &Value, value: Value) {
         if let Value::String(member) = member {
-            if let Some((v, is_const)) = self.exports.get_mut(&hash_u64!(&member.0)) {
+            let id = &hash_u64!(&member.0);
+            if self.exports.contains(id)
+                && let Some((v, is_const)) = self.globals.borrow_mut().get_mut(id)
+            {
                 if *is_const {
                     panic!(
                         "Tried setting constant member `{}` on module(\"{}\")",
@@ -76,7 +97,9 @@ impl IMemberAccessible for Module {
     }
 
     fn set_member_id(&mut self, vm: &mut VM, member: &u64, value: Value) {
-        if let Some((v, is_const)) = self.exports.get_mut(member) {
+        if self.exports.contains(member)
+            && let Some((v, is_const)) = self.globals.borrow_mut().get_mut(member)
+        {
             if *is_const {
                 panic!(
                     "Tried setting constant member `{}` on module(\"{}\")",

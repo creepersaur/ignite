@@ -1,5 +1,3 @@
-import "module.ign" as bro
+import x from "module.ign"
 
-bro.hello()
-
-print("hello", "World")
+println(x)

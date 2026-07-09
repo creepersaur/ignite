@@ -39,7 +39,7 @@ impl Compiler {
             path: rc_str!(canon_path.to_str().unwrap()),
             cached: true,
             globals: Rc::new(RefCell::new(HashMap::new())),
-            exports: HashMap::new(),
+            exports: HashSet::new(),
             instructions: Rc::new(RefCell::new(vec![])),
         }));
 
@@ -60,7 +60,7 @@ impl Compiler {
             },
         };
 
-		(this, entry_module)
+        (this, entry_module)
     }
 
     pub fn cache_entry_instructions(&mut self) {
@@ -250,6 +250,7 @@ impl Compiler {
                 self.compile_node(&*x);
                 self.instructions.push(Inst::TRY_POP);
             }
+            Node::Multiple(nodes) => self.compile_multiple(nodes),
 
             Node::UnaryOp {
                 op,
@@ -271,7 +272,7 @@ impl Compiler {
             } => self.compile_ternary_op(condition, true_expr, false_expr),
 
             Node::Exported(node) => self.compile_export(node),
-            Node::ImportStatement { files } => self.compile_import(files),
+            Node::ImportStatement { files, pop_module } => self.compile_import(files, *pop_module),
 
             Node::LetStatement {
                 names,
@@ -357,36 +358,40 @@ impl Compiler {
 }
 
 impl Compiler {
+    pub fn compile_multiple(&mut self, nodes: &Vec<Node>) {
+        for node in nodes {
+            self.compile_node(node);
+        }
+    }
+
     pub fn compile_export(&mut self, node: &Box<Node>) {
         self.compile_node(node);
 
         match node.as_ref() {
-            Node::LetStatement {
-                names, is_const, ..
-            } => {
+            Node::LetStatement { names, .. } => {
                 for i in names {
                     let id = self.intern(i);
-                    self.instructions.push(Inst::EXPORT(id, *is_const));
+                    self.instructions.push(Inst::EXPORT(id));
                 }
             }
-            Node::FunctionDefinition { name, is_const, .. } => {
+            Node::FunctionDefinition { name, .. } => {
                 let id = self.intern(name.as_ref().unwrap());
                 self.emit_load_local(name.as_ref().unwrap());
-                self.instructions.push(Inst::EXPORT(id, *is_const));
+                self.instructions.push(Inst::EXPORT(id));
             }
 
             _ => panic!("Tried exporting unknown statement"),
         }
     }
 
-    pub fn compile_import(&mut self, files: &Vec<(String, Option<String>)>) {
+    pub fn compile_import(&mut self, files: &Vec<(String, Option<String>)>, pop_module: bool) {
         for (path, alias) in files {
             let old_instructions = self.instructions.clone();
             self.instructions = vec![];
 
             let path_buf = PathBuf::from(path);
             let full_path = std::fs::canonicalize(path)
-                .unwrap()
+                .expect("Unknown file")
                 .to_str()
                 .unwrap()
                 .to_string();
@@ -415,7 +420,7 @@ impl Compiler {
                     path: path.clone(),
                     cached: false,
                     globals: Rc::new(RefCell::new(VM::initialize_globals())),
-                    exports: HashMap::new(),
+                    exports: HashSet::new(),
                     instructions: Rc::new(RefCell::new(new_instructions)),
                 })),
             );
@@ -426,7 +431,7 @@ impl Compiler {
 
             if let Some(alias) = alias {
                 self.emit_store_local(alias, false);
-            } else {
+            } else if pop_module {
                 self.instructions.push(Inst::POP);
             }
         }
@@ -1221,9 +1226,8 @@ impl Compiler {
                 let id = self.intern(item);
                 self.instructions.push(Inst::LOAD(id));
             } else {
-                self.instructions
-                    .push(Inst::PUSH(Value::string(item.clone())));
-                self.instructions.push(Inst::GET_PROP);
+                let id = self.intern(item);
+                self.instructions.push(Inst::GET_PROP_BY_ID(id));
             }
         }
 
@@ -1232,9 +1236,10 @@ impl Compiler {
                 if idx < imports.len() - 1 {
                     self.instructions.push(Inst::DUP)
                 }
-                self.instructions
-                    .push(Inst::PUSH(Value::string(item.clone())));
-                self.instructions.push(Inst::GET_PROP);
+
+                let id = self.intern(item);
+                self.instructions.push(Inst::GET_PROP_BY_ID(id));
+
                 if let Some(alias) = alias {
                     self.emit_store_local(alias, false);
                 } else {
