@@ -56,7 +56,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     // COMPILER
     /////////////////////
 
-    let mut vm = VM::new("sigma.ign");
+    let (mut compiler, entry_module) = Compiler::new("sigma.ign".into());
+    let mut vm = VM::new(entry_module);
     if args.contains(&"no_expose".to_string()) {
         vm.expose_interns = false;
     }
@@ -66,8 +67,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     } else if args.contains(&"bc2".to_string()) {
         vm.read_bytecode_file("bytecode2.igb");
     } else {
-        let mut compiler = Compiler::new("sigma.ign".into());
-
         for i in nodes.iter() {
             compiler.compile_node(i);
         }

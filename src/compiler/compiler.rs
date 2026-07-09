@@ -32,8 +32,18 @@ pub struct Compiler {
 }
 
 impl Compiler {
-    pub fn new(entry_file: Rc<str>) -> Self {
-        Self {
+    pub fn new(entry_file: Rc<str>) -> (Self, Rc<RefCell<Module>>) {
+        let canon_path = std::fs::canonicalize(entry_file.as_ref()).unwrap();
+        let entry_module = Rc::new(RefCell::new(Module {
+            name: canon_path.file_name().unwrap().to_str().unwrap().into(),
+            path: rc_str!(canon_path.to_str().unwrap()),
+            cached: true,
+            globals: Rc::new(RefCell::new(HashMap::new())),
+            exports: HashMap::new(),
+            instructions: Rc::new(RefCell::new(vec![])),
+        }));
+
+        let this = Self {
             offset: 0,
             constants: vec![],
             instructions: vec![],
@@ -45,25 +55,12 @@ impl Compiler {
             entry_path: entry_file.clone(),
             modules: {
                 let mut map = HashMap::new();
-                map.insert(
-                    entry_file.clone(),
-                    Rc::new(RefCell::new(Module {
-                        name: PathBuf::from(entry_file.to_string())
-                            .file_name()
-                            .unwrap()
-                            .to_str()
-                            .unwrap()
-                            .into(),
-                        path: entry_file.clone(),
-                        cached: true,
-                        globals: Rc::new(RefCell::new(HashMap::new())),
-                        exports: HashMap::new(),
-                        instructions: Rc::new(RefCell::new(vec![])),
-                    })),
-                );
+                map.insert(entry_file.clone(), entry_module.clone());
                 map
             },
-        }
+        };
+
+		(this, entry_module)
     }
 
     pub fn cache_entry_instructions(&mut self) {

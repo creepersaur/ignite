@@ -29,7 +29,7 @@ use crate::{
 use core::panic;
 use lz4_flex::frame::{FrameDecoder, FrameEncoder};
 use simply_colored::*;
-use std::{cell::RefCell, collections::HashMap, io::Read, path::PathBuf, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, io::Read, rc::Rc};
 
 const ORANGE: &str = "\x1b[38;2;255;150;60m";
 const BLUE: &str = "\x1b[38;2;115;165;255m"; // #73a5ff
@@ -64,28 +64,10 @@ pub struct VM {
 
 #[allow(unused)]
 impl VM {
-    pub fn new(file_path: &str) -> Self {
-        let first_module = Rc::new(RefCell::new(Module {
-            name: PathBuf::from(file_path)
-                .file_name()
-                .unwrap()
-                .to_str()
-                .unwrap()
-                .into(),
-            path: rc_str!(file_path),
-            cached: true,
-            globals: Rc::new(RefCell::new(Self::initialize_globals())),
-            exports: HashMap::new(),
-            instructions: rc!(RefCell::new(vec![])),
-        }));
-
+    pub fn new(first_module: Rc<RefCell<Module>>) -> Self {
         Self {
             pos: 0,
-            modules: {
-                let mut map = HashMap::new();
-                map.insert(rc_str!(file_path), first_module.clone());
-                map
-            },
+            modules: HashMap::new(),
             instructions: rc!(RefCell::new(vec![])),
             stack: Vec::with_capacity(600),
             call_stack: vec![CallFrame {

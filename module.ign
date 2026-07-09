@@ -1,7 +1,7 @@
 let x = 10
 
 export fn hello() {
-	println(x)
+	println(-x, Std::Math::abs(-x))
 }
 
 x += 5

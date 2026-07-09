@@ -1,3 +1,5 @@
 import "module.ign" as bro
 
 bro.hello()
+
+print("hello", "World")
