@@ -33,7 +33,13 @@ pub struct Compiler {
 
 impl Compiler {
     pub fn new(entry_file: Rc<str>) -> (Self, Rc<RefCell<Module>>) {
-        let canon_path = std::fs::canonicalize(entry_file.as_ref()).unwrap();
+        let mut path_buf = PathBuf::from(entry_file.as_ref());
+
+        if path_buf.extension().is_none() {
+            path_buf.set_extension("ign");
+        }
+
+        let canon_path = std::fs::canonicalize(path_buf).unwrap();
         let entry_module = Rc::new(RefCell::new(Module {
             name: canon_path.file_name().unwrap().to_str().unwrap().into(),
             path: rc_str!(canon_path.to_str().unwrap()),
@@ -389,9 +395,13 @@ impl Compiler {
             let old_instructions = self.instructions.clone();
             self.instructions = vec![];
 
-            let path_buf = PathBuf::from(path);
-            let full_path = std::fs::canonicalize(path)
-                .expect("Unknown file")
+            let mut path_buf = PathBuf::from(path);
+            if path_buf.extension().is_none() {
+                path_buf.set_extension("ign");
+            }
+
+            let full_path = std::fs::canonicalize(&path_buf)
+                .expect(&format!("Failed to find file \"{path}\""))
                 .to_str()
                 .unwrap()
                 .to_string();

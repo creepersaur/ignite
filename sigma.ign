@@ -1,4 +1,4 @@
-import hello, x from "module.ign"
+import equate, x from "module"
 
-hello()
+println(equate(-0, 0))
 println(x)

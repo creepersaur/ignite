@@ -1,7 +1,7 @@
 export let x = 10
 
-export fn hello() {
-	println(-x, Std::Math::abs(-x))
+export fn equate(a, b) {
+	return a == b
 }
 
 x = 0
