@@ -8,9 +8,12 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 pub struct Module {
     pub name: Rc<str>,
     pub path: Rc<str>,
-    pub cached: bool,
+
+	pub globals: Rc<RefCell<HashMap<u64, (Value, bool)>>>,
     pub exports: HashMap<u64, (Value, bool)>,
-    pub instructions: Rc<RefCell<Vec<Inst>>>,
+
+	pub instructions: Rc<RefCell<Vec<Inst>>>,
+    pub cached: bool,
 }
 
 impl PartialOrd for Module {

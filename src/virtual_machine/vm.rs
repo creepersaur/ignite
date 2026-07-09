@@ -53,7 +53,7 @@ pub struct VM {
     pub call_stack: Vec<CallFrame>,
 
     pub constants: Vec<Value>,
-    pub globals: HashMap<u64, (Value, bool)>,
+    pub globals: Rc<RefCell<HashMap<u64, (Value, bool)>>>,
     pub locals: Vec<Rc<RefCell<HashMap<u64, (Value, bool)>>>>,
     pub libraries: HashMap<u64, Box<dyn Library>>,
     pub iterators: Vec<(Value, usize)>,
@@ -74,6 +74,7 @@ impl VM {
                 .into(),
             path: rc_str!(file_path),
             cached: true,
+            globals: Rc::new(RefCell::new(Self::initialize_globals())),
             exports: HashMap::new(),
             instructions: rc!(RefCell::new(vec![])),
         }));
@@ -96,7 +97,7 @@ impl VM {
                 module: first_module,
             }],
             constants: Vec::with_capacity(150),
-            globals: Self::initialize_globals(),
+            globals: Rc::new(RefCell::new(Self::initialize_globals())),
             locals: vec![rc!(RefCell::new(HashMap::new()))],
             libraries: Self::initialize_libs(),
             iterators: Vec::with_capacity(30),
@@ -617,7 +618,7 @@ impl VM {
         self.locals.truncate(1);
         self.locals[0].borrow_mut().clear();
         if hard {
-            self.globals = Self::initialize_globals();
+            *self.globals.borrow_mut() = Self::initialize_globals();
         }
 
         self.pos = 0;
@@ -1104,16 +1105,17 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                 Inst::STORE_GLOBAL(id) => {
                     let id = id;
                     let value = self.pop();
-                    self.globals.insert(id, (value, false));
+                    self.globals.borrow_mut().insert(id, (value, false));
                 }
                 Inst::STORE_GLOBAL_CONST(id) => {
                     let id = id;
                     let value = self.pop();
-                    self.globals.insert(id, (value, true));
+                    self.globals.borrow_mut().insert(id, (value, true));
                 }
                 Inst::LOAD_GLOBAL(id) => {
                     self.stack.push(
                         self.globals
+                            .borrow_mut()
                             .get(&id)
                             .expect(&format!(
                                 "Global `{}` doesn't exist.",
@@ -1180,7 +1182,7 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
 
                     if let Some((val, _)) = found {
                         self.stack.push(val);
-                    } else if let Some((val, _)) = self.globals.get(&name) {
+                    } else if let Some((val, _)) = self.globals.borrow_mut().get(&name) {
                         self.stack.push(val.clone());
                     } else {
                         panic!(
@@ -1192,7 +1194,7 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                 Inst::SET_GLOBAL(id) => {
                     let new_value = self.pop();
 
-                    if let Some((value, is_const)) = self.globals.get_mut(&id) {
+                    if let Some((value, is_const)) = self.globals.borrow_mut().get_mut(&id) {
                         if *is_const {
                             panic!("Cannot set constant global `{}`", self.lookup_intern(id))
                         }
@@ -1308,14 +1310,11 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                     if let Value::Function(f) = func {
                         let should_skip = f.handler.is_none();
                         self.call_function(*f, arg_count);
-                        self.instructions = self
-                            .call_stack
-                            .last()
-                            .unwrap()
-                            .module
-                            .borrow()
-                            .instructions
-                            .clone();
+
+                        let module = self.call_stack.last().unwrap().module.clone();
+                        self.instructions = module.borrow().instructions.clone();
+                        self.globals = module.borrow().globals.clone();
+
                         if should_skip {
                             continue;
                         }
@@ -1452,14 +1451,10 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                         self.stack.push(result);
 
                         self.call_stack.pop();
-                        self.instructions = self
-                            .call_stack
-                            .last()
-                            .unwrap()
-                            .module
-                            .borrow()
-                            .instructions
-                            .clone();
+
+                        let module = self.call_stack.last().unwrap().module.clone();
+                        self.instructions = module.borrow().instructions.clone();
+                        self.globals = module.borrow().globals.clone();
                     } else {
                         self.stack.push(result);
                         self.locals.pop();
@@ -1614,6 +1609,8 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                             module.borrow_mut().cached = true;
 
                             let buf = self.instructions.clone();
+                            let globals_buf = self.globals.clone();
+                            self.globals = module.borrow().globals.clone();
 
                             let old_pos = self.pos;
                             self.call_stack.push(CallFrame {
@@ -1636,6 +1633,7 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
 
                             self.call_stack.pop();
                             self.pos = old_pos;
+                            self.globals = globals_buf;
                             self.instructions = buf;
                         }
 

@@ -1,5 +1,7 @@
+let x = 10
+
 export fn hello() {
-	for i in 0..10 {
-		println(i)
-	}
+	println(x)
 }
+
+x += 5

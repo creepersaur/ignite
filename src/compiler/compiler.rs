@@ -8,6 +8,7 @@ use crate::{
         modules::Module,
         types::{list::TList, structdef::TStructDef},
         value::Value,
+        vm::VM,
     },
 };
 use std::{
@@ -55,6 +56,7 @@ impl Compiler {
                             .into(),
                         path: entry_file.clone(),
                         cached: true,
+                        globals: Rc::new(RefCell::new(HashMap::new())),
                         exports: HashMap::new(),
                         instructions: Rc::new(RefCell::new(vec![])),
                     })),
@@ -372,7 +374,7 @@ impl Compiler {
             }
             Node::FunctionDefinition { name, is_const, .. } => {
                 let id = self.intern(name.as_ref().unwrap());
-				self.emit_load_local(name.as_ref().unwrap());
+                self.emit_load_local(name.as_ref().unwrap());
                 self.instructions.push(Inst::EXPORT(id, *is_const));
             }
 
@@ -415,6 +417,7 @@ impl Compiler {
                     name: path_buf.file_name().unwrap().to_str().unwrap().into(),
                     path: path.clone(),
                     cached: false,
+                    globals: Rc::new(RefCell::new(VM::initialize_globals())),
                     exports: HashMap::new(),
                     instructions: Rc::new(RefCell::new(new_instructions)),
                 })),
