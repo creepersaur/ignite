@@ -1,7 +1,1 @@
-export let x = 10
-
-export fn equate(a, b) {
-	return a == b
-}
-
-x = 0
+export let hello = 100

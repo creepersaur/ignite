@@ -977,7 +977,21 @@ impl Parser {
 
                 files.push((path, alias));
             } else if let TokenKind::Identifier = next.kind {
-                members.push(self.advance()?.get_text(&self.source));
+                let member = self.advance()?.get_text(&self.source);
+
+                let alias = if let Ok(check) = self.check_current(TokenKind::AS)
+                    && check
+                {
+                    self.advance()?;
+                    Some(
+                        self.expect_and_consume(TokenKind::Identifier)?
+                            .get_text(&self.source),
+                    )
+                } else {
+                    None
+                };
+
+                members.push((member, alias));
 
                 loop {
                     if let Ok(check) = self.check_current(TokenKind::COMMA)
@@ -991,7 +1005,21 @@ impl Parser {
                     if let Ok(next) = self.current()
                         && next.kind == TokenKind::Identifier
                     {
-                        members.push(self.advance()?.get_text(&self.source));
+                        let member = self.advance()?.get_text(&self.source);
+
+                        let alias = if let Ok(check) = self.check_current(TokenKind::AS)
+                            && check
+                        {
+                            self.advance()?;
+                            Some(
+                                self.expect_and_consume(TokenKind::Identifier)?
+                                    .get_text(&self.source),
+                            )
+                        } else {
+                            None
+                        };
+
+                        members.push((member, alias));
                     } else {
                         return Err(format!(
                             "Expected identifier for import member name, got `{:?}`",
@@ -1014,7 +1042,7 @@ impl Parser {
                             },
                             Node::UsingStatement {
                                 sequence: vec![],
-                                imports: members.iter().map(|x| (x.clone(), None)).collect(),
+                                imports: members,
                                 wildcard: false,
                             },
                         ]));

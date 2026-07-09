@@ -1,4 +1,3 @@
-import equate, x from "module"
+import hello as world from "module"
 
-println(equate(-0, 0))
-println(x)
+println(world)
