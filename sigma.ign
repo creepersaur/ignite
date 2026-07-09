@@ -1,3 +1,4 @@
-import x from "module.ign"
+import hello, x from "module.ign"
 
+hello()
 println(x)

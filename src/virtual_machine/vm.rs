@@ -76,10 +76,10 @@ impl VM {
                 stack_len: 0,
                 args_count: 0,
                 upvalues: Vec::with_capacity(20),
-                module: first_module,
+                module: first_module.clone(),
             }],
             constants: Vec::with_capacity(150),
-            globals: Rc::new(RefCell::new(Self::initialize_globals())),
+            globals: first_module.borrow().globals.clone(),
             locals: vec![rc!(RefCell::new(HashMap::new()))],
             libraries: Self::initialize_libs(),
             iterators: Vec::with_capacity(30),
@@ -1287,6 +1287,7 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
 
                     if let Value::Function(f) = func {
                         let should_skip = f.handler.is_none();
+
                         self.call_function(*f, arg_count);
 
                         let module = self.call_stack.last().unwrap().module.clone();
