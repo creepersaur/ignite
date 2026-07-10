@@ -155,11 +155,11 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 fn bench(vm: &mut VM, coldstart: bool, runs: i32) {
     let show_iterations = std::env::args().any(|arg| arg == "iter");
-    print!("warmup...");
+    println!("warmup...");
     std::io::stdout().flush().unwrap();
 
     //Warmup
-    for _ in 0..500 {
+    for _ in 0..10 {
         vm.reset(coldstart);
         vm.run(false, false);
     }
