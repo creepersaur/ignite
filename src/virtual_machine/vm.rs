@@ -2,7 +2,7 @@ use crate::{
     compiler::native_functions::NativeFunction,
     virtual_machine::{
         chunk::Chunk,
-        inst::Inst,
+        inst::{ClassLayout, ClosureLayout, Inst},
         libs::{
             lib::Library,
             namespaces::{fs_lib::FSLib, io_lib::IOLib, math_lib::MathLib},
@@ -110,16 +110,16 @@ impl VM {
         let mut libs: HashMap<_, Box<dyn Library>> = HashMap::new();
 
         // types
-        libs.insert(hash_u64!("type"), Box::new(TypeLib));
-        libs.insert(hash_u64!("string"), Box::new(StringLib));
-        libs.insert(hash_u64!("list"), Box::new(ListLib));
-        libs.insert(hash_u64!("tuple"), Box::new(TupleLib));
-        libs.insert(hash_u64!("dict"), Box::new(DictLib));
+        libs.insert(hash_u64!("type"), boxed!(TypeLib));
+        libs.insert(hash_u64!("string"), boxed!(StringLib));
+        libs.insert(hash_u64!("list"), boxed!(ListLib));
+        libs.insert(hash_u64!("tuple"), boxed!(TupleLib));
+        libs.insert(hash_u64!("dict"), boxed!(DictLib));
 
         // namespaces
-        libs.insert(hash_u64!("Math"), Box::new(MathLib));
-        libs.insert(hash_u64!("IO"), Box::new(IOLib));
-        libs.insert(hash_u64!("FS"), Box::new(FSLib));
+        libs.insert(hash_u64!("Math"), boxed!(MathLib));
+        libs.insert(hash_u64!("IO"), boxed!(IOLib));
+        libs.insert(hash_u64!("FS"), boxed!(FSLib));
 
         libs
     }
@@ -320,10 +320,7 @@ impl VM {
                     Some(format!("POP_SCOPE   -(depth: ({depth}))"))
                 }
 
-                Inst::EXPORT(id) => Some(format!(
-                    "EXPORT({})",
-                    self.lookup_intern(*id)
-                )),
+                Inst::EXPORT(id) => Some(format!("EXPORT({})", self.lookup_intern(*id))),
 
                 Inst::LOAD(id) => Some(format!("LOAD({})", self.lookup_intern(*id))),
                 Inst::LOAD_LOCAL { id, depth } => Some(format!(
@@ -362,10 +359,13 @@ impl VM {
                     self.lookup_intern(*id),
                     depth
                 )),
-                Inst::MAKE_CLOSURE { entry, captures } => Some(format!(
-                    "MAKE_CLOSURE(entry: {}, captures: {:?})",
-                    entry, captures
-                )),
+                Inst::MAKE_CLOSURE(layout) => {
+                    let ClosureLayout { entry, captures } = &**layout;
+                    Some(format!(
+                        "MAKE_CLOSURE(entry: {}, captures: {:?})",
+                        entry, captures
+                    ))
+                }
                 Inst::GET_PROP_BY_ID(id) => {
                     Some(format!("GET_PROP_BY_ID({})", self.lookup_intern(*id)))
                 }
@@ -379,19 +379,7 @@ impl VM {
                         .map(|x| self.lookup_intern(*x))
                         .collect::<Vec<_>>()
                 )),
-                Inst::MAKE_CLASS {
-                    name,
-                    has_constructor,
-                    ..
-                } => Some(format!(
-                    "MAKE_CLASS(name: {}{})",
-                    name,
-                    if *has_constructor {
-                        ", constructor"
-                    } else {
-                        ""
-                    }
-                )),
+                Inst::MAKE_CLASS { .. } => Some(format!("MAKE_CLASS")),
                 _ => None,
             };
 
@@ -450,15 +438,17 @@ impl VM {
             } else if matches!(
                 v,
                 Inst::LIST(_)
-                    | Inst::TUPLE(_)
-                    | Inst::DICT(_)
+                    | Inst::TUPLE(..)
+                    | Inst::DICT(..)
                     | Inst::ENUM(..)
                     | Inst::STRUCT(..)
                     | Inst::RANGE_EXCLUSIVE
                     | Inst::RANGE_INCLUSIVE
+                    | Inst::MAKE_CLASS { .. }
+                    | Inst::MAKE_CLOSURE { .. }
             ) {
                 GREEN
-            } else if matches!(v, Inst::IMPORT { .. }) {
+            } else if matches!(v, Inst::IMPORT { .. } | Inst::EXPORT(..)) {
                 MAGENTA
             } else if matches!(v, Inst::NOP) {
                 BLACK
@@ -583,7 +573,7 @@ impl VM {
     pub fn fold_constants(&mut self) {
         for inst in &mut self.instructions.borrow_mut().iter_mut() {
             if let Inst::LOAD_CONST(idx) = inst {
-                *inst = Inst::PUSH(self.constants[*idx as usize].clone());
+                *inst = Inst::PUSH(boxed!(self.constants[*idx as usize].clone()));
             }
         }
     }
@@ -655,7 +645,7 @@ impl VM {
                     }
                 }
 
-                Inst::PUSH(value) => self.stack.push(value.clone()),
+                Inst::PUSH(value) => self.stack.push(value.as_ref().clone()),
                 Inst::PUSH_TYPE(t) => self.stack.push(Value::Type(t)),
                 Inst::PUSH_NIL => self.stack.push(Value::NIL),
                 Inst::PUSH_TRUE => self.stack.push(Value::Bool(true)),
@@ -704,7 +694,8 @@ impl VM {
                     self.stack
                         .push(Value::Dict(TDict::new(rc!(RefCell::new(values)))));
                 }
-                Inst::ENUM(name, name_vec) => {
+                Inst::ENUM(name_vec) => {
+                    let name = self.pop();
                     let map = name_vec
                         .iter()
                         .rev()
@@ -712,7 +703,7 @@ impl VM {
                         .collect::<HashMap<_, _>>();
 
                     self.stack
-                        .push(Value::Enum(TEnum::new(name.clone(), rc!(map))));
+                        .push(Value::Enum(TEnum::new(rc_str!(name.as_str()), rc!(map))));
                 }
                 Inst::STRUCT(field_names) => {
                     let base_value = self.pop();
@@ -747,12 +738,13 @@ impl VM {
 
                     self.stack.push(Value::Struct(TStruct::new(base, values)));
                 }
-                Inst::MAKE_CLASS {
-                    name,
-                    field_names,
-                    method_names,
-                    has_constructor,
-                } => {
+                Inst::MAKE_CLASS(layout) => {
+                    let ClassLayout {
+                        field_names,
+                        method_names,
+                    } = &*layout;
+
+                    let name = self.pop();
                     let mut functions_map = HashMap::new();
                     for method_name in method_names.iter().rev() {
                         let closure = self.pop();
@@ -765,14 +757,35 @@ impl VM {
                         values_map.insert(*field_name, (default_val, *is_const));
                     }
 
-                    let constructor = if has_constructor {
-                        Some(Box::new(self.pop()))
-                    } else {
-                        None
-                    };
+                    self.stack.push(Value::Class(rc!(RefCell::new(TClass::new(
+                        Rc::from(name.as_str()),
+                        rc!(RefCell::new(values_map)),
+                        rc!(RefCell::new(functions_map)),
+                        None,
+                    )))));
+                }
+                Inst::MAKE_CLASS_CONSTRUCTOR(layout) => {
+                    let ClassLayout {
+                        field_names,
+                        method_names,
+                    } = &*layout;
+                    let name = self.pop();
+                    let mut functions_map = HashMap::new();
+                    for method_name in method_names.iter().rev() {
+                        let closure = self.pop();
+                        functions_map.insert(*method_name, closure);
+                    }
+
+                    let mut values_map = HashMap::new();
+                    for (field_name, is_const) in field_names.iter().rev() {
+                        let default_val = self.pop();
+                        values_map.insert(*field_name, (default_val, *is_const));
+                    }
+
+                    let constructor = Some(boxed!(self.pop()));
 
                     self.stack.push(Value::Class(rc!(RefCell::new(TClass::new(
-                        Rc::from(name.clone()),
+                        rc_str!(name.as_str()),
                         rc!(RefCell::new(values_map)),
                         rc!(RefCell::new(functions_map)),
                         constructor,
@@ -814,9 +827,9 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                     let start = self.pop();
 
                     self.stack.push(Value::Range {
-                        start: Box::new(start),
-                        end: Box::new(end),
-                        step: Box::new(step),
+                        start: boxed!(start),
+                        end: boxed!(end),
+                        step: boxed!(step),
                         inclusive: true,
                     });
                 }
@@ -826,9 +839,9 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                     let start = self.pop();
 
                     self.stack.push(Value::Range {
-                        start: Box::new(start),
-                        end: Box::new(end),
-                        step: Box::new(step),
+                        start: boxed!(start),
+                        end: boxed!(end),
+                        step: boxed!(step),
                         inclusive: false,
                     });
                 }
@@ -1229,14 +1242,15 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                     }
                 }
 
-                Inst::MAKE_CLOSURE { entry, captures } => {
+                Inst::MAKE_CLOSURE(layout) => {
+                    let ClosureLayout { entry, captures } = &*layout;
                     let upvalues = captures
                         .iter()
                         .map(|&i| Rc::clone(&self.locals[i as usize]))
                         .collect();
 
-                    self.stack.push(Value::Function(Box::new(TFunction {
-                        entry: entry as usize,
+                    self.stack.push(Value::Function(boxed!(TFunction {
+                        entry: *entry as usize,
                         upvalues,
                         handler: None,
                         this: None,

@@ -49,7 +49,7 @@ impl IMemberAccessible for TClassObject {
                 .get_mut(&hash_u64!(&member.0))
             {
                 if let Value::Function(f) = v {
-                    f.target = Some(Box::new(Value::ClassObject(self.clone())))
+                    f.target = Some(boxed!(Value::ClassObject(self.clone())))
                 }
 
                 return v.clone();
@@ -66,7 +66,7 @@ impl IMemberAccessible for TClassObject {
 
         if let Some(v) = self.base.borrow().functions.borrow_mut().get_mut(member) {
             if let Value::Function(f) = v {
-                f.target = Some(Box::new(Value::ClassObject(self.clone())))
+                f.target = Some(boxed!(Value::ClassObject(self.clone())))
             }
 
             return v.clone();

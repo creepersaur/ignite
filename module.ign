@@ -1,1 +1,1 @@
-export let hello = 100
+println("ran module")

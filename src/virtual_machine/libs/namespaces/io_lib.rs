@@ -183,16 +183,16 @@ impl Library for IOLib {
     fn get_function(&self, name: u64) -> Box<dyn Fn(&mut VM, Vec<Value>) -> Value> {
         match name {
             // INPUT
-            x if x == hash_u64!("read_line") => Box::new(Self::read_line),
-            x if x == hash_u64!("read_line_raw") => Box::new(Self::read_line_raw),
-            x if x == hash_u64!("read") => Box::new(Self::read),
+            x if x == hash_u64!("read_line") => boxed!(Self::read_line),
+            x if x == hash_u64!("read_line_raw") => boxed!(Self::read_line_raw),
+            x if x == hash_u64!("read") => boxed!(Self::read),
 
             // OUTPUT
-            x if x == hash_u64!("clear") => Box::new(Self::clear),
-            x if x == hash_u64!("reset") => Box::new(Self::reset),
-            x if x == hash_u64!("flush") => Box::new(Self::flush),
-            x if x == hash_u64!("write") => Box::new(Self::write),
-            x if x == hash_u64!("write_line") => Box::new(Self::write_line),
+            x if x == hash_u64!("clear") => boxed!(Self::clear),
+            x if x == hash_u64!("reset") => boxed!(Self::reset),
+            x if x == hash_u64!("flush") => boxed!(Self::flush),
+            x if x == hash_u64!("write") => boxed!(Self::write),
+            x if x == hash_u64!("write_line") => boxed!(Self::write_line),
 
             _ => panic!("Unknown function `{name}` on lib {}", self.get_name()),
         }

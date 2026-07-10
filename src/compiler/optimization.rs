@@ -1,7 +1,12 @@
 use crate::{
+    boxed,
     compiler::compiler::Compiler,
     hash_u64,
-    virtual_machine::{inst::Inst, types::function::TFunction, value::Value},
+    virtual_machine::{
+        inst::{ClosureLayout, Inst},
+        types::function::TFunction,
+        value::Value,
+    },
 };
 
 impl Compiler {
@@ -12,16 +17,29 @@ impl Compiler {
         self.compress_multiple_pushes();
         self.compress_multiple_load_consts();
 
-        self.replace(Inst::PUSH(Value::NIL), Inst::PUSH_NIL);
-        self.replace(Inst::PUSH(Value::Bool(true)), Inst::PUSH_TRUE);
-        self.replace(Inst::PUSH(Value::Bool(false)), Inst::PUSH_FALSE);
-        self.replace(Inst::PUSH(Value::Number(0.0)), Inst::PUSH_0);
-        self.replace(Inst::PUSH(Value::Number(1.0)), Inst::PUSH_1);
+        self.replace(Inst::PUSH(boxed!(Value::NIL)), Inst::PUSH_NIL);
+        self.replace(Inst::PUSH(boxed!(Value::Bool(true))), Inst::PUSH_TRUE);
+        self.replace(Inst::PUSH(boxed!(Value::Bool(false))), Inst::PUSH_FALSE);
+        self.replace(Inst::PUSH(boxed!(Value::Number(0.0))), Inst::PUSH_0);
+        self.replace(Inst::PUSH(boxed!(Value::Number(1.0))), Inst::PUSH_1);
 
         // Push type
         self.replace_with(|_, x| {
-            if let Inst::PUSH(Value::Type(t)) = x {
+            if let Inst::PUSH(boxed) = x
+                && let Value::Type(t) = &**boxed
+            {
                 Some(Inst::PUSH_TYPE(*t))
+            } else {
+                None
+            }
+        });
+
+        // Push char
+        self.replace_with(|_, x| {
+            if let Inst::PUSH(boxed) = x
+                && let Value::Char(c) = &**boxed
+            {
+                Some(Inst::PUSH_CHAR(*c))
             } else {
                 None
             }
@@ -63,6 +81,8 @@ impl Compiler {
 
             None
         });
+
+        self.replace_numbers_with_const();
     }
 
     pub fn finalize_bytecode(&mut self) {
@@ -101,13 +121,13 @@ impl Compiler {
 
         self.replace_pattern_2_with(|a, b| {
             if *b == Inst::TO_STRING {
-                if let Inst::PUSH(value) = a {
-                    match value {
-                        Value::NIL => Some(Inst::PUSH(Value::string("nil"))),
-                        Value::Bool(x) => Some(Inst::PUSH(Value::string(x))),
-                        Value::Number(x) => Some(Inst::PUSH(Value::string(x))),
-                        Value::Char(x) => Some(Inst::PUSH(Value::string(x))),
-                        Value::String(x) => Some(Inst::PUSH(Value::String(x.clone()))),
+                if let Inst::PUSH(boxed) = a {
+                    match &**boxed {
+                        Value::NIL => Some(Inst::PUSH(boxed!(Value::string("nil")))),
+                        Value::Bool(x) => Some(Inst::PUSH(boxed!(Value::string(x)))),
+                        Value::Number(x) => Some(Inst::PUSH(boxed!(Value::string(x)))),
+                        Value::Char(x) => Some(Inst::PUSH(boxed!(Value::string(x)))),
+                        Value::String(x) => Some(Inst::PUSH(boxed!(Value::String(x.clone())))),
 
                         _ => None,
                     }
@@ -128,7 +148,7 @@ impl Compiler {
         });
     }
 
-    pub fn replace_with(&mut self, replacer: impl Fn(usize, &Inst) -> Option<Inst>) {
+    pub fn replace_with(&mut self, mut replacer: impl FnMut(usize, &Inst) -> Option<Inst>) {
         self.instructions.iter_mut().enumerate().for_each(|(i, v)| {
             if let Some(new) = replacer(i, v) {
                 *v = new;
@@ -203,17 +223,22 @@ impl Compiler {
                 }
 
                 // Functions
-                Inst::PUSH(Value::Function(f)) => {
-                    *f = Box::new(TFunction {
-                        entry: old_to_new[f.entry],
-                        handler: f.handler,
-                        this: f.this.clone(),
-                        target: f.target.clone(),
-                        upvalues: f.upvalues.clone(),
-						module: f.module.clone()
-                    })
+                Inst::PUSH(boxed) => {
+                    if let Value::Function(f) = &mut **boxed {
+                        *f = boxed!(TFunction {
+                            entry: old_to_new[f.entry],
+                            handler: f.handler,
+                            this: f.this.clone(),
+                            target: f.target.clone(),
+                            upvalues: f.upvalues.clone(),
+                            module: f.module.clone(),
+                        })
+                    }
                 }
-                Inst::MAKE_CLOSURE { entry, .. } => *entry = old_to_new[*entry as usize] as u32,
+                Inst::MAKE_CLOSURE(layout) => {
+                    let ClosureLayout { entry, .. } = &mut **layout;
+                    *entry = old_to_new[*entry as usize] as u32
+                }
 
                 _ => {}
             }
@@ -318,7 +343,6 @@ impl Compiler {
         }
     }
 
-    // LOAD followed by POP instantly
     pub fn remove_load_pops(&mut self) {
         let mut i = 0;
         while i < self.instructions.len().saturating_sub(1) {
@@ -354,7 +378,6 @@ impl Compiler {
         }
     }
 
-    // STORE/SET followed by LOAD instantly
     pub fn remove_store_load_pairs(&mut self) {
         let mut i = 0;
         while i < self.instructions.len().saturating_sub(1) {
@@ -386,12 +409,40 @@ impl Compiler {
             };
 
             if is_redundant {
-                self.instructions[i + 1] = self.instructions[i].clone(); // shift STORE down
+                self.instructions[i + 1] = self.instructions[i].clone();
                 self.instructions[i] = Inst::DUP;
                 i += 2;
             } else {
                 i += 1;
             }
         }
+    }
+
+    fn replace_numbers_with_const(&mut self) {
+        let mut numbers_to_add = Vec::new();
+        for inst in &self.instructions {
+            if let Inst::PUSH(value) = inst {
+                if let Value::Number(x) = **value {
+                    numbers_to_add.push(x);
+                }
+            }
+        }
+
+        let mut new_instructions = Vec::with_capacity(numbers_to_add.len());
+        for x in numbers_to_add {
+            self.emit_load_const(Value::Number(x));
+            new_instructions.push(self.instructions.pop().unwrap());
+        }
+
+        let mut new_inst_iter = new_instructions.into_iter();
+        self.replace_with(move |_, inst| {
+            if let Inst::PUSH(value) = inst
+                && let Value::Number(_) = **value
+            {
+                new_inst_iter.next()
+            } else {
+                None
+            }
+        });
     }
 }

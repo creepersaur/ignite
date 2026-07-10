@@ -1,4 +1,4 @@
-use crate::language::{nodes::Node, token::TokenKind};
+use crate::{boxed, language::{nodes::Node, token::TokenKind}};
 
 pub struct AST {
     pub nodes: Vec<Node>,
@@ -318,7 +318,7 @@ impl AST {
 
     pub fn fold_constants(node: Node) -> Node {
         match node {
-            Node::ExprStmt(n) => Node::ExprStmt(Box::new(Self::fold_constants(*n))),
+            Node::ExprStmt(n) => Node::ExprStmt(boxed!(Self::fold_constants(*n))),
 
             Node::BinOp { left, right, op } => {
                 // Desugar chained comparison: (a < b) < c  →  (a < b) && (b < c)
@@ -337,12 +337,12 @@ impl AST {
                             TokenKind::LT | TokenKind::LE | TokenKind::GT | TokenKind::GE
                         ) {
                             let and_node = Node::BinOp {
-                                left: Box::new(Node::BinOp {
+                                left: boxed!(Node::BinOp {
                                     left: ll.clone(),
                                     right: lr.clone(),
                                     op: inner_op.clone(),
                                 }),
-                                right: Box::new(Node::BinOp {
+                                right: boxed!(Node::BinOp {
                                     left: lr.clone(), // middle value
                                     right,
                                     op,
@@ -380,8 +380,8 @@ impl AST {
                         TokenKind::AND => Node::BooleanLiteral(true),
 
                         _ => Node::BinOp {
-                            left: Box::new(folded_left),
-                            right: Box::new(folded_right),
+                            left: boxed!(folded_left),
+                            right: boxed!(folded_right),
                             op,
                         },
                     },
@@ -394,8 +394,8 @@ impl AST {
                         TokenKind::AND => Node::BooleanLiteral(*l && *r),
 
                         _ => Node::BinOp {
-                            left: Box::new(folded_left),
-                            right: Box::new(folded_right),
+                            left: boxed!(folded_left),
+                            right: boxed!(folded_right),
                             op,
                         },
                     },
@@ -406,8 +406,8 @@ impl AST {
                         TokenKind::NEQ => Node::BooleanLiteral(l != r),
 
                         _ => Node::BinOp {
-                            left: Box::new(folded_left),
-                            right: Box::new(folded_right),
+                            left: boxed!(folded_left),
+                            right: boxed!(folded_right),
                             op,
                         },
                     },
@@ -417,8 +417,8 @@ impl AST {
                         TokenKind::AND => Node::BooleanLiteral(false),
 
                         _ => Node::BinOp {
-                            left: Box::new(folded_left),
-                            right: Box::new(folded_right),
+                            left: boxed!(folded_left),
+                            right: boxed!(folded_right),
                             op,
                         },
                     },
@@ -428,8 +428,8 @@ impl AST {
                         TokenKind::AND => Node::BooleanLiteral(false),
 
                         _ => Node::BinOp {
-                            left: Box::new(folded_left),
-                            right: Box::new(folded_right),
+                            left: boxed!(folded_left),
+                            right: boxed!(folded_right),
                             op,
                         },
                     },
@@ -439,15 +439,15 @@ impl AST {
                         TokenKind::AND => Node::BooleanLiteral(false),
 
                         _ => Node::BinOp {
-                            left: Box::new(folded_left),
-                            right: Box::new(folded_right),
+                            left: boxed!(folded_left),
+                            right: boxed!(folded_right),
                             op,
                         },
                     },
 
                     _ => Node::BinOp {
-                        left: Box::new(folded_left),
-                        right: Box::new(folded_right),
+                        left: boxed!(folded_left),
+                        right: boxed!(folded_right),
                         op,
                     },
                 }
@@ -468,7 +468,7 @@ impl AST {
 
                         _ => Node::UnaryOp {
                             op,
-                            right: Box::new(Node::NumberLiteral(x)),
+                            right: boxed!(Node::NumberLiteral(x)),
                             is_prefix,
                         },
                     },
@@ -477,7 +477,7 @@ impl AST {
 
                         _ => Node::UnaryOp {
                             op,
-                            right: Box::new(Node::BooleanLiteral(x)),
+                            right: boxed!(Node::BooleanLiteral(x)),
                             is_prefix,
                         },
                     },
@@ -486,14 +486,14 @@ impl AST {
 
                         _ => Node::UnaryOp {
                             op,
-                            right: Box::new(Node::NIL),
+                            right: boxed!(Node::NIL),
                             is_prefix,
                         },
                     },
 
                     _ => Node::UnaryOp {
                         op,
-                        right: Box::new(folded_right),
+                        right: boxed!(folded_right),
                         is_prefix,
                     },
                 }
@@ -523,15 +523,15 @@ impl AST {
                 step,
                 inclusive,
             } => Node::RangeNode {
-                start: Box::new(Self::fold_constants(*start)),
-                end: Box::new(Self::fold_constants(*end)),
-                step: step.map(|s| Box::new(Self::fold_constants(*s))),
+                start: boxed!(Self::fold_constants(*start)),
+                end: boxed!(Self::fold_constants(*end)),
+                step: step.map(|s| boxed!(Self::fold_constants(*s))),
                 inclusive,
             },
 
             Node::MemberAccess { expr, member } => Node::MemberAccess {
-                expr: Box::new(Self::fold_constants(*expr)),
-                member: Box::new(Self::fold_constants(*member)),
+                expr: boxed!(Self::fold_constants(*expr)),
+                member: boxed!(Self::fold_constants(*member)),
             },
 
             Node::LetStatement {
@@ -542,13 +542,13 @@ impl AST {
                 names,
                 values: values
                     .into_iter()
-                    .map(|v| v.map(|inner| Box::new(Self::fold_constants(*inner))))
+                    .map(|v| v.map(|inner| boxed!(Self::fold_constants(*inner))))
                     .collect(),
                 is_const,
             },
             Node::SetVariable { target, value } => Node::SetVariable {
-                target: Box::new(Self::fold_constants(*target)),
-                value: Box::new(Self::fold_constants(*value)),
+                target: boxed!(Self::fold_constants(*target)),
+                value: boxed!(Self::fold_constants(*value)),
             },
             Node::ShorthandAssignment {
                 token,
@@ -556,8 +556,8 @@ impl AST {
                 value,
             } => Node::ShorthandAssignment {
                 token,
-                target: Box::new(Self::fold_constants(*target)),
-                value: Box::new(Self::fold_constants(*value)),
+                target: boxed!(Self::fold_constants(*target)),
+                value: boxed!(Self::fold_constants(*value)),
             },
 
             Node::FunctionDefinition {
@@ -571,22 +571,22 @@ impl AST {
                 return_type,
                 args,
                 is_const,
-                block: Box::new(Self::fold_constants(*block)),
+                block: boxed!(Self::fold_constants(*block)),
             },
             Node::FunctionCall { target, args } => Node::FunctionCall {
-                target: Box::new(Self::fold_constants(*target)),
+                target: boxed!(Self::fold_constants(*target)),
                 args: args.into_iter().map(Self::fold_constants).collect(),
             },
 
             Node::ReturnStatement(val) => {
-                Node::ReturnStatement(val.map(|v| Box::new(Self::fold_constants(*v))))
+                Node::ReturnStatement(val.map(|v| boxed!(Self::fold_constants(*v))))
             }
             Node::OutStatement { block_name, value } => Node::OutStatement {
                 block_name,
-                value: value.map(|v| Box::new(Self::fold_constants(*v))),
+                value: value.map(|v| boxed!(Self::fold_constants(*v))),
             },
             Node::BreakStatement(val) => {
-                Node::BreakStatement(val.map(|v| Box::new(Self::fold_constants(*v))))
+                Node::BreakStatement(val.map(|v| boxed!(Self::fold_constants(*v))))
             }
 
             Node::IfStatement {
@@ -595,26 +595,26 @@ impl AST {
                 elifs,
                 else_block,
             } => Node::IfStatement {
-                condition: Box::new(Self::fold_boolean(*condition)),
-                block: Box::new(Self::fold_constants(*block)),
+                condition: boxed!(Self::fold_boolean(*condition)),
+                block: boxed!(Self::fold_constants(*block)),
                 elifs: elifs
                     .into_iter()
                     .map(|(c, b)| (Self::fold_constants(c), Self::fold_constants(b)))
                     .collect(),
-                else_block: else_block.map(|b| Box::new(Self::fold_constants(*b))),
+                else_block: else_block.map(|b| boxed!(Self::fold_constants(*b))),
             },
 
             Node::Loop { block } => Node::Loop {
-                block: Box::new(Self::fold_constants(*block)),
+                block: boxed!(Self::fold_constants(*block)),
             },
             Node::WhileLoop {
                 condition,
                 block,
                 else_block,
             } => Node::WhileLoop {
-                condition: Box::new(Self::fold_boolean(*condition)),
-                block: Box::new(Self::fold_constants(*block)),
-                else_block: else_block.map(|x| Box::new(Self::fold_constants(*x))),
+                condition: boxed!(Self::fold_boolean(*condition)),
+                block: boxed!(Self::fold_constants(*block)),
+                else_block: else_block.map(|x| boxed!(Self::fold_constants(*x))),
             },
             Node::ForLoop {
                 var_name,
@@ -623,13 +623,13 @@ impl AST {
                 else_block,
             } => Node::ForLoop {
                 var_name,
-                expr: Box::new(Self::fold_constants(*expr)),
-                block: Box::new(Self::fold_constants(*block)),
-                else_block: else_block.map(|x| Box::new(Self::fold_constants(*x))),
+                expr: boxed!(Self::fold_constants(*expr)),
+                block: boxed!(Self::fold_constants(*block)),
+                else_block: else_block.map(|x| boxed!(Self::fold_constants(*x))),
             },
 
             Node::MatchStatement { expr, branches } => Node::MatchStatement {
-                expr: Box::new(Self::fold_constants(*expr)),
+                expr: boxed!(Self::fold_constants(*expr)),
                 branches: branches
                     .into_iter()
                     .map(|(p, b)| (Self::fold_constants(p), Self::fold_constants(b)))
@@ -659,15 +659,15 @@ impl AST {
                 match left {
                     Node::NIL => right,
                     other => Node::NullCoalesce {
-                        left: Box::new(other),
-                        right: Box::new(right),
+                        left: boxed!(other),
+                        right: boxed!(right),
                     },
                 }
             }
 
             Node::ElvisCoalesce { left, right } => Node::ElvisCoalesce {
-                left: Box::new(Self::fold_constants(*left.clone())),
-                right: Box::new(Self::fold_constants(*right.clone())),
+                left: boxed!(Self::fold_constants(*left.clone())),
+                right: boxed!(Self::fold_constants(*right.clone())),
             },
 
             Node::TernaryOp {
@@ -679,9 +679,9 @@ impl AST {
                 Node::BooleanLiteral(false) => Self::fold_constants(*false_expr),
 
                 condition => Node::TernaryOp {
-                    condition: Box::new(condition),
-                    true_expr: Box::new(Self::fold_constants(*true_expr)),
-                    false_expr: Box::new(Self::fold_constants(*false_expr)),
+                    condition: boxed!(condition),
+                    true_expr: boxed!(Self::fold_constants(*true_expr)),
+                    false_expr: boxed!(Self::fold_constants(*false_expr)),
                 },
             },
 
@@ -706,11 +706,11 @@ impl AST {
                     .iter()
                     .map(|x| Self::fold_constants(x.clone()))
                     .collect(),
-                constructor: constructor.map(|x| Box::new(Self::fold_constants(*x))),
+                constructor: constructor.map(|x| boxed!(Self::fold_constants(*x))),
             },
 
             Node::StructInit { target, fields } => Node::StructInit {
-                target: Box::new(Self::fold_constants(*target)),
+                target: boxed!(Self::fold_constants(*target)),
                 fields: fields
                     .iter()
                     .map(|(name, value)| (name.clone(), Self::fold_constants(value.clone())))
@@ -734,7 +734,7 @@ impl AST {
             },
 
             Node::ClassInit { target, parameters } => Node::ClassInit {
-                target: Box::new(Self::fold_constants(*target.clone())),
+                target: boxed!(Self::fold_constants(*target.clone())),
                 parameters: parameters
                     .iter()
                     .map(|x| Self::fold_constants(x.clone()))

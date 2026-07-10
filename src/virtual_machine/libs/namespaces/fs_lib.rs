@@ -27,7 +27,7 @@ impl Library for FSLib {
     fn get_function(&self, name: u64) -> Box<dyn Fn(&mut VM, Vec<Value>) -> Value> {
         match name {
             // INPUT
-            x if x == hash_u64!("read") => Box::new(Self::read),
+            x if x == hash_u64!("read") => boxed!(Self::read),
 
             _ => panic!("Unknown function `{name}` on lib {}", self.get_name()),
         }

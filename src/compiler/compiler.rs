@@ -1,10 +1,14 @@
 use crate::{
+    boxed,
     compiler::native_functions::NativeFunction,
     hash_u64,
     language::{lexer::Lexer, nodes::Node, parser::Parser, token::TokenKind},
     patch, patch_execute, rc, rc_str,
     virtual_machine::{
-        inst::Inst::{self, RANGE_EXCLUSIVE, RANGE_INCLUSIVE},
+        inst::{
+            ClassLayout, ClosureLayout,
+            Inst::{self, RANGE_EXCLUSIVE, RANGE_INCLUSIVE},
+        },
         modules::Module,
         types::{list::TList, structdef::TStructDef},
         value::Value,
@@ -233,11 +237,13 @@ impl Compiler {
 
     pub fn compile_node(&mut self, node: &Node) {
         match node {
-            Node::NIL => self.instructions.push(Inst::PUSH(Value::NIL)),
-            Node::Type(t) => self.instructions.push(Inst::PUSH(Value::Type(*t))),
+            Node::NIL => self.instructions.push(Inst::PUSH(boxed!(Value::NIL))),
+            Node::Type(t) => self.instructions.push(Inst::PUSH(boxed!(Value::Type(*t)))),
             Node::Variable(x) => self.emit_load_local(x.as_str()),
-            Node::NumberLiteral(x) => self.instructions.push(Inst::PUSH(Value::Number(*x))),
-            Node::BooleanLiteral(x) => self.instructions.push(Inst::PUSH(Value::Bool(*x))),
+            Node::NumberLiteral(x) => self
+                .instructions
+                .push(Inst::PUSH(boxed!(Value::Number(*x)))),
+            Node::BooleanLiteral(x) => self.instructions.push(Inst::PUSH(boxed!(Value::Bool(*x)))),
             Node::StringLiteral(x) => self.emit_load_const(Value::string(x)),
             Node::FString(values) => self.compile_fstring(values),
 
@@ -467,7 +473,8 @@ impl Compiler {
         if let Some(step) = step {
             self.compile_node(&**step);
         } else {
-            self.instructions.push(Inst::PUSH(Value::Number(1.0)))
+            self.instructions
+                .push(Inst::PUSH(boxed!(Value::Number(1.0))))
         }
         self.instructions.push(match inclusive {
             true => RANGE_INCLUSIVE,
@@ -496,13 +503,13 @@ impl Compiler {
         if all_literals && !values.is_empty() {
             if is_tuple {
                 self.instructions
-                    .push(Inst::PUSH(Value::Tuple(TList::new(rc!(RefCell::new(
-                        folded_values
+                    .push(Inst::PUSH(boxed!(Value::Tuple(TList::new(rc!(
+                        RefCell::new(folded_values)
                     ))))));
             } else {
                 self.instructions
-                    .push(Inst::PUSH(Value::List(TList::new(rc!(RefCell::new(
-                        folded_values
+                    .push(Inst::PUSH(boxed!(Value::List(TList::new(rc!(
+                        RefCell::new(folded_values)
                     ))))));
             }
             return;
@@ -539,7 +546,8 @@ impl Compiler {
                 if !is_prefix {
                     self.instructions.push(Inst::DUP);
                 }
-                self.instructions.push(Inst::PUSH(Value::Number(1.0)));
+                self.instructions
+                    .push(Inst::PUSH(boxed!(Value::Number(1.0))));
                 self.instructions.push(operator_inst);
                 if is_prefix {
                     self.instructions.push(Inst::DUP);
@@ -551,7 +559,8 @@ impl Compiler {
                 if !is_prefix {
                     self.instructions.push(Inst::DUP);
                 }
-                self.instructions.push(Inst::PUSH(Value::Number(1.0)));
+                self.instructions
+                    .push(Inst::PUSH(boxed!(Value::Number(1.0))));
                 self.instructions.push(operator_inst);
                 if !is_prefix {
                     self.instructions.push(Inst::DUP);
@@ -570,10 +579,12 @@ impl Compiler {
 
         match op {
             TokenKind::MINUS => {
-                if let Inst::PUSH(Value::Number(x)) = self.instructions[self.instructions.len() - 1]
-                {
-                    self.instructions.pop();
-                    self.instructions.push(Inst::PUSH(Value::Number(-x)));
+                if let Inst::PUSH(value) = &self.instructions[self.instructions.len() - 1] {
+                    if let Value::Number(x) = **value {
+                        self.instructions.pop();
+                        self.instructions
+                            .push(Inst::PUSH(boxed!(Value::Number(-x))));
+                    }
                 } else {
                     self.instructions.push(Inst::NEG);
                 }
@@ -726,13 +737,13 @@ impl Compiler {
         values: &mut Vec<Option<Box<Node>>>,
         is_const: bool,
     ) {
-        values.resize(names.len(), Some(Box::new(Node::NIL)));
+        values.resize(names.len(), Some(boxed!(Node::NIL)));
 
         for (i, value) in values.iter().enumerate() {
             if let Some(val) = value {
                 self.compile_node(&**val)
             } else {
-                self.instructions.push(Inst::PUSH(Value::NIL));
+                self.instructions.push(Inst::PUSH(boxed!(Value::NIL)));
             };
 
             self.emit_store_local(names[i].as_str(), is_const);
@@ -756,7 +767,7 @@ impl Compiler {
             if let Some(value) = value {
                 self.compile_node(&**value);
             } else {
-                self.instructions.push(Inst::PUSH(Value::NIL))
+                self.instructions.push(Inst::PUSH(boxed!(Value::NIL)))
             }
 
             if make_scope {
@@ -772,7 +783,7 @@ impl Compiler {
                     if let Some(v) = value {
                         self.compile_node(&*v);
                     } else {
-                        self.instructions.push(Inst::PUSH(Value::NIL));
+                        self.instructions.push(Inst::PUSH(boxed!(Value::NIL)));
                     }
                     let _ = patch!(
                         self.instructions,
@@ -786,7 +797,7 @@ impl Compiler {
                     if let Some(v) = value {
                         self.compile_node(&*v);
                     } else {
-                        self.instructions.push(Inst::PUSH(Value::NIL));
+                        self.instructions.push(Inst::PUSH(boxed!(Value::NIL)));
                     }
                     let _ = patch!(
                         self.instructions,
@@ -798,7 +809,7 @@ impl Compiler {
             }
         }
 
-        self.instructions.push(Inst::PUSH(Value::NIL));
+        self.instructions.push(Inst::PUSH(boxed!(Value::NIL)));
 
         let block_end = self.instructions.len() as u32;
         patch_execute!(
@@ -898,7 +909,7 @@ impl Compiler {
         if let Some(body) = else_block {
             self.compile_node(&**body);
         } else {
-            self.instructions.push(Inst::PUSH(Value::NIL));
+            self.instructions.push(Inst::PUSH(boxed!(Value::NIL)));
         }
 
         let if_end = self.instructions.len() as u32;
@@ -963,7 +974,7 @@ impl Compiler {
         if let Some(val) = value {
             self.compile_node(val);
         } else {
-            self.instructions.push(Inst::PUSH(Value::NIL));
+            self.instructions.push(Inst::PUSH(boxed!(Value::NIL)));
         }
         self.instructions.push(Inst::RETURN);
     }
@@ -1027,10 +1038,10 @@ impl Compiler {
         patch_execute!(
             self.instructions,
             func_value,
-            Inst::MAKE_CLOSURE {
+            Inst::MAKE_CLOSURE(boxed!(ClosureLayout {
                 entry: func_start as u32,
                 captures
-            }
+            }))
         );
 
         patch_execute!(
@@ -1174,7 +1185,7 @@ impl Compiler {
         if let Some(val) = value {
             self.compile_node(&*val);
         } else {
-            self.instructions.push(Inst::PUSH(Value::NIL));
+            self.instructions.push(Inst::PUSH(boxed!(Value::NIL)));
         }
         let _ = patch!(self.instructions, "break");
     }
@@ -1268,8 +1279,8 @@ impl Compiler {
             name_vec.push(Value::string(name));
             self.compile_node(value);
         }
-        self.instructions
-            .push(Inst::ENUM(name.as_str().into(), name_vec));
+        self.emit_load_const(Value::string(name.as_str()));
+        self.instructions.push(Inst::ENUM(boxed!(name_vec)));
         self.emit_store_local(name, false);
     }
 
@@ -1283,10 +1294,10 @@ impl Compiler {
         }
 
         self.instructions
-            .push(Inst::PUSH(Value::StructDef(rc!(TStructDef::new(
+            .push(Inst::PUSH(boxed!(Value::StructDef(rc!(TStructDef::new(
                 name.as_str().into(),
                 rc!(field_map),
-            )))));
+            ))))));
 
         self.emit_store_local(name, false);
     }
@@ -1304,7 +1315,7 @@ impl Compiler {
             .rev()
             .map(|x| self.intern(x.as_str()))
             .collect();
-        self.instructions.push(Inst::STRUCT(field_name_ids));
+        self.instructions.push(Inst::STRUCT(boxed!(field_name_ids)));
     }
 
     pub fn compile_class_def(
@@ -1332,7 +1343,7 @@ impl Compiler {
 
                     match field_values.get(i).and_then(|v| v.as_deref()) {
                         Some(val) => self.compile_node(val),
-                        None => self.instructions.push(Inst::PUSH(Value::NIL)),
+                        None => self.instructions.push(Inst::PUSH(boxed!(Value::NIL))),
                     }
                 }
             }
@@ -1359,11 +1370,17 @@ impl Compiler {
             }
         }
 
-        self.instructions.push(Inst::MAKE_CLASS {
-            name: name.as_str().into(),
-            field_names,
-            method_names,
-            has_constructor: constructor.is_some(),
+        self.emit_load_const(Value::string(name));
+        self.instructions.push(if constructor.is_some() {
+            Inst::MAKE_CLASS_CONSTRUCTOR(boxed!(ClassLayout {
+                field_names,
+                method_names,
+            }))
+        } else {
+            Inst::MAKE_CLASS(boxed!(ClassLayout {
+                field_names,
+                method_names,
+            }))
         });
 
         self.emit_store_local(name, false);

@@ -1,3 +1,9 @@
-import hello as world from "module"
+class Hello {
+	constructor(self, name) => self.name = name
 
-println(world)
+	fn bonk(self) => println($"{self.name} got bonked")
+}
+
+let thing = new Hello("wow")
+
+Hello::bonk(thing)

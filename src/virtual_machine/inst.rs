@@ -1,11 +1,21 @@
-use std::rc::Rc;
-
-use bincode::{Decode, Encode};
-
 use crate::{
     compiler::native_functions::NativeFunction,
     virtual_machine::{libs::types::TypeValue, value::Value},
 };
+use bincode::{Decode, Encode};
+use std::rc::Rc;
+
+#[derive(Encode, Decode, Debug, Clone, PartialEq)]
+pub struct ClassLayout {
+    pub field_names: Vec<(u64, bool)>,
+    pub method_names: Vec<u64>,
+}
+
+#[derive(Encode, Decode, Debug, Clone, PartialEq)]
+pub struct ClosureLayout {
+    pub entry: u32,
+    pub captures: Vec<u32>,
+}
 
 #[allow(unused, non_camel_case_types)]
 #[derive(Encode, Decode, Debug, Clone, PartialEq)]
@@ -18,9 +28,10 @@ pub enum Inst {
     DEFAULT,
     DEFAULT_NIL,
 
-    PUSH(Value),
+    PUSH(Box<Value>),
     PUSH_TYPE(TypeValue),
     PUSH_NIL,
+    PUSH_CHAR(char),
     PUSH_TRUE,
     PUSH_FALSE,
     PUSH_0,
@@ -43,14 +54,10 @@ pub enum Inst {
     LIST(u16),
     TUPLE(u16),
     DICT(u16),
-    ENUM(Rc<str>, Vec<Value>),
-    STRUCT(Vec<u64>),
-    MAKE_CLASS {
-        name: Rc<str>,
-        field_names: Vec<(u64, bool)>,
-        method_names: Vec<u64>,
-        has_constructor: bool,
-    },
+    ENUM(Box<Vec<Value>>),
+    STRUCT(Box<Vec<u64>>),
+    MAKE_CLASS(Box<ClassLayout>),
+    MAKE_CLASS_CONSTRUCTOR(Box<ClassLayout>),
     INIT_CLASS(u16),
 
     PATCH_ME(Rc<str>),
@@ -82,39 +89,18 @@ pub enum Inst {
     STORE_GLOBAL_CONST(u64),
 
     SET_GLOBAL(u64),
-    SET_LOCAL {
-        id: u64,
-        scope_idx: u16,
-    },
-    SET_UPVALUE {
-        id: u64,
-        scope_idx: u16,
-    },
+    SET_LOCAL { id: u64, scope_idx: u16 },
+    SET_UPVALUE { id: u64, scope_idx: u16 },
 
     PUSH_SCOPE,
     POP_SCOPE,
-    LOAD_LOCAL {
-        id: u64,
-        depth: u16,
-    },
-    STORE_LOCAL {
-        id: u64,
-        depth: u16,
-    },
-    STORE_LOCAL_CONST {
-        id: u64,
-        depth: u16,
-    },
+    LOAD_LOCAL { id: u64, depth: u16 },
+    STORE_LOCAL { id: u64, depth: u16 },
+    STORE_LOCAL_CONST { id: u64, depth: u16 },
 
     // UpValues
-    MAKE_CLOSURE {
-        entry: u32,
-        captures: Vec<u32>,
-    },
-    LOAD_UPVALUE {
-        id: u64,
-        scope_idx: u16,
-    },
+    MAKE_CLOSURE(Box<ClosureLayout>),
+    LOAD_UPVALUE { id: u64, scope_idx: u16 },
 
     // Load from local or global
     LOAD(u64),

@@ -1,6 +1,13 @@
 #![macro_use]
 
 #[macro_export]
+macro_rules! boxed {
+    ($x: expr) => {
+        Box::new($x)
+    };
+}
+
+#[macro_export]
 macro_rules! rc {
     ($x: expr) => {
         std::rc::Rc::new($x)
@@ -52,15 +59,15 @@ macro_rules! hashmap {
 #[macro_export]
 macro_rules! lib_function {
     ($this:expr, $lib:expr, $member:expr, $val:expr) => {
-        Value::Function(Box::new(TFunction::with_lib(
+        Value::Function(boxed!(TFunction::with_lib(
             rc_str!($lib),
             rc_str!($member),
-            Some(Box::new({ $val }($this.clone()))),
+            Some(boxed!({ $val }($this.clone()))),
         )))
     };
 
     ($lib:literal, $member:expr) => {
-        Value::Function(Box::new(TFunction::with_lib(
+        Value::Function(boxed!(TFunction::with_lib(
             rc_str!($lib),
             rc_str!($member),
             None,
@@ -68,7 +75,7 @@ macro_rules! lib_function {
     };
 
     ($lib:expr, $member:expr) => {
-        Value::Function(Box::new(TFunction::with_lib(
+        Value::Function(boxed!(TFunction::with_lib(
             rc_str!($lib),
             rc_str!($member),
             None,
@@ -79,15 +86,15 @@ macro_rules! lib_function {
 #[macro_export]
 macro_rules! lib_function_id {
     ($this:expr, $lib:expr, $member:expr, $val:expr) => {
-        Value::Function(Box::new(TFunction::with_lib_id(
+        Value::Function(boxed!(TFunction::with_lib_id(
             $lib,
             $member,
-            Some(Box::new({ $val }($this.clone()))),
+            Some(boxed!({ $val }($this.clone()))),
         )))
     };
 
     ($lib:literal, $member:expr) => {
-        Value::Function(Box::new(TFunction::with_lib_id(
+        Value::Function(boxed!(TFunction::with_lib_id(
             $lib,
             $member,
             None,
@@ -95,7 +102,7 @@ macro_rules! lib_function_id {
     };
 
     ($lib:expr, $member:expr) => {
-        Value::Function(Box::new(TFunction::with_lib_id(
+        Value::Function(boxed!(TFunction::with_lib_id(
             $lib,
             $member,
             None,

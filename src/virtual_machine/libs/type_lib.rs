@@ -83,12 +83,12 @@ impl Library for TypeLib {
 
     fn get_function(&self, name: u64) -> Box<dyn Fn(&mut VM, Vec<Value>) -> Value> {
         match name {
-            name if hash_u64!("typeof") == name => Box::new(Self::r#typeof),
+            name if hash_u64!("typeof") == name => boxed!(Self::r#typeof),
 
-            name if hash_u64!("string") == name => Box::new(Self::r#string),
-            name if hash_u64!("number") == name => Box::new(Self::r#number),
-            name if hash_u64!("bool") == name => Box::new(Self::r#bool),
-            name if hash_u64!("char") == name => Box::new(Self::r#char),
+            name if hash_u64!("string") == name => boxed!(Self::r#string),
+            name if hash_u64!("number") == name => boxed!(Self::r#number),
+            name if hash_u64!("bool") == name => boxed!(Self::r#bool),
+            name if hash_u64!("char") == name => boxed!(Self::r#char),
 
             _ => panic!("Unknown type lib function"),
         }

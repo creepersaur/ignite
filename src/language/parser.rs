@@ -4,6 +4,7 @@ use core::panic;
 use std::{collections::HashMap, thread::current};
 
 use crate::{
+    boxed,
     language::{
         lexer::Lexer,
         nodes::Node,
@@ -185,8 +186,8 @@ impl Parser {
         self.advance()?;
 
         Ok(Node::SetVariable {
-            target: Box::new(expr),
-            value: Box::new(self.parse_expression()?),
+            target: boxed!(expr),
+            value: boxed!(self.parse_expression()?),
         })
     }
 
@@ -195,8 +196,8 @@ impl Parser {
 
         Ok(Node::ShorthandAssignment {
             token,
-            target: Box::new(expr),
-            value: Box::new(self.parse_expression()?),
+            target: boxed!(expr),
+            value: boxed!(self.parse_expression()?),
         })
     }
 
@@ -213,8 +214,8 @@ impl Parser {
             let right = self.parse_mul_div()?;
 
             left = Node::BinOp {
-                left: Box::new(left),
-                right: Box::new(right),
+                left: boxed!(left),
+                right: boxed!(right),
                 op,
             };
         }
@@ -238,8 +239,8 @@ impl Parser {
             let right = self.parse_unary()?;
 
             left = Node::BinOp {
-                left: Box::new(left),
-                right: Box::new(right),
+                left: boxed!(left),
+                right: boxed!(right),
                 op,
             };
         }
@@ -264,7 +265,7 @@ impl Parser {
 
             return Ok(Node::UnaryOp {
                 op,
-                right: Box::new(self.parse_fstring()?),
+                right: boxed!(self.parse_fstring()?),
                 is_prefix: true,
             });
         }
@@ -278,7 +279,7 @@ impl Parser {
 
             return Ok(Node::UnaryOp {
                 op,
-                right: Box::new(expr),
+                right: boxed!(expr),
                 is_prefix: false,
             });
         }
@@ -381,8 +382,8 @@ impl Parser {
             let right = self.parse_primary()?;
 
             left = Node::BinOp {
-                left: Box::new(left),
-                right: Box::new(right),
+                left: boxed!(left),
+                right: boxed!(right),
                 op,
             };
         }
@@ -666,7 +667,7 @@ impl Parser {
 	 } )?;
 
         Ok(Node::StructInit {
-            target: Box::new(target),
+            target: boxed!(target),
             fields: data,
         })
     }
@@ -719,9 +720,9 @@ impl Parser {
             let false_expr = self.parse_elvis_coalescing()?;
 
             condition = Node::TernaryOp {
-                condition: Box::new(condition),
-                true_expr: Box::new(true_expr),
-                false_expr: Box::new(false_expr),
+                condition: boxed!(condition),
+                true_expr: boxed!(true_expr),
+                false_expr: boxed!(false_expr),
             };
         }
 
@@ -740,8 +741,8 @@ impl Parser {
             let right = self.parse_null_coalescing()?;
 
             left = Node::ElvisCoalesce {
-                left: Box::new(left),
-                right: Box::new(right),
+                left: boxed!(left),
+                right: boxed!(right),
             };
         }
 
@@ -760,8 +761,8 @@ impl Parser {
             let right = self.parse_logical()?;
 
             left = Node::NullCoalesce {
-                left: Box::new(left),
-                right: Box::new(right),
+                left: boxed!(left),
+                right: boxed!(right),
             };
         }
 
@@ -784,8 +785,8 @@ impl Parser {
             let right = self.parse_and()?;
 
             left = Node::BinOp {
-                left: Box::new(left),
-                right: Box::new(right),
+                left: boxed!(left),
+                right: boxed!(right),
                 op,
             };
         }
@@ -805,8 +806,8 @@ impl Parser {
             let right = self.parse_equality()?;
 
             left = Node::BinOp {
-                left: Box::new(left),
-                right: Box::new(right),
+                left: boxed!(left),
+                right: boxed!(right),
                 op,
             };
         }
@@ -826,8 +827,8 @@ impl Parser {
             let right = self.parse_comparison()?;
 
             left = Node::BinOp {
-                left: Box::new(left),
-                right: Box::new(right),
+                left: boxed!(left),
+                right: boxed!(right),
                 op,
             };
         }
@@ -901,7 +902,7 @@ impl Parser {
         self.expect_and_consume(TokenKind::RPAREN)?;
 
         Ok(Node::FunctionCall {
-            target: Box::new(expr),
+            target: boxed!(expr),
             args,
         })
     }
@@ -913,16 +914,16 @@ impl Parser {
             let member = self.expect_and_consume(TokenKind::Identifier)?;
 
             return Ok(Node::MemberAccess {
-                expr: Box::new(expr),
-                member: Box::new(Node::Symbol(member.get_text(&self.source).to_string())),
+                expr: boxed!(expr),
+                member: boxed!(Node::Symbol(member.get_text(&self.source).to_string())),
             });
         } else if x.kind == TokenKind::LBRACK {
             let member = self.parse_expression()?;
             self.expect_and_consume(TokenKind::RBRACK)?;
 
             return Ok(Node::MemberAccess {
-                expr: Box::new(expr),
-                member: Box::new(member),
+                expr: boxed!(expr),
+                member: boxed!(member),
             });
         }
 
@@ -935,10 +936,10 @@ impl Parser {
     fn parse_export(&mut self) -> NodeResult {
         self.advance()?;
 
-        let expr_stmt = |inner: Node| Node::ExprStmt(Box::new(inner));
+        let expr_stmt = |inner: Node| Node::ExprStmt(boxed!(inner));
 
         if let Ok(x) = self.current() {
-            Ok(Node::Exported(Box::new(match x.kind {
+            Ok(Node::Exported(boxed!(match x.kind {
                 TokenKind::LET => self.parse_let(false)?,
                 TokenKind::CONST => self.parse_const()?,
                 TokenKind::FN => self.parse_function_def(false, false)?,
@@ -1164,7 +1165,7 @@ impl Parser {
             self.advance()?;
 
             for i in names.iter() {
-                values.push(Some(Box::new(self.parse_expression()?)));
+                values.push(Some(boxed!(self.parse_expression()?)));
 
                 if let Ok(x) = self.check_current(TokenKind::COMMA)
                     && x
@@ -1261,7 +1262,7 @@ impl Parser {
                 name: None,
                 body: vec![Node::OutStatement {
                     block_name: None,
-                    value: Some(Box::new(self.parse_expression()?)),
+                    value: Some(boxed!(self.parse_expression()?)),
                 }],
             });
         }
@@ -1363,7 +1364,7 @@ impl Parser {
             args,
             return_type,
             is_const,
-            block: Box::new(self.parse_block()?),
+            block: boxed!(self.parse_block()?),
         })
     }
 
@@ -1373,8 +1374,8 @@ impl Parser {
         if let Ok(next) = self.current()
             && !matches!(next.kind, TokenKind::NEWLINE | TokenKind::SEMI)
         {
-            Ok(Node::ReturnStatement(Some(Box::new(
-                self.parse_expression()?,
+            Ok(Node::ReturnStatement(Some(boxed!(
+                self.parse_expression()?
             ))))
         } else {
             Ok(Node::ReturnStatement(None))
@@ -1386,9 +1387,7 @@ impl Parser {
         if let Ok(next) = self.current()
             && !matches!(next.kind, TokenKind::NEWLINE | TokenKind::SEMI)
         {
-            Ok(Node::BreakStatement(Some(Box::new(
-                self.parse_expression()?,
-            ))))
+            Ok(Node::BreakStatement(Some(boxed!(self.parse_expression()?))))
         } else {
             Ok(Node::BreakStatement(None))
         }
@@ -1412,7 +1411,7 @@ impl Parser {
         {
             Ok(Node::OutStatement {
                 block_name,
-                value: Some(Box::new(self.parse_expression()?)),
+                value: Some(boxed!(self.parse_expression()?)),
             })
         } else {
             Ok(Node::OutStatement {
@@ -1446,7 +1445,7 @@ impl Parser {
 
                     elifs.push((elif_condition, elif_block));
                 } else {
-                    else_block = Some(Box::new(self.parse_block()?));
+                    else_block = Some(boxed!(self.parse_block()?));
                 }
             } else {
                 break;
@@ -1454,8 +1453,8 @@ impl Parser {
         }
 
         Ok(Node::IfStatement {
-            condition: Box::new(condition),
-            block: Box::new(main_block),
+            condition: boxed!(condition),
+            block: boxed!(main_block),
             elifs,
             else_block,
         })
@@ -1471,7 +1470,7 @@ impl Parser {
         self.advance()?;
 
         Ok(Node::Loop {
-            block: Box::new(self.parse_block()?),
+            block: boxed!(self.parse_block()?),
         })
     }
 
@@ -1485,14 +1484,14 @@ impl Parser {
             && x
         {
             self.advance()?;
-            Some(Box::new(self.parse_block()?))
+            Some(boxed!(self.parse_block()?))
         } else {
             None
         };
 
         Ok(Node::WhileLoop {
-            condition: Box::new(condition),
-            block: Box::new(block),
+            condition: boxed!(condition),
+            block: boxed!(block),
             else_block,
         })
     }
@@ -1507,14 +1506,14 @@ impl Parser {
 
         self.expect_and_consume(TokenKind::IN)?;
 
-        let expr = Box::new(self.parse_ternary_op()?);
-        let block = Box::new(self.parse_block()?);
+        let expr = boxed!(self.parse_ternary_op()?);
+        let block = boxed!(self.parse_block()?);
 
         let else_block = if let Ok(x) = self.check_current(TokenKind::ELSE)
             && x
         {
             self.advance()?;
-            Some(Box::new(self.parse_block()?))
+            Some(boxed!(self.parse_block()?))
         } else {
             None
         };
@@ -1601,7 +1600,7 @@ impl Parser {
                         }
                     }
                     TokenKind::CONSTRUCTOR => {
-                        constructor = Some(Box::new(self.parse_function_def(true, false)?))
+                        constructor = Some(boxed!(self.parse_function_def(true, false)?))
                     }
                     TokenKind::FN => functions.push(self.parse_function_def(false, false)?),
                     TokenKind::SEMI => {
@@ -1648,7 +1647,7 @@ impl Parser {
             )?;
 
             Ok(Node::ClassInit {
-                target: Box::new(target),
+                target: boxed!(target),
                 parameters,
             })
         } else {
@@ -1683,15 +1682,15 @@ impl Parser {
                 && x.kind == TokenKind::DOUBLEDOT
             {
                 self.advance();
-                Some(Box::new(self.parse_add_sub()?))
+                Some(boxed!(self.parse_add_sub()?))
             } else {
                 None
             };
 
             self.skip_new_lines();
             return Ok(Node::RangeNode {
-                start: Box::new(start),
-                end: Box::new(end),
+                start: boxed!(start),
+                end: boxed!(end),
                 step,
                 inclusive,
             });
@@ -1717,7 +1716,7 @@ impl Parser {
                 );
 
                 if is_returnable {
-                    *last = Node::ExprStmt(Box::new(Node::OutStatement {
+                    *last = Node::ExprStmt(boxed!(Node::OutStatement {
                         block_name: None,
                         value: Some(expr.clone()),
                     }));
@@ -1751,7 +1750,7 @@ impl Parser {
         )?;
 
         Ok(Node::MatchStatement {
-            expr: Box::new(expr),
+            expr: boxed!(expr),
             branches,
         })
     }

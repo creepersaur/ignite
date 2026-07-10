@@ -4,8 +4,7 @@ use crate::{
     virtual_machine::vm::VM,
 };
 use std::{
-    cell::RefCell,
-    panic::{AssertUnwindSafe, catch_unwind},
+    cell::RefCell, io::Write, panic::{AssertUnwindSafe, catch_unwind},
 };
 #[allow(unused)]
 use std::{error::Error, fs, rc::Rc};
@@ -151,11 +150,27 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 
 fn bench(vm: &mut VM, coldstart: bool) {
-    let runs = 1_000_000;
+    let runs = 10_000;
+    let show_iterations = std::env::args().any(|arg| arg == "iter");
+	print!("warmup...");
+	std::io::stdout().flush().unwrap();
+
+    //Warmup
+    for _ in 0..500 {
+        vm.reset(coldstart);
+        vm.run(false, false);
+    }
+
+	println!("completed");
+	std::io::stdout().flush().unwrap();
+
     let mut total = 0u128;
     let full_start = std::time::Instant::now();
 
-    for _ in 0..runs {
+    for i in 1..runs + 1 {
+        if show_iterations {
+            print!("{i}.");
+        }
         vm.reset(coldstart);
 
         let start = std::time::Instant::now();
@@ -163,6 +178,7 @@ fn bench(vm: &mut VM, coldstart: bool) {
         total += start.elapsed().as_nanos();
     }
 
+	println!("iterations: {runs}");
     println!(
         "\n(run + reset) total: {:.5}s",
         full_start.elapsed().as_secs_f64()

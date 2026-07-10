@@ -239,19 +239,19 @@ impl Library for DictLib {
 
     fn get_function(&self, name: u64) -> Box<dyn Fn(&mut VM, Vec<Value>) -> Value> {
         match name {
-            x if x == hash_u64!("len") => return Box::new(Self::len),
-            x if x == hash_u64!("items") => return Box::new(Self::items),
-            x if x == hash_u64!("keys") => return Box::new(Self::keys),
-            x if x == hash_u64!("values") => return Box::new(Self::values),
-            x if x == hash_u64!("get") => return Box::new(Self::get),
-            x if x == hash_u64!("insert") => return Box::new(Self::insert),
-            x if x == hash_u64!("remove") => return Box::new(Self::remove),
-            x if x == hash_u64!("map") => return Box::new(Self::map),
-            x if x == hash_u64!("clear") => return Box::new(Self::clear),
-            x if x == hash_u64!("append") => return Box::new(Self::append),
-            x if x == hash_u64!("concat") => return Box::new(Self::concat),
-            x if x == hash_u64!("copy") => return Box::new(Self::copy),
-            x if x == hash_u64!("count") => return Box::new(Self::count),
+            x if x == hash_u64!("len") => return boxed!(Self::len),
+            x if x == hash_u64!("items") => return boxed!(Self::items),
+            x if x == hash_u64!("keys") => return boxed!(Self::keys),
+            x if x == hash_u64!("values") => return boxed!(Self::values),
+            x if x == hash_u64!("get") => return boxed!(Self::get),
+            x if x == hash_u64!("insert") => return boxed!(Self::insert),
+            x if x == hash_u64!("remove") => return boxed!(Self::remove),
+            x if x == hash_u64!("map") => return boxed!(Self::map),
+            x if x == hash_u64!("clear") => return boxed!(Self::clear),
+            x if x == hash_u64!("append") => return boxed!(Self::append),
+            x if x == hash_u64!("concat") => return boxed!(Self::concat),
+            x if x == hash_u64!("copy") => return boxed!(Self::copy),
+            x if x == hash_u64!("count") => return boxed!(Self::count),
 
             _ => panic!("Unknown function `{name}` on lib {}", self.get_name()),
         }

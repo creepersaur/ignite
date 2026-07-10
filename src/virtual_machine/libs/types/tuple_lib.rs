@@ -174,15 +174,15 @@ impl Library for TupleLib {
 
     fn get_function(&self, name: u64) -> Box<dyn Fn(&mut VM, Vec<Value>) -> Value> {
         match name {
-            x if x == hash_u64!("len") => return Box::new(Self::len),
-            x if x == hash_u64!("map") => return Box::new(Self::map),
-            x if x == hash_u64!("concat") => return Box::new(Self::concat),
-            x if x == hash_u64!("copy") => return Box::new(Self::copy),
-            x if x == hash_u64!("count") => return Box::new(Self::count),
-            x if x == hash_u64!("sort") => return Box::new(Self::sort),
-            x if x == hash_u64!("reverse") => return Box::new(Self::reverse),
-            x if x == hash_u64!("rep") => return Box::new(Self::rep),
-            x if x == hash_u64!("to_list") => return Box::new(Self::to_list),
+            x if x == hash_u64!("len") => return boxed!(Self::len),
+            x if x == hash_u64!("map") => return boxed!(Self::map),
+            x if x == hash_u64!("concat") => return boxed!(Self::concat),
+            x if x == hash_u64!("copy") => return boxed!(Self::copy),
+            x if x == hash_u64!("count") => return boxed!(Self::count),
+            x if x == hash_u64!("sort") => return boxed!(Self::sort),
+            x if x == hash_u64!("reverse") => return boxed!(Self::reverse),
+            x if x == hash_u64!("rep") => return boxed!(Self::rep),
+            x if x == hash_u64!("to_list") => return boxed!(Self::to_list),
 
             _ => panic!("Unknown function `{name}` on lib {}", self.get_name()),
         }
