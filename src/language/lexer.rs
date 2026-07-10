@@ -181,7 +181,7 @@ impl Lexer {
             // "interface" => INTERFACE,
             "import" => IMPORT,
             "export" => EXPORT,
-			"from" => FROM,
+            "from" => FROM,
 
             // Punctuation
             "(" => LPAREN, // Parenthesis ()
@@ -264,6 +264,15 @@ impl Lexer {
 
         // Numbers
         if let Ok(x) = text.parse::<f64>() {
+            if x.is_finite() {
+                return NumberLiteral(x);
+            }
+        }
+
+        // Numbers but with underscores (1_000_000)
+        if text.starts_with(&['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'])
+            && let Ok(x) = text.replace("_", "").parse::<f64>()
+        {
             if x.is_finite() {
                 return NumberLiteral(x);
             }
