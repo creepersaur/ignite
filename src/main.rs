@@ -4,7 +4,9 @@ use crate::{
     virtual_machine::vm::VM,
 };
 use std::{
-    cell::RefCell, io::Write, panic::{AssertUnwindSafe, catch_unwind},
+    cell::RefCell,
+    io::Write,
+    panic::{AssertUnwindSafe, catch_unwind},
 };
 #[allow(unused)]
 use std::{error::Error, fs, rc::Rc};
@@ -122,9 +124,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         let instructions_clone = vm.instructions.clone();
 
         if args.contains(&"bench".to_string()) {
-            bench(&mut vm, false);
+            bench(&mut vm, false, 10_000);
         } else if args.contains(&"bench_cold".to_string()) {
-            bench(&mut vm, true);
+            bench(&mut vm, true, 10_000);
+        } else if args.contains(&"bench_single".to_string()) {
+            bench(&mut vm, false, 1);
         } else {
             let _ = catch_unwind(AssertUnwindSafe(|| vm.run(false, false)));
         }
@@ -149,11 +153,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn bench(vm: &mut VM, coldstart: bool) {
-    let runs = 10_000;
+fn bench(vm: &mut VM, coldstart: bool, runs: i32) {
     let show_iterations = std::env::args().any(|arg| arg == "iter");
-	print!("warmup...");
-	std::io::stdout().flush().unwrap();
+    print!("warmup...");
+    std::io::stdout().flush().unwrap();
 
     //Warmup
     for _ in 0..500 {
@@ -161,8 +164,8 @@ fn bench(vm: &mut VM, coldstart: bool) {
         vm.run(false, false);
     }
 
-	println!("completed");
-	std::io::stdout().flush().unwrap();
+    println!("completed");
+    std::io::stdout().flush().unwrap();
 
     let mut total = 0u128;
     let full_start = std::time::Instant::now();
@@ -178,7 +181,7 @@ fn bench(vm: &mut VM, coldstart: bool) {
         total += start.elapsed().as_nanos();
     }
 
-	println!("iterations: {runs}");
+    println!("iterations: {runs}");
     println!(
         "\n(run + reset) total: {:.5}s",
         full_start.elapsed().as_secs_f64()
