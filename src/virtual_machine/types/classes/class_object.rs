@@ -1,15 +1,79 @@
-use std::{cell::RefCell, collections::HashMap, fmt::Debug, rc::Rc};
-
 use crate::virtual_machine::{
     traits::member_accessible::IMemberAccessible, types::classes::class::TClass, value::Value,
     vm::VM,
 };
 use bincode::{Decode, Encode};
+use std::{any::Any, cell::RefCell, collections::HashMap, fmt::Debug, rc::Rc};
 
-#[derive(Encode, Decode, Clone, PartialEq)]
+#[derive(Clone)]
 pub struct TClassObject {
     pub base: Rc<RefCell<TClass>>,
     pub values: Rc<RefCell<HashMap<u64, (Value, bool)>>>,
+    pub native_data: Option<Box<dyn NativeData>>,
+}
+
+impl Encode for TClassObject {
+    fn encode<E: bincode::enc::Encoder>(
+        &self,
+        encoder: &mut E,
+    ) -> Result<(), bincode::error::EncodeError> {
+        self.base.encode(encoder)?;
+        self.values.encode(encoder)?;
+        Ok(())
+    }
+}
+
+impl<Context> Decode<Context> for TClassObject {
+    fn decode<D: bincode::de::Decoder<Context = Context>>(
+        decoder: &mut D,
+    ) -> Result<Self, bincode::error::DecodeError> {
+        Ok(Self {
+            base: Decode::decode(decoder)?,
+            values: Decode::decode(decoder)?,
+            native_data: None,
+        })
+    }
+}
+
+impl<'de, Context> bincode::BorrowDecode<'de, Context> for TClassObject {
+    fn borrow_decode<D: bincode::de::BorrowDecoder<'de, Context = Context>>(
+        decoder: &mut D,
+    ) -> Result<Self, bincode::error::DecodeError> {
+        Ok(Self {
+            base: bincode::BorrowDecode::borrow_decode(decoder)?,
+            values: bincode::BorrowDecode::borrow_decode(decoder)?,
+            native_data: None,
+        })
+    }
+}
+
+pub trait NativeData: Any {
+    fn as_any(&self) -> &dyn Any;
+    fn clone_box(&self) -> Box<dyn NativeData>;
+}
+impl<T> NativeData for T
+where
+    T: Any + Clone + 'static,
+{
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+	fn clone_box(&self) -> Box<dyn NativeData> {
+        Box::new(self.clone())
+    }
+}
+
+impl Clone for Box<dyn NativeData> {
+	fn clone(&self) -> Self {
+		(**self).clone_box()
+	}
+}
+
+impl PartialEq for TClassObject {
+    fn eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.base, &other.base) && *self.values.borrow() == *other.values.borrow()
+    }
 }
 
 impl PartialOrd for TClassObject {
@@ -21,7 +85,20 @@ impl PartialOrd for TClassObject {
 impl TClassObject {
     pub fn new(base: Rc<RefCell<TClass>>) -> Self {
         let values = rc!(RefCell::new(base.borrow().values.borrow().clone()));
-        Self { base, values }
+        Self {
+            base,
+            values,
+            native_data: None,
+        }
+    }
+
+    pub fn with_native<T: NativeData>(base: Rc<RefCell<TClass>>, native: T) -> Self {
+        let values = rc!(RefCell::new(base.borrow().values.borrow().clone()));
+        Self {
+            base,
+            values,
+            native_data: Some(Box::new(native)),
+        }
     }
 }
 

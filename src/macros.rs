@@ -93,6 +93,15 @@ macro_rules! lib_function_id {
         )))
     };
 
+    ($lib:literal, $member:literal) => {
+        Value::Function(boxed!(TFunction::with_lib_id(
+            hash_u64!($lib),
+            hash_u64!($member),
+            None,
+        )))
+    };
+
+
     ($lib:literal, $member:expr) => {
         Value::Function(boxed!(TFunction::with_lib_id(
             $lib,

@@ -1,20 +1,30 @@
 use crate::{
     get_args,
-    virtual_machine::{libs::lib::Library, value::Value, vm::VM},
+    virtual_machine::{
+        libs::{lib::Library, namespaces::classes::file::file::FileObject},
+        value::Value,
+        vm::VM,
+    },
 };
-use std::fs;
 
 pub struct FSLib;
 
 impl FSLib {
-    fn read(_vm: &mut VM, args: Vec<Value>) -> Value {
-        let path = get_args!(args);
+    // fn read(_vm: &mut VM, args: Vec<Value>) -> Value {
+    //     let path = get_args!(args);
 
-        if let Value::String(path) = path {
-            Value::string(fs::read_to_string(&*path.0).expect("Couldn't read file."))
-        } else {
-            panic!("`FS.read()` expects a string path")
-        }
+    //     if let Value::String(path) = path {
+    //         Value::string(fs::read_to_string(&*path.0).expect("Couldn't read file."))
+    //     } else {
+    //         panic!("`FS.read()` expects a string path")
+    //     }
+    // }
+
+    fn get_file(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [path] = get_args!(args, 1);
+        let file_obj = FileObject::new(path.as_str().into());
+
+        Value::ClassObject(file_obj.class_object)
     }
 }
 
@@ -27,7 +37,8 @@ impl Library for FSLib {
     fn get_function(&self, name: u64) -> Box<dyn Fn(&mut VM, Vec<Value>) -> Value> {
         match name {
             // INPUT
-            x if x == hash_u64!("read") => boxed!(Self::read),
+            // x if x == hash_u64!("read") => boxed!(Self::read),
+            x if x == hash_u64!("get_file") => boxed!(Self::get_file),
 
             _ => panic!("Unknown function `{name}` on lib {}", self.get_name()),
         }

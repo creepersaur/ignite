@@ -48,7 +48,7 @@ impl Compiler {
             name: canon_path.file_name().unwrap().to_str().unwrap().into(),
             path: rc_str!(canon_path.to_str().unwrap()),
             cached: true,
-            globals: Rc::new(RefCell::new(HashMap::new())),
+            globals: Rc::new(RefCell::new(VM::initialize_globals())),
             exports: HashSet::new(),
             instructions: Rc::new(RefCell::new(vec![])),
         }));

@@ -1,20 +1,11 @@
 use crate::{
-    compiler::native_functions::NativeFunction,
-    virtual_machine::{
-        chunk::Chunk,
-        inst::{ClassLayout, ClosureLayout, Inst},
-        libs::{
-            lib::Library,
-            namespaces::{fs_lib::FSLib, io_lib::IOLib, math_lib::MathLib},
-            type_lib::TypeLib,
-            types::{
+    compiler::native_functions::NativeFunction, virtual_machine::{
+        chunk::Chunk, inst::{ClassLayout, ClosureLayout, Inst}, libs::{
+            lib::Library, namespaces::{classes::file::file_lib::FileLib, fs_lib::FSLib, io_lib::IOLib, math_lib::MathLib}, type_lib::TypeLib, types::{
                 TypeValue, dict_lib::DictLib, list_lib::ListLib, string_lib::StringLib,
                 tuple_lib::TupleLib,
             },
-        },
-        modules::Module,
-        namespaces::standard_namespace::load_standard_namespace,
-        types::{
+        }, modules::Module, namespaces::standard_namespace::load_standard_namespace, types::{
             classes::{class::TClass, class_object::TClassObject},
             dict::TDict,
             r#enum::TEnum,
@@ -22,8 +13,7 @@ use crate::{
             list::TList,
             string::TString,
             r#struct::TStruct,
-        },
-        value::Value,
+        }, value::Value,
     },
 };
 use core::panic;
@@ -109,12 +99,15 @@ impl VM {
     pub fn initialize_libs() -> HashMap<u64, Box<dyn Library>> {
         let mut libs: HashMap<_, Box<dyn Library>> = HashMap::new();
 
-        // types
+        // primitive types
         libs.insert(hash_u64!("type"), boxed!(TypeLib));
         libs.insert(hash_u64!("string"), boxed!(StringLib));
         libs.insert(hash_u64!("list"), boxed!(ListLib));
         libs.insert(hash_u64!("tuple"), boxed!(TupleLib));
         libs.insert(hash_u64!("dict"), boxed!(DictLib));
+
+		// Other types
+        libs.insert(hash_u64!("File"), boxed!(FileLib));
 
         // namespaces
         libs.insert(hash_u64!("Math"), boxed!(MathLib));

@@ -268,7 +268,7 @@ impl Value {
         if let Value::String(x) = self {
             &x.0
         } else {
-            panic!("Cannot covnert `{self:?}` to str")
+            panic!("Cannot convert `{self:?}` to string")
         }
     }
 

@@ -147,8 +147,8 @@ impl Parser {
             TokenKind::CLASS => self.parse_class_def(),
 
             // Expression-Statements
-            TokenKind::LET => expr_stmt!(self.parse_let(false)),
-            TokenKind::CONST => expr_stmt!(self.parse_const()),
+            TokenKind::LET => expr_stmt!(self.parse_let(false, false)),
+            TokenKind::CONST => expr_stmt!(self.parse_const(false)),
             TokenKind::IF => expr_stmt!(self.parse_if()),
             TokenKind::WHILE => expr_stmt!(self.parse_while()),
             TokenKind::FOR => expr_stmt!(self.parse_for()),
@@ -370,7 +370,7 @@ impl Parser {
     }
 
     fn parse_exponent(&mut self) -> NodeResult {
-        let mut left = self.parse_call()?;
+        let mut left = self.parse_postfix()?;
 
         while let Ok(next) = self.current() {
             if !matches!(next.kind, TokenKind::POW) {
@@ -391,9 +391,27 @@ impl Parser {
         Ok(left)
     }
 
-    fn parse_call(&mut self) -> NodeResult {
-        let mut expr = self.parse_member()?;
+    fn parse_postfix(&mut self) -> NodeResult {
+        let mut expr = self.parse_primary()?;
 
+        while let Ok(token) = self.current() {
+            match token.kind {
+                TokenKind::LPAREN => {
+                    expr = self.parse_call(expr)?;
+                }
+
+                TokenKind::DOT | TokenKind::DOUBLECOLON | TokenKind::LBRACK => {
+                    expr = self.parse_member(expr)?;
+                }
+
+                _ => break,
+            }
+        }
+
+        Ok(expr)
+    }
+
+    fn parse_call(&mut self, mut expr: Node) -> NodeResult {
         loop {
             if let Ok(x) = self.current() {
                 match x.kind {
@@ -412,9 +430,7 @@ impl Parser {
         return Ok(expr);
     }
 
-    fn parse_member(&mut self) -> NodeResult {
-        let mut expr = self.parse_primary()?;
-
+    fn parse_member(&mut self, mut expr: Node) -> NodeResult {
         loop {
             if let Ok(x) = self.current() {
                 match x.kind {
@@ -469,8 +485,8 @@ impl Parser {
             TokenKind::LBRACK => self.parse_list(),
             TokenKind::LBRACE => self.parse_dict(),
 
-            TokenKind::LET => self.parse_let(false),
-            TokenKind::CONST => self.parse_const(),
+            TokenKind::LET => self.parse_let(false, true),
+            TokenKind::CONST => self.parse_const(true),
             TokenKind::FN => self.parse_function_def(true, false),
             TokenKind::NEW => self.parse_new(),
             TokenKind::LOOP => self.parse_loop(),
@@ -940,8 +956,8 @@ impl Parser {
 
         if let Ok(x) = self.current() {
             Ok(Node::Exported(boxed!(match x.kind {
-                TokenKind::LET => self.parse_let(false)?,
-                TokenKind::CONST => self.parse_const()?,
+                TokenKind::LET => self.parse_let(false, false)?,
+                TokenKind::CONST => self.parse_const(false)?,
                 TokenKind::FN => self.parse_function_def(false, false)?,
 
                 _ => panic!("Unexpected export before parsing statement/expression"),
@@ -1106,18 +1122,18 @@ impl Parser {
         })
     }
 
-    fn parse_const(&mut self) -> NodeResult {
+    fn parse_const(&mut self, restricted: bool) -> NodeResult {
         if let Some(x) = self.peek()
             && x.kind == TokenKind::FN
         {
             self.advance()?;
             self.parse_function_def(false, true)
         } else {
-            self.parse_let(true)
+            self.parse_let(true, restricted)
         }
     }
 
-    fn parse_let(&mut self, is_const: bool) -> NodeResult {
+    fn parse_let(&mut self, is_const: bool, restricted: bool) -> NodeResult {
         self.advance()?;
 
         let mut names = vec![];
@@ -1165,7 +1181,12 @@ impl Parser {
             self.advance()?;
 
             for i in names.iter() {
-                values.push(Some(boxed!(self.parse_expression()?)));
+                let value = if restricted {
+                    self.parse_equality()?
+                } else {
+                    self.parse_expression()?
+                };
+                values.push(Some(boxed!(value)));
 
                 if let Ok(x) = self.check_current(TokenKind::COMMA)
                     && x
@@ -1588,7 +1609,7 @@ impl Parser {
 
             if let Ok(next) = self.current() {
                 match next.kind {
-                    TokenKind::LET => let_statements.push(self.parse_let(false)?),
+                    TokenKind::LET => let_statements.push(self.parse_let(false, false)?),
                     TokenKind::CONST => {
                         if let Some(next) = self.peek()
                             && next.kind == TokenKind::FN
@@ -1596,7 +1617,7 @@ impl Parser {
                             self.advance()?;
                             functions.push(self.parse_function_def(false, true)?)
                         } else {
-                            let_statements.push(self.parse_let(true)?)
+                            let_statements.push(self.parse_let(true, false)?)
                         }
                     }
                     TokenKind::CONSTRUCTOR => {
@@ -1630,7 +1651,9 @@ impl Parser {
     fn parse_new(&mut self) -> NodeResult {
         self.advance()?;
 
-        let target = self.parse_member()?;
+        let mut target = self.parse_primary()?;
+        target = self.parse_member(target)?;
+
         let mut parameters = vec![];
 
         if let Ok(next) = self.current()

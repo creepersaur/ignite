@@ -9,8 +9,7 @@ use std::cell::RefCell;
 pub fn std_fs() -> Value {
     let mut namespace = TNamespace::new("FS", true);
 
-    namespace_lib_function!(namespace, "read");
-    namespace_lib_function!(namespace, "write");
+    namespace_lib_function!(namespace, "get_file");
 
     Value::Namespace(rc!(RefCell::new(namespace)))
 }
