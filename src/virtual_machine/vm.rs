@@ -1,11 +1,22 @@
 use crate::{
-    compiler::native_functions::NativeFunction, virtual_machine::{
-        chunk::Chunk, inst::{ClassLayout, ClosureLayout, Inst}, libs::{
-            lib::Library, namespaces::{classes::file::file_lib::FileLib, fs_lib::FSLib, io_lib::IOLib, math_lib::MathLib}, type_lib::TypeLib, types::{
+    compiler::native_functions::NativeFunction,
+    virtual_machine::{
+        chunk::Chunk,
+        inst::{ClassLayout, ClosureLayout, Inst},
+        libs::{
+            lib::Library,
+            namespaces::{
+                classes::file::file_lib::FileLib, fs_lib::FSLib, io_lib::IOLib, math_lib::MathLib,
+            },
+            type_lib::TypeLib,
+            types::{
                 TypeValue, dict_lib::DictLib, list_lib::ListLib, string_lib::StringLib,
                 tuple_lib::TupleLib,
             },
-        }, modules::Module, namespaces::standard_namespace::load_standard_namespace, types::{
+        },
+        modules::Module,
+        namespaces::standard_namespace::load_standard_namespace,
+        types::{
             classes::{class::TClass, class_object::TClassObject},
             dict::TDict,
             r#enum::TEnum,
@@ -13,7 +24,8 @@ use crate::{
             list::TList,
             string::TString,
             r#struct::TStruct,
-        }, value::Value,
+        },
+        value::Value,
     },
 };
 use core::panic;
@@ -106,7 +118,7 @@ impl VM {
         libs.insert(hash_u64!("tuple"), boxed!(TupleLib));
         libs.insert(hash_u64!("dict"), boxed!(DictLib));
 
-		// Other types
+        // Other types
         libs.insert(hash_u64!("File"), boxed!(FileLib));
 
         // namespaces
@@ -1384,24 +1396,20 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                                     let mut new_list = None;
                                     let value = &args[0];
 
-                                    if let Value::String(s) = value {
-                                        if args.len() == 2
-                                            && let Value::Number(n) = &args[1]
-                                        {
-                                            new_list = Some(TList::from(
-                                                std::iter::repeat(s.0.chars())
-                                                    .take(*n as usize)
-                                                    .flatten()
-                                                    .map(|x| Value::Char(x))
-                                                    .collect::<Vec<_>>(),
-                                            ));
+                                    if args.len() == 2 {
+                                        if let Value::Number(n) = &args[1] {
+                                            new_list =
+                                                Some(TList::from(vec![value.clone(); *n as usize]));
                                         } else {
-                                            new_list = Some(TList::from(
-                                                s.0.chars()
-                                                    .map(|x| Value::Char(x))
-                                                    .collect::<Vec<_>>(),
-                                            ));
+                                            panic!(
+                                                "Unexpected second argument `{}` in list(), expected number",
+                                                &args[1].to_string(true)
+                                            );
                                         }
+                                    } else if let Value::String(s) = value {
+                                        new_list = Some(TList::from(
+                                            s.0.chars().map(|x| Value::Char(x)).collect::<Vec<_>>(),
+                                        ));
                                     }
 
                                     if let Some(new_list) = new_list {
