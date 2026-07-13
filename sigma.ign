@@ -1,3 +1,4 @@
-import Dog from "module"
+import Tetris from "tetris"
 
-println(new Dog())
+let game = new Tetris()
+game.print_board(true)

@@ -194,6 +194,9 @@ impl VM {
                 );
             }
         } else {
+			self.instructions = f.module.as_ref().unwrap().borrow().instructions.clone();
+			self.globals = f.module.as_ref().unwrap().borrow().globals.clone();
+
             self.call_stack.push(CallFrame {
                 scope_base: self.locals.len(),
                 return_addr: self.pos,
@@ -1310,10 +1313,6 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                         let should_skip = f.handler.is_none();
 
                         self.call_function(*f, arg_count);
-
-                        let module = self.call_stack.last().unwrap().module.clone();
-                        self.instructions = module.borrow().instructions.clone();
-                        self.globals = module.borrow().globals.clone();
 
                         if should_skip {
                             continue;

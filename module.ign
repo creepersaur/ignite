@@ -1,7 +1,9 @@
 println("module import start")
 
 export class Dog {
-	constructor(self) {
-		println("dog constructor ran")
+	constructor() {
+		println("hello")
 	}
+
+	fn wow() => println("wow")
 }
