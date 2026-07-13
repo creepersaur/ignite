@@ -37,8 +37,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut parser = Parser::new(text, tokens);
     let mut nodes = vec![];
 
+    parser.skip_new_lines();
     while parser.current().is_ok() {
         nodes.push(parser.parse()?);
+		parser.skip_new_lines();
     }
 
     let mut ast = AST::new(nodes);

@@ -194,8 +194,9 @@ impl VM {
                 );
             }
         } else {
-			self.instructions = f.module.as_ref().unwrap().borrow().instructions.clone();
-			self.globals = f.module.as_ref().unwrap().borrow().globals.clone();
+            let module = f.module.as_ref().unwrap();
+            self.instructions = module.borrow().instructions.clone();
+            self.globals = module.borrow().globals.clone();
 
             self.call_stack.push(CallFrame {
                 scope_base: self.locals.len(),
@@ -203,7 +204,7 @@ impl VM {
                 stack_len: self.stack.len(),
                 args_count: args_count as usize,
                 upvalues: f.upvalues,
-                module: f.module.unwrap().clone(),
+                module: module.clone(),
             });
             self.pos = f.entry;
         }
@@ -1622,6 +1623,7 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                                 module.instructions.clone()
                             };
                             self.instructions = mod_instructions;
+                            self.pos = 0;
 
                             self.run(false, false);
 

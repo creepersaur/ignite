@@ -6,7 +6,6 @@ export class Tetris {
 	let grid: list
 
 	constructor(self) {
-		print("constructing")
 		self.grid = list(nil, height)
 
 		for i in 0..height {
@@ -14,7 +13,7 @@ export class Tetris {
 		}
 	}
 
-	fn print_board(self, clear) {
+	fn print_board(self, clear = true) {
 		if clear => Std::IO::clear()
 
 		println("\n\033[0m┌" + "─" * width * 3 + "┐")
@@ -30,5 +29,9 @@ export class Tetris {
 		}
 
 		println("\033[0m└" + "─" * width * 3 + "┘")
+	}
+
+	fn set_pixel(self, x = 0, y = 0, filled = true) {
+		self.grid[y][x] = filled ? full : empty
 	}
 }

@@ -1,0 +1,51 @@
+let piece_types = {
+	long_piece = [[1, 1, 1, 1]],
+	t_piece = [
+		[1, 1, 1],
+		[0, 1, 0]
+	],
+	l_piece = [
+		[1, 0, 0],
+		[1, 1, 1]
+	],
+	lr_piece = [
+		[1, 1, 1],
+		[1, 0, 0]
+	],
+	square_piece = [
+		[1, 1],
+		[1, 1]
+	],
+	z_piece = [
+		[0, 1, 1],
+		[1, 1, 0]
+	],
+	zr_piece = [
+		[1, 1, 0],
+		[0, 1, 1]
+	],
+}
+
+export class Piece {
+	constructor(self, kind, x, y) {
+		self.kind = kind
+		self.x = x
+		self.y = y
+	}
+
+	fn draw(self, game, empty = false) {
+		let type = piece_types[self.kind]
+
+		let offset_y = 0
+		for line in type {
+			for offset_x in 0..line.len() {
+				game.set_pixel(
+					self.x + offset_x,
+					self.y + offset_y,
+					line[offset_x] == 1 && not empty
+				)
+			}
+			offset_y += 1
+		}
+	}
+}

@@ -410,7 +410,7 @@ impl Compiler {
             _ => panic!("Tried exporting unknown statement"),
         }
 
-		self.instructions.push(Inst::POP)
+        self.instructions.push(Inst::POP)
     }
 
     pub fn compile_import(&mut self, files: &Vec<(String, Option<String>)>, pop_module: bool) {
@@ -435,8 +435,10 @@ impl Compiler {
             let mut parser = Parser::new(text, tokens);
             let mut nodes = vec![];
 
+            parser.skip_new_lines();
             while parser.current().is_ok() {
                 nodes.push(parser.parse().unwrap());
+                parser.skip_new_lines();
             }
 
             for i in nodes.iter() {

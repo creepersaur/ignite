@@ -200,6 +200,7 @@ impl Lexer {
             "#" => HASH,
             "@" => AT,
             "!" => BANG,
+            "not" => BANG,
             "=" => EQUAL,
             "==" => EQ,
             ">" => GT,

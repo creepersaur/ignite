@@ -7,7 +7,11 @@ use std::{
 };
 
 use crate::virtual_machine::{
-    libs::types::TypeValue, modules::Module, namespaces::namespace::TNamespace, traits::member_accessible::IMemberAccessible, types::{
+    libs::types::TypeValue,
+    modules::Module,
+    namespaces::namespace::TNamespace,
+    traits::member_accessible::IMemberAccessible,
+    types::{
         classes::{r#class::TClass, class_object::TClassObject},
         dict::TDict,
         r#enum::TEnum,
@@ -16,7 +20,8 @@ use crate::virtual_machine::{
         string::TString,
         r#struct::TStruct,
         structdef::TStructDef,
-    }, vm::VM,
+    },
+    vm::VM,
 };
 
 #[allow(unused)]
@@ -54,8 +59,8 @@ pub enum Value {
         inclusive: bool,
     },
 
-	// Modules
-	Module(Rc<RefCell<Module>>)
+    // Modules
+    Module(Rc<RefCell<Module>>),
 }
 
 impl ToString for Value {
@@ -234,7 +239,7 @@ impl Value {
                             v.to_string(true)
                         };
 
-						let (_, name) = data.base.fields.get(&k).unwrap();
+                        let (_, name) = data.base.fields.get(&k).unwrap();
                         format!("{name}: {value}")
                     })
                     .collect::<Vec<_>>()
@@ -307,7 +312,7 @@ impl Value {
             Value::ClassObject(x) => x.get_member(vm, &member),
             Value::Module(x) => x.borrow().get_member(vm, &member),
 
-            _ => panic!("Cannot get property on `{self:?}`"),
+            _ => panic!("Cannot get property `{member:?}` on `{self:?}`"),
         }
     }
 
@@ -324,7 +329,7 @@ impl Value {
             Value::ClassObject(x) => x.set_member(&member, value),
             Value::Module(x) => x.borrow_mut().set_member(&member, value),
 
-            _ => panic!("Cannot get property on `{self:?}`"),
+            _ => panic!("Cannot set property `{member:?}`  on `{self:?}`"),
         }
     }
 
@@ -341,7 +346,10 @@ impl Value {
             Value::ClassObject(x) => x.get_member_id(vm, &member),
             Value::Module(x) => x.borrow().get_member_id(vm, &member),
 
-            _ => panic!("Cannot get property on `{self:?}`"),
+            _ => panic!(
+                "Cannot get property id `{:?}` on `{self:?}`",
+                vm.lookup_intern(*member)
+            ),
         }
     }
 
@@ -357,16 +365,19 @@ impl Value {
             Value::Class(x) => x.borrow_mut().set_member_id(vm, &member, value),
             Value::ClassObject(x) => x.set_member_id(vm, &member, value),
 
-            _ => panic!("Cannot get property on `{self:?}`"),
+            _ => panic!(
+                "Cannot set property id `{:?}` on `{self:?}`",
+                vm.lookup_intern(*member)
+            ),
         }
     }
 
-	#[allow(unused)]
-	pub fn hashed(&self) -> u64 {
-		let mut state = DefaultHasher::new();
-		self.hash(&mut state);
-		state.finish()
-	}
+    #[allow(unused)]
+    pub fn hashed(&self) -> u64 {
+        let mut state = DefaultHasher::new();
+        self.hash(&mut state);
+        state.finish()
+    }
 }
 
 impl Eq for Value {}
@@ -433,7 +444,7 @@ impl Hash for Value {
                 data.values.as_ptr().hash(state);
             }
             Self::Module(module) => {
-				module.borrow().path.hash(state);
+                module.borrow().path.hash(state);
             }
         }
     }

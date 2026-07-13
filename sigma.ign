@@ -1,4 +1,35 @@
-import Tetris from "tetris"
+import Tetris, full from "tetris"
+import Piece from "pieces"
+let piece_types = 100
 
 let game = new Tetris()
+let pieces = [
+	new Piece("long_piece", 0, 0),
+	new Piece("t_piece", 3, 2),
+	new Piece("l_piece", 6, 4),
+	new Piece("lr_piece", 0, 5),
+	new Piece("square_piece", 3, 7),
+	new Piece("z_piece", 6, 9),
+	new Piece("zr_piece", 4, 12),
+]
+
+for i in pieces {
+	i.draw(game)
+}
+
 game.print_board(true)
+
+loop {
+	Std::IO::read_line()
+
+	for i in pieces {
+		i.draw(game, true)
+	}
+
+	for i in pieces {
+		i.y += 1
+		i.draw(game)
+	}
+
+	game.print_board(true)
+}

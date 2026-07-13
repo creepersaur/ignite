@@ -1,9 +1,5 @@
-println("module import start")
-
-export class Dog {
-	constructor() {
-		println("hello")
-	}
-
-	fn wow() => println("wow")
+let x = {
+	wow = [1, 2, 3]
 }
+
+export fn hello() => println(x)

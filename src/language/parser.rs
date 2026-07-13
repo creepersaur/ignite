@@ -526,7 +526,7 @@ impl Parser {
         }
     }
 
-    fn skip_new_lines(&mut self) {
+    pub fn skip_new_lines(&mut self) {
         while let Ok(next) = self.current()
             && matches!(next.kind, TokenKind::NEWLINE)
         {
