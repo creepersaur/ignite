@@ -224,6 +224,16 @@ impl FileLib {
         }
     }
 
+    fn create(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [file] = get_args!(args, 1);
+
+        let file_data = Self::as_file_data(file, "File.create() can only be used on Files");
+
+		std::fs::File::create(file_data.path).expect("Could not create file");
+
+        Value::NIL
+    }
+
     fn write(_vm: &mut VM, args: Vec<Value>) -> Value {
         let [file, contents] = get_args!(args, 2);
 
@@ -358,6 +368,7 @@ impl Library for FileLib {
             x if x == hash_u64!("read") => boxed!(Self::read),
             x if x == hash_u64!("read_bytes") => boxed!(Self::read_bytes),
             x if x == hash_u64!("read_exact") => boxed!(Self::read_exact),
+            x if x == hash_u64!("create") => boxed!(Self::create),
             x if x == hash_u64!("write") => boxed!(Self::write),
             x if x == hash_u64!("write_bytes") => boxed!(Self::write_bytes),
             x if x == hash_u64!("append") => boxed!(Self::append),

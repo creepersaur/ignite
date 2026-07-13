@@ -959,6 +959,9 @@ impl Parser {
                 TokenKind::LET => self.parse_let(false, false)?,
                 TokenKind::CONST => self.parse_const(false)?,
                 TokenKind::FN => self.parse_function_def(false, false)?,
+                TokenKind::CLASS => self.parse_class_def()?,
+                TokenKind::STRUCT => self.parse_struct_def()?,
+                TokenKind::ENUM => self.parse_enum()?,
 
                 _ => panic!("Unexpected export before parsing statement/expression"),
             })))

@@ -391,9 +391,26 @@ impl Compiler {
                 self.emit_load_local(name.as_ref().unwrap());
                 self.instructions.push(Inst::EXPORT(id));
             }
+            Node::ClassDef { name, .. } => {
+                let id = self.intern(name);
+                self.emit_load_local(name);
+                self.instructions.push(Inst::EXPORT(id));
+            }
+            Node::StructDef { name, .. } => {
+                let id = self.intern(name);
+                self.emit_load_local(name);
+                self.instructions.push(Inst::EXPORT(id));
+            }
+            Node::EnumDef { name, .. } => {
+                let id = self.intern(name);
+                self.emit_load_local(name);
+                self.instructions.push(Inst::EXPORT(id));
+            }
 
             _ => panic!("Tried exporting unknown statement"),
         }
+
+		self.instructions.push(Inst::POP)
     }
 
     pub fn compile_import(&mut self, files: &Vec<(String, Option<String>)>, pop_module: bool) {

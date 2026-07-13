@@ -1,0 +1,34 @@
+export const empty, full = " • ", "╠╬╣"
+export let width = 10
+export let height = 20
+
+export class Tetris {
+	let grid: list
+
+	constructor(self) {
+		print("constructing")
+		self.grid = list(nil, height)
+
+		for i in 0..height {
+			self.grid[i] = list(empty, width)
+		}
+	}
+
+	fn print_board(self, clear) {
+		if clear => Std::IO::clear()
+
+		println("\n\033[0m┌" + "─" * width * 3 + "┐")
+
+		for y in self.grid {
+			print("│")
+			for x in y {
+				if x == empty => print("\033[90m")
+				else => print("\033[33m")
+				print(x)
+			}
+			println("\033[0m│")
+		}
+
+		println("\033[0m└" + "─" * width * 3 + "┘")
+	}
+}

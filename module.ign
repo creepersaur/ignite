@@ -1,1 +1,7 @@
-hello
+println("module import start")
+
+export class Dog {
+	constructor(self) {
+		println("dog constructor ran")
+	}
+}

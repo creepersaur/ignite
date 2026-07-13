@@ -1,14 +1,3 @@
-const width, height = 10, 20
-const grid = list(list("#", width), height)
+import Dog from "module"
 
-fn print_board() {
-	for y in grid {
-		print("| ")
-		for x in y {
-			print(x)
-		}
-		println(" |")
-	}
-}
-
-print_board()
+println(new Dog())

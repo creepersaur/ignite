@@ -385,6 +385,7 @@ impl VM {
                         .collect::<Vec<_>>()
                 )),
                 Inst::MAKE_CLASS { .. } => Some(format!("MAKE_CLASS")),
+                Inst::MAKE_CLASS_CONSTRUCTOR { .. } => Some(format!("MAKE_CLASS")),
                 _ => None,
             };
 
@@ -450,6 +451,7 @@ impl VM {
                     | Inst::RANGE_EXCLUSIVE
                     | Inst::RANGE_INCLUSIVE
                     | Inst::MAKE_CLASS { .. }
+                    | Inst::MAKE_CLASS_CONSTRUCTOR { .. }
                     | Inst::MAKE_CLOSURE { .. }
             ) {
                 GREEN

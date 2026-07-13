@@ -32,6 +32,7 @@ thread_local! {
 			map.insert(hash_u64!("read"), lib_function_id!("File", "read"));
 			map.insert(hash_u64!("read_bytes"), lib_function_id!("File", "read_bytes"));
 			map.insert(hash_u64!("read_exact"), lib_function_id!("File", "read_exact"));
+            map.insert(hash_u64!("create"), lib_function_id!("File", "create"));
             map.insert(hash_u64!("write"), lib_function_id!("File", "write"));
             map.insert(hash_u64!("write_bytes"), lib_function_id!("File", "write_bytes"));
             map.insert(hash_u64!("append"), lib_function_id!("File", "append"));
