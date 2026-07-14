@@ -1,5 +1,5 @@
 use crate::virtual_machine::{libs::lib::Library, types::string::TString, value::Value, vm::VM};
-use crossterm::event::{self, Event, KeyEvent};
+use crossterm::event::{self, Event, KeyEvent, KeyEventKind};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use std::io::{Read, Write, stdin, stdout};
 
@@ -88,7 +88,10 @@ impl IOLib {
 
         loop {
             // Block until a terminal event is available
-            if let Event::Key(KeyEvent { code, .. }) = event::read().expect("Could not read key") {
+            if let Event::Key(KeyEvent { code, kind, .. }) =
+                event::read().expect("Could not read key")
+                && kind == KeyEventKind::Press
+            {
                 disable_raw_mode().unwrap();
 
                 return Value::string(code);

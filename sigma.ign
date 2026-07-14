@@ -12,7 +12,7 @@ game.print_board(true)
 loop {
 	player_piece.draw(game, true)
 
-	let input = read_key()
+	let input = read_key("A or D")
 	match input {
 		"a" => player_piece.x -= 1,
 		"d" => player_piece.x += 1,
