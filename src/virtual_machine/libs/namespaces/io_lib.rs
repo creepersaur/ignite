@@ -71,15 +71,27 @@ impl IOLib {
         Value::Char(buf[0] as char)
     }
 
-    fn read_key(_vm: &mut VM, _args: Vec<Value>) -> Value {
+    fn read_key(_vm: &mut VM, args: Vec<Value>) -> Value {
+        if args.len() > 0 {
+            let msg = args
+                .iter()
+                .map(|x| x.to_string(false))
+                .rev()
+                .collect::<Vec<_>>()
+                .join(" ");
+
+            print!("{}", msg);
+            let _ = stdout().flush();
+        }
+
         enable_raw_mode().unwrap();
 
         loop {
             // Block until a terminal event is available
             if let Event::Key(KeyEvent { code, .. }) = event::read().expect("Could not read key") {
-				disable_raw_mode().unwrap();
+                disable_raw_mode().unwrap();
 
-				return Value::string(code)
+                return Value::string(code);
             }
         }
     }
