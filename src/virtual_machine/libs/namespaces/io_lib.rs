@@ -1,6 +1,7 @@
-use std::io::{Read, Write, stdin, stdout};
-
 use crate::virtual_machine::{libs::lib::Library, types::string::TString, value::Value, vm::VM};
+use crossterm::event::{self, Event, KeyEvent};
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
+use std::io::{Read, Write, stdin, stdout};
 
 pub struct IOLib;
 
@@ -68,6 +69,19 @@ impl IOLib {
             .expect("Couldn't read() from console");
 
         Value::Char(buf[0] as char)
+    }
+
+    fn read_key(_vm: &mut VM, _args: Vec<Value>) -> Value {
+        enable_raw_mode().unwrap();
+
+        loop {
+            // Block until a terminal event is available
+            if let Event::Key(KeyEvent { code, .. }) = event::read().expect("Could not read key") {
+				disable_raw_mode().unwrap();
+
+				return Value::string(code)
+            }
+        }
     }
 
     // Output
@@ -186,6 +200,7 @@ impl Library for IOLib {
             x if x == hash_u64!("read_line") => boxed!(Self::read_line),
             x if x == hash_u64!("read_line_raw") => boxed!(Self::read_line_raw),
             x if x == hash_u64!("read") => boxed!(Self::read),
+            x if x == hash_u64!("read_key") => boxed!(Self::read_key),
 
             // OUTPUT
             x if x == hash_u64!("clear") => boxed!(Self::clear),

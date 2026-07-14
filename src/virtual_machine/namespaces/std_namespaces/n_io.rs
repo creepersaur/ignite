@@ -13,6 +13,7 @@ pub fn std_io() -> Value {
     namespace_lib_function!(namespace, "read_line");
     namespace_lib_function!(namespace, "read_line_raw");
     namespace_lib_function!(namespace, "read");
+    namespace_lib_function!(namespace, "read_key");
 
     // Output
     namespace_lib_function!(namespace, "clear");

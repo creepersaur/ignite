@@ -31,6 +31,15 @@ export class Piece {
 		self.kind = kind
 		self.x = x
 		self.y = y
+		self.color = match kind {
+			"long_piece" => 1,
+			"t_piece" => 2,
+			"square_piece" => 3,
+			"l_piece" => 4,
+			"lr_piece" => 5,
+			"z_piece" => 6,
+			"zr_piece" => 7
+		}
 	}
 
 	fn draw(self, game, empty = false) {
@@ -42,7 +51,7 @@ export class Piece {
 				game.set_pixel(
 					self.x + offset_x,
 					self.y + offset_y,
-					line[offset_x] == 1 && not empty
+					(line[offset_x] == 1 && not empty) ? self.color : 0
 				)
 			}
 			offset_y += 1
