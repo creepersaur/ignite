@@ -1,12 +1,23 @@
-export const empty, full = " • ", "╠╬╣"
+import Piece from "pieces"
+
+export const empty, full = " • ", "███"
 export let width = 10
 export let height = 20
 
+let pidx = 0
+let queue = ["j_piece", "long_piece", "t_piece", "l_piece", "o_piece", "z_piece", "j_piece", "s_piece", "long_piece", "t_piece", "j_piece", "long_piece", "t_piece", "l_piece", "o_piece", "z_piece", "j_piece", "s_piece", "long_piece", "t_piece"]
+
 export class Tetris {
 	let grid: list
+	let piece: Piece
+	let score: number
 
 	constructor(self) {
 		self.grid = list(nil, height)
+		self.lines_to_clear = []
+		self.score = 0
+		self.piece = new Piece(queue[pidx], 3, 2)
+		pidx += 1
 
 		for i in 0..height {
 			self.grid[i] = list(0, width)
@@ -38,7 +49,75 @@ export class Tetris {
 		println("\033[0m└" + "─" * width * 3 + "┘")
 	}
 
+	fn draw_plr(self, empty = false)  {
+		self.piece.draw(self, empty)
+	}
+
+	fn update(self, input) {
+		self.piece.update(self, input)
+	}
+
 	fn set_pixel(self, x = 0, y = 0, color = 0) {
+		if x < 0 => return
+		if y < 0 => return
+		if x >= width => return
+		if y >= height => return
 		self.grid[y][x] = color
+	}
+
+	fn collide_cell(self, x = 0, y = 0) {
+		if x < 0 => return true
+		if y < 0 => return true
+		if x >= width => return true
+		if y >= height => return true
+
+		return self.grid[y][x] > 0
+	}
+
+	fn new_piece(self) {
+		self.piece = new Piece(queue[pidx], 3, 2)
+		pidx++
+	}
+
+	fn detect_full_line(self, line) {
+		let is_full = true
+
+		line.map(fn(x) {
+			if x == 0 {
+				is_full = false
+			}
+		})
+
+		return is_full
+	}
+
+	fn get_lines_to_clear(self) {
+		self.lines_to_clear.clear()
+
+		for i in 0..self.grid.len() {
+			if self.detect_full_line(self.grid[i]) {
+				self.lines_to_clear.push(i)
+			}
+		}
+	}
+
+	fn clear_lines(self) {
+		self.get_lines_to_clear()
+
+		let lines_number = self.lines_to_clear.len()
+		let score_added = match lines_number {
+			0 => return nil,
+			1 => 100,
+			2 => 300,
+			3 => 500,
+			4 => 800,
+		}
+
+		self.score += score_added
+
+		for line in self.lines_to_clear {
+			self.grid.remove(line)
+			self.grid.insert(0, list(0, width))
+		}
 	}
 }

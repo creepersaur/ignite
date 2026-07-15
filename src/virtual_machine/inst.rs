@@ -120,7 +120,7 @@ pub enum Inst {
     FAST_CALL_VOID(NativeFunction, u16),
     CALL(u16),
     CALL_VOID(u16),
-    RETURN,
+    RETURN(bool),
 
     // Get iterator (for loop)
     GET_ITER,

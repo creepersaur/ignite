@@ -63,7 +63,7 @@ impl ListLib {
     }
 
     fn insert(_vm: &mut VM, args: Vec<Value>) -> Value {
-        let [list, new_value, index] = get_args!(args, 3);
+        let [list, index, new_value] = get_args!(args, 3);
 
         if let Value::List(x) = list {
             x.values
@@ -77,7 +77,7 @@ impl ListLib {
     }
 
     fn remove(_vm: &mut VM, args: Vec<Value>) -> Value {
-        let [index, list] = get_args!(args, 2);
+        let [list, index] = get_args!(args, 2);
 
         if let Value::List(inner) = list {
             if let Value::Number(idx) = index {
@@ -161,7 +161,7 @@ impl ListLib {
     }
 
     fn append(_vm: &mut VM, args: Vec<Value>) -> Value {
-        let [other, list] = get_args!(args, 2);
+        let [list, other] = get_args!(args, 2);
 
         if let Value::List(inner) = list {
             if let Value::List(other_inner) = other {
@@ -180,7 +180,7 @@ impl ListLib {
     }
 
     fn concat(_vm: &mut VM, args: Vec<Value>) -> Value {
-        let [other, list] = get_args!(args, 2);
+        let [list, other] = get_args!(args, 2);
 
         if let Value::List(inner) = list {
             if let Value::List(other_inner) = other {
@@ -210,7 +210,7 @@ impl ListLib {
     }
 
     fn count(_vm: &mut VM, args: Vec<Value>) -> Value {
-        let [item, list] = get_args!(args, 2);
+        let [list, item] = get_args!(args, 2);
 
         if let Value::List(inner) = list {
             let count = inner.values.borrow().iter().filter(|x| x == &&item).count();
@@ -248,7 +248,7 @@ impl ListLib {
     }
 
     fn fill(_vm: &mut VM, args: Vec<Value>) -> Value {
-        let [value, list] = get_args!(args, 2);
+        let [list, value] = get_args!(args, 2);
 
         if let Value::List(inner) = list {
             inner.values.borrow_mut().fill(value);
@@ -260,7 +260,7 @@ impl ListLib {
     }
 
     fn rep(_vm: &mut VM, args: Vec<Value>) -> Value {
-        let [value, list] = get_args!(args, 2);
+        let [list, value] = get_args!(args, 2);
 
         if let Value::List(inner) = list {
             if let Value::Number(n) = value {

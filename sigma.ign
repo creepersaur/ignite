@@ -1,26 +1,26 @@
 import Tetris from "tetris"
-import Piece from "pieces"
-
 using Std::IO::read_key
 
 let game = new Tetris()
-let player_piece = new Piece("t_piece", 3, 2)
 
-player_piece.draw(game)
+game.draw_plr()
 game.print_board(true)
+println("Score:", game.score)
 
 loop {
-	player_piece.draw(game, true)
+	if !game.piece.alive {
+		game.clear_lines()
+		game.new_piece()
+	} else {
+		game.draw_plr(true)
 
-	let input = read_key("A or D")
-	match input {
-		"a" => player_piece.x -= 1,
-		"d" => player_piece.x += 1,
+		let input = read_key()
+		if input == "Esc" => break
 
-		_ => player_piece.y += 1
+		game.update(input)
 	}
 
-	player_piece.draw(game)
-
+	game.draw_plr()
 	game.print_board(true)
+	println("Score:", game.score)
 }

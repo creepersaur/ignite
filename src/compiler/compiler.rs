@@ -29,6 +29,7 @@ pub struct Compiler {
     pub intern_table: HashMap<u64, Rc<str>>,
     pub scopes: Vec<HashSet<String>>,
     pub scope_base: usize,
+    pub scope_base_stack: Vec<usize>,
     pub current_captures: Vec<usize>,
 
     pub entry_path: Rc<str>,
@@ -60,6 +61,7 @@ impl Compiler {
             scopes: vec![HashSet::new()],
             intern_table: HashMap::new(),
             scope_base: 0,
+            scope_base_stack: vec![],
             current_captures: vec![],
 
             entry_path: entry_file.clone(),
@@ -132,15 +134,22 @@ impl Compiler {
                 if depth == 0 {
                     self.instructions.push(Inst::LOAD_GLOBAL(id));
                 } else if depth < self.scope_base {
-                    let absolute = depth; // absolute index into locals at runtime
-                    if !self.current_captures.contains(&absolute) {
-                        self.current_captures.push(absolute);
-                    }
+                    let owner_base = self
+                        .scope_base_stack
+                        .iter()
+                        .rev()
+                        .find(|&&b| b <= depth)
+                        .copied()
+                        .unwrap_or(0);
+                    let relative = depth - owner_base;
 
+                    if !self.current_captures.contains(&relative) {
+                        self.current_captures.push(relative);
+                    }
                     let scope_idx = self
                         .current_captures
                         .iter()
-                        .position(|&d| d == absolute)
+                        .position(|&d| d == relative)
                         .unwrap() as u16;
                     self.instructions.push(Inst::LOAD_UPVALUE { id, scope_idx });
                 } else {
@@ -159,22 +168,29 @@ impl Compiler {
     }
 
     pub fn emit_set_var(&mut self, name: &str) {
-        for (depth, scope) in self.scopes.iter_mut().enumerate().rev() {
+        for (depth, scope) in self.scopes.iter().enumerate().rev() {
             if scope.contains(name) {
                 let id = self.intern(name);
 
                 if depth == 0 {
                     self.instructions.push(Inst::SET_GLOBAL(id));
                 } else if depth < self.scope_base {
-                    let absolute = depth; // absolute index into locals at runtime
-                    if !self.current_captures.contains(&absolute) {
-                        self.current_captures.push(absolute);
-                    }
+                    let owner_base = self
+                        .scope_base_stack
+                        .iter()
+                        .rev()
+                        .find(|&&b| b <= depth)
+                        .copied()
+                        .unwrap_or(0);
+                    let relative = depth - owner_base;
 
+                    if !self.current_captures.contains(&relative) {
+                        self.current_captures.push(relative);
+                    }
                     let scope_idx = self
                         .current_captures
                         .iter()
-                        .position(|&d| d == absolute)
+                        .position(|&d| d == relative)
                         .unwrap() as u16;
                     self.instructions.push(Inst::SET_UPVALUE { id, scope_idx });
                 } else {
@@ -185,8 +201,6 @@ impl Compiler {
                     });
                 }
                 return;
-            } else {
-                scope.insert(name.to_string());
             }
         }
 
@@ -617,6 +631,11 @@ impl Compiler {
 
     pub fn compile_bin_op(&mut self, left: &Box<Node>, right: &Box<Node>, op: &TokenKind) {
         self.compile_node(&**left);
+        let and_jump = if matches!(op, TokenKind::AND) {
+            Some((patch!(self.instructions), patch!(self.instructions)))
+        } else {
+            None
+        };
         self.compile_node(&**right);
 
         self.instructions.push(match op {
@@ -642,6 +661,12 @@ impl Compiler {
 
             _ => panic!("Cannot compile unknown bin-op: `{op:?}`"),
         });
+
+        if let Some((dup, jump)) = and_jump {
+            let end = self.instructions.len();
+            patch_execute!(self.instructions, dup, Inst::DUP);
+            patch_execute!(self.instructions, jump, Inst::JUMP_IF_FALSE(end as u32));
+        }
     }
 
     pub fn compile_comparison_chain(
@@ -995,7 +1020,7 @@ impl Compiler {
         } else {
             self.instructions.push(Inst::PUSH(boxed!(Value::NIL)));
         }
-        self.instructions.push(Inst::RETURN);
+        self.instructions.push(Inst::RETURN(value.is_some()));
     }
 
     pub fn compile_function_def(
@@ -1019,7 +1044,7 @@ impl Compiler {
 
         self.comment("Function def start:");
 
-        let saved_base = self.scope_base; // <-- save
+        self.scope_base_stack.push(self.scope_base);
         self.scope_base = self.scopes.len(); // <-- reset: depths start fresh here
 
         self.push_scope();
@@ -1041,10 +1066,10 @@ impl Compiler {
             self.compile_node(&**block);
         }
 
-        self.instructions.push(Inst::RETURN);
+        self.instructions.push(Inst::RETURN(true));
         self.pop_scope();
 
-        self.scope_base = saved_base; // <-- restore
+        self.scope_base = self.scope_base_stack.pop().unwrap(); // <-- restore
 
         self.comment("Function def end");
 

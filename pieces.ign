@@ -1,60 +1,257 @@
 let piece_types = {
-	long_piece = [[1, 1, 1, 1]],
-	t_piece = [
-		[1, 1, 1],
-		[0, 1, 0]
+	long_piece = {
+		0: [
+			[0, 0, 0, 0],
+			[1, 1, 1, 1],
+			[0, 0, 0, 0],
+			[0, 0, 0, 0],
+		],
+		1: [
+			[0, 0, 1, 0],
+			[0, 0, 1, 0],
+			[0, 0, 1, 0],
+			[0, 0, 1, 0],
+		],
+		2: [
+			[0, 0, 0, 0],
+			[0, 0, 0, 0],
+			[1, 1, 1, 1],
+			[0, 0, 0, 0],
+		],
+		3: [
+			[0, 1, 0, 0],
+			[0, 1, 0, 0],
+			[0, 1, 0, 0],
+			[0, 1, 0, 0],
+		],
+	},
+	t_piece = {
+		0: [
+			[0, 0, 0, 0],
+			[1, 1, 1, 0],
+			[0, 1, 0, 0],
+			[0, 0, 0, 0],
+		],
+		1: [
+			[0, 1, 0, 0],
+			[1, 1, 0, 0],
+			[0, 1, 0, 0],
+			[0, 0, 0, 0],
+		],
+		2: [
+			[0, 1, 0, 0],
+			[1, 1, 1, 0],
+			[0, 0, 0, 0],
+			[0, 0, 0, 0],
+		],
+		3: [
+			[0, 1, 0, 0],
+			[0, 1, 1, 0],
+			[0, 1, 0, 0],
+			[0, 0, 0, 0],
+		],
+	},
+	l_piece = {
+		0: [
+			[1, 0, 0, 0],
+			[1, 1, 1, 0],
+			[0, 0, 0, 0],
+			[0, 0, 0, 0],
+		],
+		1: [
+			[0, 1, 1, 0],
+			[0, 1, 0, 0],
+			[0, 1, 0, 0],
+			[0, 0, 0, 0],
+		],
+		2: [
+			[0, 0, 0, 0],
+			[1, 1, 1, 0],
+			[0, 0, 1, 0],
+			[0, 0, 0, 0],
+		],
+		3: [
+			[0, 1, 0, 0],
+			[0, 1, 0, 0],
+			[1, 1, 0, 0],
+			[0, 0, 0, 0],
+		],
+	},
+	j_piece = {
+		0: [
+			[0, 0, 0, 0],
+			[1, 1, 1, 0],
+			[1, 0, 0, 0],
+			[0, 0, 0, 0],
+		],
+		1: [
+			[1, 1, 0, 0],
+			[0, 1, 0, 0],
+			[0, 1, 0, 0],
+			[0, 0, 0, 0],
+		],
+		2: [
+			[0, 0, 1, 0],
+			[1, 1, 1, 0],
+			[0, 0, 0, 0],
+			[0, 0, 0, 0],
+		],
+		3: [
+			[0, 1, 0, 0],
+			[0, 1, 0, 0],
+			[0, 1, 1, 0],
+			[0, 0, 0, 0],
+		],
+	},
+	o_piece = [   // doesn't rotate
+		[
+			[1, 1],
+			[1, 1]
+		]
 	],
-	l_piece = [
-		[1, 0, 0],
-		[1, 1, 1]
-	],
-	lr_piece = [
-		[1, 1, 1],
-		[1, 0, 0]
-	],
-	square_piece = [
-		[1, 1],
-		[1, 1]
-	],
-	z_piece = [
-		[0, 1, 1],
-		[1, 1, 0]
-	],
-	zr_piece = [
-		[1, 1, 0],
-		[0, 1, 1]
-	],
+	s_piece = {
+		0: [
+			[0, 1, 1, 0],
+			[1, 1, 0, 0],
+			[0, 0, 0, 0],
+			[0, 0, 0, 0],
+		],
+		1: [
+			[1, 0, 0, 0],
+			[1, 1, 0, 0],
+			[0, 1, 0, 0],
+			[0, 0, 0, 0],
+		],
+		2: [
+			[0, 1, 1, 0],
+			[1, 1, 0, 0],
+			[0, 0, 0, 0],
+			[0, 0, 0, 0],
+		],
+		3: [
+			[1, 0, 0, 0],
+			[1, 1, 0, 0],
+			[0, 1, 0, 0],
+			[0, 0, 0, 0],
+		],
+	},
+	z_piece = {
+		0: [
+			[1, 1, 0, 0],
+			[0, 1, 1, 0],
+			[0, 0, 0, 0],
+			[0, 0, 0, 0],
+		],
+		1: [
+			[0, 1, 0, 0],
+			[1, 1, 0, 0],
+			[1, 0, 0, 0],
+			[0, 0, 0, 0],
+		],
+		2: [
+			[1, 1, 0, 0],
+			[0, 1, 1, 0],
+			[0, 0, 0, 0],
+			[0, 0, 0, 0],
+		],
+		3: [
+			[0, 1, 0, 0],
+			[1, 1, 0, 0],
+			[1, 0, 0, 0],
+			[0, 0, 0, 0],
+		],
+	},
 }
 
 export class Piece {
 	constructor(self, kind, x, y) {
+		self.alive = true
 		self.kind = kind
 		self.x = x
 		self.y = y
+		self.rotation = 0
 		self.color = match kind {
 			"long_piece" => 1,
 			"t_piece" => 2,
-			"square_piece" => 3,
+			"o_piece" => 3,
 			"l_piece" => 4,
-			"lr_piece" => 5,
-			"z_piece" => 6,
-			"zr_piece" => 7
+			"j_piece" => 5,
+			"s_piece" => 6,
+			"z_piece" => 7
 		}
 	}
 
 	fn draw(self, game, empty = false) {
-		let type = piece_types[self.kind]
+		let type = piece_types[self.kind][self.rotation]
 
 		let offset_y = 0
 		for line in type {
 			for offset_x in 0..line.len() {
+				if !line[offset_x] => continue
 				game.set_pixel(
 					self.x + offset_x,
 					self.y + offset_y,
-					(line[offset_x] == 1 && not empty) ? self.color : 0
+					empty ? 0 :self.color
 				)
 			}
 			offset_y += 1
 		}
+	}
+
+	fn update(self, game, input) {
+		match input {
+			"Up" => self.try_rotate(game),
+			"Left" => self.attempt_move(game, -1, 0),
+			"Right" => self.attempt_move(game, 1, 0),
+			"Space" => @ {
+				while self.alive {
+					if !self.attempt_move(game, 0, 1) {
+						self.alive = false
+					}
+				}
+			},
+
+			_ => if !self.attempt_move(game, 0, 1) {
+				self.alive = false
+			}
+		}
+	}
+
+	fn try_rotate(self, game) {
+		if self.kind == "o_piece" => return
+
+		let old_rot = self.rotation
+		self.rotation = (self.rotation + 1) % 4
+
+		if self.check_collision(game, 0, 0) {
+			self.rotation = old_rot
+		}
+	}
+
+	fn attempt_move(self, game, dx = 0, dy = 0) {
+		if !self.check_collision(game, dx, dy) {
+			self.x += dx
+			self.y += dy
+
+			return true
+		} else {
+			return false
+		}
+	}
+
+	fn check_collision(self, game, dx = 0, dy = 0) {
+		let type = piece_types[self.kind][self.rotation]
+
+		let offset_y = 0
+		for line in type {
+			for offset_x in 0..line.len() {
+				if line[offset_x] && game.collide_cell(self.x + offset_x + dx, self.y + offset_y + dy) {
+					return true
+				}
+			}
+			offset_y += 1
+		}
+
+		return false
 	}
 }

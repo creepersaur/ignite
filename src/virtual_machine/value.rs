@@ -257,6 +257,7 @@ impl Value {
         match self {
             Self::NIL => false,
             Self::Bool(x) => *x,
+            Self::Number(x) => *x != 0.0,
             _ => true,
         }
     }

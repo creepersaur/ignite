@@ -443,7 +443,7 @@ impl VM {
 
             let rest = parts.next().map_or("", |r| r);
 
-            let color = if matches!(v, Inst::EXIT | Inst::RETURN) {
+            let color = if matches!(v, Inst::EXIT | Inst::RETURN(..)) {
                 RED
             } else if matches!(
                 v,
@@ -1238,26 +1238,28 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                             .get_mut(&id)
                         {
                             if *is_const {
-                                panic!("Cannot set constant local `{}`", self.lookup_intern(id))
+                                panic!("Cannot set constant upvalue `{}`", self.lookup_intern(id))
                             }
 
                             *value = new_value;
                         } else {
                             panic!(
-                                "Tried setting unknown local variable `{}`",
+                                "Tried setting unknown upvalue variable `{}`",
                                 self.lookup_intern(id)
                             )
                         }
                     } else {
-                        panic!("Too little CallFrames in call_stack (SET_LOCAL)")
+                        panic!("Too little CallFrames in call_stack (SET_UPVALUE)")
                     }
                 }
 
                 Inst::MAKE_CLOSURE(layout) => {
                     let ClosureLayout { entry, captures } = &*layout;
+                    let frame_base = self.call_stack.last().unwrap().scope_base;
+
                     let upvalues = captures
                         .iter()
-                        .map(|&i| Rc::clone(&self.locals[i as usize]))
+                        .map(|&i| Rc::clone(&self.locals[frame_base + i as usize]))
                         .collect();
 
                     self.stack.push(Value::Function(boxed!(TFunction {
@@ -1435,8 +1437,8 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                 Inst::FAST_CALL_VOID(func, args) => {
                     self.fast_call(func, args);
                 }
-                Inst::RETURN => {
-                    let result = self.pop();
+                Inst::RETURN(has_value) => {
+                    let result = if has_value { self.pop() } else { Value::NIL };
 
                     if let Some(frame) = self.call_stack.last() {
                         self.pos = *&frame.return_addr;
@@ -1448,9 +1450,13 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
 
                         self.call_stack.pop();
 
-                        let module = self.call_stack.last().unwrap().module.clone();
-                        self.instructions = module.borrow().instructions.clone();
-                        self.globals = module.borrow().globals.clone();
+                        if let Some(frame) = self.call_stack.last() {
+                            let module = frame.module.clone();
+                            self.instructions = module.borrow().instructions.clone();
+                            self.globals = module.borrow().globals.clone();
+                        } else {
+							break;
+						}
                     } else {
                         self.stack.push(result);
                         self.locals.pop();
