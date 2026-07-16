@@ -10,16 +10,6 @@ use crate::{
 pub struct FSLib;
 
 impl FSLib {
-    // fn read(_vm: &mut VM, args: Vec<Value>) -> Value {
-    //     let path = get_args!(args);
-
-    //     if let Value::String(path) = path {
-    //         Value::string(fs::read_to_string(&*path.0).expect("Couldn't read file."))
-    //     } else {
-    //         panic!("`FS.read()` expects a string path")
-    //     }
-    // }
-
     fn get_file(_vm: &mut VM, args: Vec<Value>) -> Value {
         let [path] = get_args!(args, 1);
         let file_obj = FileObject::new(path.as_str().into());
@@ -37,7 +27,6 @@ impl Library for FSLib {
     fn get_function(&self, name: u64) -> Box<dyn Fn(&mut VM, Vec<Value>) -> Value> {
         match name {
             // INPUT
-            // x if x == hash_u64!("read") => boxed!(Self::read),
             x if x == hash_u64!("get_file") => boxed!(Self::get_file),
 
             _ => panic!("Unknown function `{name}` on lib {}", self.get_name()),

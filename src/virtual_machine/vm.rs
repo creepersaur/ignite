@@ -1,22 +1,13 @@
 use crate::{
-    compiler::native_functions::NativeFunction,
-    virtual_machine::{
-        chunk::Chunk,
-        inst::{ClassLayout, ClosureLayout, Inst},
-        libs::{
-            lib::Library,
-            namespaces::{
-                classes::file::file_lib::FileLib, fs_lib::FSLib, io_lib::IOLib, math_lib::MathLib,
-            },
-            type_lib::TypeLib,
-            types::{
+    compiler::native_functions::NativeFunction, virtual_machine::{
+        chunk::Chunk, inst::{ClassLayout, ClosureLayout, Inst}, libs::{
+            lib::Library, namespaces::{
+                classes::file::file_lib::FileLib, fs_lib::FSLib, io_lib::IOLib, math_lib::MathLib, random_lib::RandomLib,
+            }, type_lib::TypeLib, types::{
                 TypeValue, dict_lib::DictLib, list_lib::ListLib, string_lib::StringLib,
                 tuple_lib::TupleLib,
             },
-        },
-        modules::Module,
-        namespaces::standard_namespace::load_standard_namespace,
-        types::{
+        }, modules::Module, namespaces::standard_namespace::load_standard_namespace, types::{
             classes::{class::TClass, class_object::TClassObject},
             dict::TDict,
             r#enum::TEnum,
@@ -24,8 +15,7 @@ use crate::{
             list::TList,
             string::TString,
             r#struct::TStruct,
-        },
-        value::Value,
+        }, value::Value,
     },
 };
 use core::panic;
@@ -125,6 +115,7 @@ impl VM {
         libs.insert(hash_u64!("Math"), boxed!(MathLib));
         libs.insert(hash_u64!("IO"), boxed!(IOLib));
         libs.insert(hash_u64!("FS"), boxed!(FSLib));
+        libs.insert(hash_u64!("Random"), boxed!(RandomLib));
 
         libs
     }

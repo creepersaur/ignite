@@ -1,3 +1,5 @@
+use rand::seq::SliceRandom;
+
 use crate::{
     get_args,
     misc::to_index::to_index,
@@ -35,6 +37,7 @@ list_functions![
     "fill",
     "rep",
     "push_n",
+    "shuffle",
 ];
 
 pub struct ListLib;
@@ -297,6 +300,19 @@ impl ListLib {
 
         Value::NIL
     }
+
+    fn shuffle(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let list = get_args!(args);
+
+        if let Value::List(inner) = list {
+            let mut values = inner.values.borrow_mut();
+            values.shuffle(&mut rand::rng());
+        } else {
+            panic!("Can only use list.shuffle on Lists");
+        }
+
+        Value::NIL
+    }
 }
 
 // LIBRARY
@@ -324,6 +340,7 @@ impl Library for ListLib {
             x if x == hash_u64!("fill") => return boxed!(Self::fill),
             x if x == hash_u64!("rep") => return boxed!(Self::rep),
             x if x == hash_u64!("push_n") => return boxed!(Self::push_n),
+            x if x == hash_u64!("shuffle") => return boxed!(Self::shuffle),
 
             _ => panic!("Unknown function `{name}` on lib {}", self.get_name()),
         }

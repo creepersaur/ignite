@@ -9,6 +9,7 @@ simply_colored = "*"
 rustc-hash = "2.1"
 lz4_flex = "=0.13.1"
 crossterm = "0.28"
+rand = "0.9"
 
 [profile.release]
 opt-level = 3         # Maximize optimizations (default for release)
