@@ -5,6 +5,7 @@ let game = new Tetris()
 
 game.draw_plr()
 game.print_board(true)
+game.print_held()
 println("Score:", game.score)
 
 loop {
@@ -15,12 +16,16 @@ loop {
 		game.draw_plr(true)
 
 		let input = read_key()
+		if input == "q" => game.hold_piece()
 		if input == "Esc" => break
 
+		println("before update")
 		game.update(input)
+		println("after update")
 	}
 
 	game.draw_plr()
 	game.print_board(true)
+	game.print_held()
 	println("Score:", game.score)
 }

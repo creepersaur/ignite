@@ -206,7 +206,7 @@ impl ListLib {
         let list = get_args!(args);
 
         if let Value::List(inner) = list {
-            Value::List(inner.clone())
+            Value::List(TList::from(inner.values.borrow().clone()))
         } else {
             panic!("Can only use list.copy on Lists");
         }

@@ -1,5 +1,7 @@
-let piece_types = {
-	long_piece = {
+using Std::Random::int_range
+
+export let piece_types = {
+	i_piece = {
 		0: [
 			[0, 0, 0, 0],
 			[1, 1, 1, 1],
@@ -171,7 +173,7 @@ export class Piece {
 		self.y = y
 		self.rotation = 0
 		self.color = match kind {
-			"long_piece" => 1,
+			"i_piece" => 1,
 			"t_piece" => 2,
 			"o_piece" => 3,
 			"l_piece" => 4,
@@ -199,6 +201,7 @@ export class Piece {
 	}
 
 	fn update(self, game, input) {
+		println($"update piece")
 		match input {
 			"Up" => self.try_rotate(game),
 			"Left" => self.attempt_move(game, -1, 0),
@@ -229,6 +232,7 @@ export class Piece {
 	}
 
 	fn attempt_move(self, game, dx = 0, dy = 0) {
+		println($"attempt move")
 		if !self.check_collision(game, dx, dy) {
 			self.x += dx
 			self.y += dy

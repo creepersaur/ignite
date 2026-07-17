@@ -1,23 +1,25 @@
-import Piece from "pieces"
+import Piece, piece_types from "pieces"
 
 export const empty, full = " • ", "███"
 export let width = 10
 export let height = 20
 
-let pidx = 0
-let queue = ["j_piece", "long_piece", "t_piece", "l_piece", "o_piece", "z_piece", "j_piece", "s_piece", "long_piece", "t_piece", "j_piece", "long_piece", "t_piece", "l_piece", "o_piece", "z_piece", "j_piece", "s_piece", "long_piece", "t_piece"]
+let bag = piece_types.keys()
+let queue = bag.copy()
+bag.shuffle()
 
 export class Tetris {
 	let grid: list
 	let piece: Piece
 	let score: number
+	let held
+	let can_hold = true
 
 	constructor(self) {
 		self.grid = list(nil, height)
 		self.lines_to_clear = []
 		self.score = 0
-		self.piece = new Piece(queue[pidx], 3, 2)
-		pidx += 1
+		self.piece = new Piece(queue.pop(), 3, 0)
 
 		for i in 0..height {
 			self.grid[i] = list(0, width)
@@ -75,8 +77,26 @@ export class Tetris {
 	}
 
 	fn new_piece(self) {
-		self.piece = new Piece(queue[pidx], 3, 2)
-		pidx++
+		self.can_hold = true
+		if queue.len() < 1 {
+			bag.shuffle()
+			queue = bag.copy()
+		}
+		self.piece = new Piece(queue.pop(), 3, 0)
+	}
+
+	fn hold_piece(self) {
+		if !self.can_hold => return
+
+		if let held = self.held {
+			self.held = self.piece.kind
+			self.piece = new Piece(held, 3, 0)
+		} else {
+			self.held = self.piece.kind
+			self.new_piece()
+		}
+
+		self.can_hold = false
 	}
 
 	fn detect_full_line(self, line) {
@@ -119,5 +139,23 @@ export class Tetris {
 			self.grid.remove(line)
 			self.grid.insert(0, list(0, width))
 		}
+	}
+
+	fn print_held(self) {
+		println("\033[0m┌" + "─" * width * 3 + "┐")
+		print("│  Held piece:")
+		if let held = self.held => match held {
+			"i_piece" => print($"\033[36m ▅▅▅▅ ({held})"),
+			"t_piece" => print($"\033[35m ▝▜▛▘ ({held})"),
+			"o_piece" => print($"\033[33m ▇▇ ({held})  "),
+			"j_piece" => print($"\033[38;5;208m ▃▃▇ ({held}) "),
+			"l_piece" => print($"\033[34m ▇▃▃ ({held}) "),
+			"s_piece" => print($"\033[32m▗▄▟▛▀ ({held})"),
+			"z_piece" => print($"\033[31m ▀▜▙▄ ({held})"),
+		} else {
+			print("\033[90m None (Q)      ")
+		}
+		println("\033[0m  │")
+		println("\033[0m└" + "─" * width * 3 + "┘")
 	}
 }
