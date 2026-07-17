@@ -29,7 +29,9 @@ export class Tetris {
 	fn print_board(self, clear = true) {
 		if clear => Std::IO::clear()
 
-		println("\n\033[0m┌" + "─" * width * 3 + "┐")
+		println("\n\033[90mUse left/right arrow to move. Up arrow to spin. And Q to hold.")
+		println("Press Esc to quit.")
+		println("\033[0m┌" + "─" * width * 3 + "┐")
 
 		for y in self.grid {
 			print("│")
