@@ -87,9 +87,9 @@ export class Tetris {
 	}
 
 	fn refresh_queue(self) {
-		if queue.len() < 1 {
+		if queue.len() < 5 {
 			bag.shuffle()
-			queue = bag.copy()
+			queue.append(bag)
 		}
 	}
 
@@ -175,23 +175,23 @@ export class Tetris {
 	}
 
 	fn print_next(self) {
-		println("\033[0m┌" + "─" * width * 3 + "┐")
-		print("│  Next piece:")
+		println("\033[0m┌" + "─" * (width * 3 + 4) + "┐")
+		print("│  Next:")
 
 		self.refresh_queue()
 
-		if let next = queue[-1] => match next {
-			"i_piece" => print($"\033[36m ▅▅▅▅ ({next})"),
-			"t_piece" => print($"\033[35m ▝▜▛▘ ({next})"),
-			"o_piece" => print($"\033[33m ▇▇ ({next})  "),
-			"j_piece" => print($"\033[38;5;208m ▃▃▇ ({next}) "),
-			"l_piece" => print($"\033[34m ▇▃▃ ({next}) "),
-			"s_piece" => print($"\033[32m▗▄▟▛▀ ({next})"),
-			"z_piece" => print($"\033[31m ▀▜▙▄ ({next})"),
-		} else {
-			print("\033[90m None (Q)      ")
+		for i in 1..6 {
+			match queue[-i] {
+				"i_piece" => print($"\033[36m ▅▅▅▅"),
+				"t_piece" => print($"\033[35m ▝▜▛▘"),
+				"o_piece" => print($"\033[33m  ▇▇ "),
+				"j_piece" => print($"\033[38;5;208m ▃▃▇ "),
+				"l_piece" => print($"\033[34m ▇▃▃ "),
+				"s_piece" => print($"\033[32m▗▄▟▛▀"),
+				"z_piece" => print($"\033[31m ▀▜▙▄"),
+			}
 		}
 		println("\033[0m  │")
-		println("\033[0m└" + "─" * width * 3 + "┘")
+		println("\033[0m└" + "─" * (width * 3 + 4) + "┘")
 	}
 }
