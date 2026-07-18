@@ -78,12 +78,17 @@ export class Tetris {
 		return self.grid[y][x] > 0
 	}
 
-	fn new_piece(self) {
-		self.can_hold = true
+	fn refresh_queue(self) {
 		if queue.len() < 1 {
 			bag.shuffle()
 			queue = bag.copy()
 		}
+	}
+
+	fn new_piece(self) {
+		self.can_hold = true
+		self.refresh_queue()
+
 		self.piece = new Piece(queue.pop(), 3, 0)
 	}
 
@@ -154,6 +159,27 @@ export class Tetris {
 			"l_piece" => print($"\033[34m ▇▃▃ ({held}) "),
 			"s_piece" => print($"\033[32m▗▄▟▛▀ ({held})"),
 			"z_piece" => print($"\033[31m ▀▜▙▄ ({held})"),
+		} else {
+			print("\033[90m None (Q)      ")
+		}
+		println("\033[0m  │")
+		println("\033[0m└" + "─" * width * 3 + "┘")
+	}
+
+	fn print_next(self) {
+		println("\033[0m┌" + "─" * width * 3 + "┐")
+		print("│  Next piece:")
+
+		self.refresh_queue()
+
+		if let next = queue[-1] => match next {
+			"i_piece" => print($"\033[36m ▅▅▅▅ ({next})"),
+			"t_piece" => print($"\033[35m ▝▜▛▘ ({next})"),
+			"o_piece" => print($"\033[33m ▇▇ ({next})  "),
+			"j_piece" => print($"\033[38;5;208m ▃▃▇ ({next}) "),
+			"l_piece" => print($"\033[34m ▇▃▃ ({next}) "),
+			"s_piece" => print($"\033[32m▗▄▟▛▀ ({next})"),
+			"z_piece" => print($"\033[31m ▀▜▙▄ ({next})"),
 		} else {
 			print("\033[90m None (Q)      ")
 		}

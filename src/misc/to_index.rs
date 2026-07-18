@@ -7,5 +7,5 @@ pub fn to_index(idx: f64, len: usize) -> usize {
         }
     }
 
-    return len - idx as usize;
+    return len - idx as usize - 1;
 }

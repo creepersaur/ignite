@@ -5,6 +5,7 @@ let game = new Tetris()
 
 game.draw_plr()
 game.print_board(true)
+game.print_next()
 game.print_held()
 println("Score:", game.score)
 
@@ -26,6 +27,7 @@ loop {
 
 	game.draw_plr()
 	game.print_board(true)
+	game.print_next()
 	game.print_held()
 	println("Score:", game.score)
 }
