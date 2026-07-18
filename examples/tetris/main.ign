@@ -1,0 +1,33 @@
+import Tetris from "tetris"
+using Std::IO::read_key
+
+let game = new Tetris()
+
+game.draw_plr()
+game.print_board(true)
+game.print_next()
+game.print_held()
+println("Score:", game.score)
+
+loop {
+	if !game.piece.alive {
+		game.clear_lines()
+		game.new_piece()
+	} else {
+		game.draw_plr(true)
+
+		let input = read_key()
+		if input == "q" => game.hold_piece()
+		if input == "Esc" => break
+
+		println("before update")
+		game.update(input)
+		println("after update")
+	}
+
+	game.draw_plr()
+	game.print_board(true)
+	game.print_next()
+	game.print_held()
+	println("Score:", game.score)
+}
