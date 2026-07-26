@@ -330,7 +330,14 @@ impl Compiler {
                 args,
                 is_const,
                 block,
-            } => self.compile_function_def(name, return_type, args, *is_const, block),
+            } => self.compile_function_def(
+                args.len() > 0 || block.requires_scope(),
+                name,
+                return_type,
+                args,
+                *is_const,
+                block,
+            ),
 
             Node::ReturnStatement(value) => self.compile_return(value),
 
@@ -339,7 +346,18 @@ impl Compiler {
                 block,
                 elifs,
                 else_block,
-            } => self.compile_if_statement(condition, block, elifs, else_block),
+            } => self.compile_if_statement(
+                condition.requires_scope()
+                    || block.requires_scope()
+                    || elifs.iter().any(|(condition, block)| {
+                        condition.requires_scope() || block.requires_scope()
+                    })
+                    || else_block.as_deref().is_some_and(Node::requires_scope),
+                condition,
+                block,
+                elifs,
+                else_block,
+            ),
 
             Node::Block { name, body } => self.compile_block(name, body, true),
 
@@ -349,7 +367,12 @@ impl Compiler {
                 condition,
                 block,
                 else_block,
-            } => self.compile_while_loop(condition, block, else_block),
+            } => self.compile_while_loop(
+                condition.requires_scope() || block.requires_scope(),
+                condition,
+                block,
+                else_block,
+            ),
 
             Node::BreakStatement(value) => self.compile_break(value),
 
@@ -360,7 +383,13 @@ impl Compiler {
                 expr,
                 block,
                 else_block,
-            } => self.compile_for(var_name, expr, block, else_block),
+            } => self.compile_for(
+                expr.requires_scope() || block.requires_scope(),
+                var_name,
+                expr,
+                block,
+                else_block,
+            ),
 
             Node::MatchStatement { expr, branches } => self.compile_match(expr, branches),
 
@@ -800,7 +829,8 @@ impl Compiler {
         let out_text = format!("out:{}", name.clone().unwrap_or("".to_string()));
         let block_start = self.instructions.len();
 
-        if make_scope {
+        let requires_scope = body.iter().any(Node::requires_scope);
+        if make_scope && requires_scope {
             self.push_scope();
         }
 
@@ -814,7 +844,7 @@ impl Compiler {
                 self.instructions.push(Inst::PUSH(boxed!(Value::NIL)))
             }
 
-            if make_scope {
+            if make_scope && requires_scope {
                 self.pop_scope();
             }
 
@@ -869,7 +899,7 @@ impl Compiler {
             block_start
         );
 
-        if make_scope {
+        if make_scope && requires_scope {
             self.pop_scope();
         }
     }
@@ -906,6 +936,7 @@ impl Compiler {
 
     pub fn compile_if_statement(
         &mut self,
+        requires_scope: bool,
         condition: &Box<Node>,
         block: &Box<Node>,
         elifs: &Vec<(Node, Node)>,
@@ -918,7 +949,9 @@ impl Compiler {
         let mut handler = |condition: &Node, block: &Node| {
             self.comment("If statement handler start:");
 
-            self.push_scope();
+            if requires_scope {
+                self.push_scope()
+            }
 
             self.compile_node(&condition);
             let jump_if_false = patch!(self.instructions);
@@ -929,7 +962,9 @@ impl Compiler {
                 self.compile_node(&block);
             }
 
-            self.pop_scope();
+            if requires_scope {
+                self.pop_scope()
+            }
 
             if_end_jumps.push(patch!(self.instructions));
 
@@ -1025,6 +1060,7 @@ impl Compiler {
 
     pub fn compile_function_def(
         &mut self,
+        requires_scope: bool,
         name: &Option<Rc<String>>,
         _return_type: &Option<Rc<String>>,
         args: &Vec<(Rc<String>, Option<Rc<String>>, Option<Node>)>,
@@ -1047,7 +1083,9 @@ impl Compiler {
         self.scope_base_stack.push(self.scope_base);
         self.scope_base = self.scopes.len(); // <-- reset: depths start fresh here
 
-        self.push_scope();
+        if requires_scope {
+            self.push_scope();
+        }
 
         for (arg_name, _, default_value) in args.iter() {
             if let Some(def) = default_value {
@@ -1067,7 +1105,9 @@ impl Compiler {
         }
 
         self.instructions.push(Inst::RETURN(true));
-        self.pop_scope();
+        if requires_scope {
+            self.pop_scope();
+        }
 
         self.scope_base = self.scope_base_stack.pop().unwrap(); // <-- restore
 
@@ -1097,13 +1137,16 @@ impl Compiler {
 
     pub fn compile_while_loop(
         &mut self,
+        requires_scope: bool,
         condition: &Box<Node>,
         block: &Box<Node>,
         else_block: &Option<Box<Node>>,
     ) {
         let loop_start_index = self.instructions.len();
 
-        self.push_scope();
+        if requires_scope {
+            self.push_scope();
+        }
 
         self.compile_node(&*condition);
 
@@ -1140,13 +1183,16 @@ impl Compiler {
             Inst::JUMP(self.instructions.len() as u32)
         );
 
-        self.pop_scope();
+        if requires_scope {
+            self.pop_scope();
+        }
 
         self.instructions.push(Inst::DEFAULT_NIL);
     }
 
     pub fn compile_for(
         &mut self,
+        requires_scope: bool,
         var_name: &Rc<String>,
         expr: &Box<Node>,
         block: &Box<Node>,
@@ -1154,7 +1200,9 @@ impl Compiler {
     ) {
         self.comment("For loop start:");
 
-        self.push_scope();
+        if requires_scope {
+            self.push_scope();
+        }
 
         self.compile_node(&*expr);
         self.instructions.push(Inst::GET_ITER);
@@ -1196,7 +1244,9 @@ impl Compiler {
             loop_start_index
         );
 
-        self.pop_scope();
+        if requires_scope {
+            self.pop_scope();
+        }
         self.instructions.push(Inst::DEFAULT_NIL);
         self.comment("For loop end");
     }
@@ -1410,7 +1460,14 @@ impl Compiler {
                     .unwrap_or_default();
                 method_names.push(self.intern(&method_str));
 
-                self.compile_function_def(&None, return_type, args, *is_const, block);
+                self.compile_function_def(
+                    node.requires_scope(),
+                    &None,
+                    return_type,
+                    args,
+                    *is_const,
+                    block,
+                );
             }
         }
 

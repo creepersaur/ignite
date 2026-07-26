@@ -92,9 +92,86 @@ impl Compiler {
             }
         }
 
+        self.remove_dead_code();
+		self.remove_forward_jumps();
         self.remove_nops();
         self.remove_store_load_pairs();
         self.trim_end_pops();
+    }
+
+    fn remove_forward_jumps(&mut self) {
+        self.replace_with(|i, v| {
+            if let Inst::JUMP(target) = v
+                && *target == i as u32 + 1
+            {
+                Some(Inst::NOP)
+            } else {
+                None
+            }
+        });
+    }
+
+    fn reachable(&self) -> Vec<bool> {
+        let mut reachable = vec![false; self.instructions.len()];
+        let mut worklist = vec![0];
+
+        while let Some(ip) = worklist.pop() {
+            if ip >= self.instructions.len() || reachable[ip] {
+                continue;
+            }
+
+            reachable[ip] = true;
+
+            match &self.instructions[ip] {
+                Inst::RETURN(_) => {}
+                Inst::EXIT => {}
+
+                Inst::JUMP(target) => {
+                    worklist.push(*target as usize);
+                }
+
+                Inst::MAKE_CLOSURE(layout) => {
+                    worklist.push(ip + 1);
+                    worklist.push(layout.entry as usize);
+                }
+
+                Inst::JUMP_IF_FALSE(target)
+                | Inst::JUMP_IF_TRUE(target)
+                | Inst::JUMP_IF_NOT_NIL(target)
+                | Inst::FOR_ITER(target) => {
+                    worklist.push(*target as usize);
+                    worklist.push(ip + 1);
+                }
+
+                _ => {
+                    worklist.push(ip + 1);
+                }
+            }
+        }
+
+        reachable
+    }
+
+    pub fn remove_dead_code(&mut self) {
+        let reachable = self.reachable();
+
+        for (i, inst) in self.instructions.iter_mut().enumerate() {
+            if !reachable[i] {
+                *inst = Inst::NOP;
+            }
+        }
+
+        self.remove_nops();
+
+        self.replace_pattern_2_with(|a, b| {
+            if let Inst::JUMP(_) = a
+                && let Inst::JUMP(last) = b
+            {
+                Some(Inst::JUMP(*last))
+            } else {
+                None
+            }
+        });
     }
 
     pub fn trim_end_pops(&mut self) {

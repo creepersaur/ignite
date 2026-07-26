@@ -1,5 +1,5 @@
-let x = {
-	wow = [1, 2, 3]
+export enum ByteCode {
+	EXIT = 0x0,
+	PUSH,
+	POP,
 }
-
-export fn hello() => println(x)

@@ -189,3 +189,68 @@ pub enum Node {
         branches: Vec<(Node, Node)>,
     },
 }
+
+impl Node {
+    pub fn requires_scope(&self) -> bool {
+        match self {
+            // Wrappers
+            Node::ExprStmt(node) | Node::Exported(node) => node.requires_scope(),
+
+            // Multiple nodes
+            Node::Multiple(nodes) => nodes.iter().any(Node::requires_scope),
+            Node::Block { body, .. } => body.iter().any(Node::requires_scope),
+            Node::ComparisonChain { expressions, .. } => {
+                expressions.iter().any(Node::requires_scope)
+            }
+
+            // Operations
+            Node::UnaryOp { right, .. } => right.requires_scope(),
+            Node::BinOp { left, right, .. }
+            | Node::NullCoalesce { left, right }
+            | Node::ElvisCoalesce { left, right } => {
+                left.requires_scope() || right.requires_scope()
+            }
+            Node::TernaryOp {
+                condition,
+                true_expr,
+                false_expr,
+            } => {
+                condition.requires_scope()
+                    || true_expr.requires_scope()
+                    || false_expr.requires_scope()
+            }
+
+            // Values
+            Node::ListNode(nodes) => nodes.iter().any(Node::requires_scope),
+            Node::TupleNode(nodes) => nodes.iter().any(Node::requires_scope),
+            Node::DictNode(nodes) => nodes
+                .iter()
+                .any(|(k, v)| k.requires_scope() || v.requires_scope()),
+            Node::FString(nodes) => nodes.iter().any(Node::requires_scope),
+            Node::RangeNode {
+                start, end, step, ..
+            } => {
+                start.requires_scope()
+                    || end.requires_scope()
+                    || step.as_deref().is_some_and(Node::requires_scope)
+            }
+
+            // Setting stuff
+            Node::SetVariable { target, value }
+            | Node::ShorthandAssignment { target, value, .. } => {
+                target.requires_scope() || value.requires_scope()
+            }
+
+            _ => matches!(
+                self,
+                Node::LetStatement { .. }
+                    | Node::ImportStatement { .. }
+                    | Node::FunctionDefinition { .. }
+                    | Node::ClassDef { .. }
+                    | Node::EnumDef { .. }
+                    | Node::StructDef { .. }
+                    | Node::InterfaceDef { .. }
+            ),
+        }
+    }
+}
