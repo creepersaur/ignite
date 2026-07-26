@@ -606,13 +606,12 @@ impl VM {
     }
 
     pub fn run(&mut self, debug: bool, stop_at_return: bool) {
-        let instructions = self.instructions.clone();
-
         while self.pos < self.instructions.borrow().len() {
             if debug {
                 println!("{BLACK}{} ...{RESET}", self.pos);
             }
-            let current = { &instructions.borrow()[self.pos] };
+            let instructions = self.instructions.clone();
+            let current = &instructions.borrow()[self.pos];
 
             match current {
                 Inst::EXIT => return,
