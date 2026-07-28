@@ -1,5 +1,0 @@
-export enum ByteCode {
-	EXIT = 0x0,
-	PUSH,
-	POP,
-}

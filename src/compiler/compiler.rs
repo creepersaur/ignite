@@ -272,10 +272,16 @@ impl Compiler {
                 inclusive,
             } => self.compile_range(start, end, step, *inclusive),
 
-            Node::ExprStmt(x) => {
-                self.compile_node(&*x);
-                self.instructions.push(Inst::TRY_POP);
-            }
+            Node::ExprStmt(x) => match x.as_ref() {
+                Node::SetVariable { target, value } => {
+                    self.compile_set_variable(false, target, value)
+                }
+
+                x => {
+                    self.compile_node(&*x);
+                    self.instructions.push(Inst::TRY_POP);
+                }
+            },
             Node::Multiple(nodes) => self.compile_multiple(nodes),
 
             Node::UnaryOp {
@@ -312,7 +318,7 @@ impl Compiler {
                 wildcard,
             } => self.compile_using(sequence, imports, *wildcard),
 
-            Node::SetVariable { target, value } => self.compile_set_variable(target, value),
+            Node::SetVariable { target, value } => self.compile_set_variable(true, target, value),
 
             Node::MemberAccess { expr, member } => self.compile_member_access(expr, member),
 
@@ -999,14 +1005,18 @@ impl Compiler {
         self.comment("If statement end:");
     }
 
-    pub fn compile_set_variable(&mut self, target: &Box<Node>, value: &Box<Node>) {
+    pub fn compile_set_variable(&mut self, is_expr: bool, target: &Box<Node>, value: &Box<Node>) {
         if let Node::Variable(x) = &**target {
             self.compile_node(&**value);
-            self.instructions.push(Inst::DUP);
+            if is_expr {
+                self.instructions.push(Inst::DUP);
+            }
             self.emit_set_var(x.as_str());
         } else if let Node::MemberAccess { expr, member } = &**target {
             self.compile_node(&**value);
-            self.instructions.push(Inst::DUP);
+            if is_expr {
+                self.instructions.push(Inst::DUP);
+            }
             self.compile_node(&**expr);
             self.emit_set_prop(member);
         } else {
