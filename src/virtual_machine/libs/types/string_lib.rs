@@ -40,6 +40,7 @@ string_functions![
     "starts_with",
     "ends_with",
     "find",
+    "contains",
     "title",
     "center",
     "ljust",
@@ -293,6 +294,17 @@ impl StringLib {
             }
         } else {
             panic!("Can only use string.find on strings");
+        }
+    }
+
+    /// contains(sub) -> number (index) or nil if not found
+    fn contains(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [string, sub] = get_args!(args, 2);
+
+        if let Value::String(inner) = string {
+            Value::Bool(inner.0.contains(sub.as_str()))
+        } else {
+            panic!("Can only use string.contains on strings");
         }
     }
 
@@ -562,6 +574,7 @@ impl Library for StringLib {
             // Search & Replace
             x if x == hash_u64!("replace") => boxed!(Self::replace),
             x if x == hash_u64!("find") => boxed!(Self::find),
+            x if x == hash_u64!("contains") => boxed!(Self::contains),
             x if x == hash_u64!("starts_with") => boxed!(Self::starts_with),
             x if x == hash_u64!("ends_with") => boxed!(Self::ends_with),
             x if x == hash_u64!("join") => boxed!(Self::join),
