@@ -303,6 +303,8 @@ impl StringLib {
 
         if let Value::String(inner) = string {
             Value::Bool(inner.0.contains(sub.as_str()))
+        } else if let Value::String(inner) = string {
+            Value::Bool(inner.0.contains(sub.as_char()))
         } else {
             panic!("Can only use string.contains on strings");
         }

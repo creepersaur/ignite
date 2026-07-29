@@ -87,15 +87,11 @@ impl IMemberAccessible for TString {
         panic!("Cannot get member `{}` on {self:?}", member.to_string(true));
     }
 
-    fn get_member_id(&self, _vm: &mut VM, member: &u64) -> Value {
+    fn get_member_id(&self, vm: &mut VM, member: &u64) -> Value {
         if STRING_FUNCTION_IDS.contains(member) {
             return lib_function_id!(self, hash_u64!("string"), *member, Value::String);
         }
 
-        panic!("Cannot get member id `{}` on {self:?}", member);
-    }
-
-    fn set_member(&mut self, member: &Value, _value: Value) {
-        panic!("Cannot set member `{}` on {self:?}", member.to_string(true));
+        panic!("Cannot get member id `{}` on {self:?}", vm.lookup_intern(*member));
     }
 }

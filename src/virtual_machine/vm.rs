@@ -738,7 +738,8 @@ impl VM {
                         if let Some((v_type, _)) = base.fields.get(name) {
                             if !value.type_matches(v_type) {
                                 panic!(
-                                    "Field '{name}' expects type `{v_type}`, got `{}`.",
+                                    "Field '{}' expects type `{v_type}`, got `{}`.",
+									self.lookup_intern(*name),
                                     value.get_type()
                                 )
                             }

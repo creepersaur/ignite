@@ -654,7 +654,7 @@ impl Compiler {
                 self.instructions
                     .push(Inst::PUSH(boxed!(Value::Number(1.0))));
                 self.instructions.push(operator_inst);
-                if !is_prefix {
+                if is_prefix {
                     if is_expr {
                         self.instructions.push(Inst::DUP);
                     }

@@ -278,6 +278,14 @@ impl Value {
         }
     }
 
+    pub fn as_char(&self) -> char {
+        if let Value::Char(x) = self {
+            *x
+        } else {
+            panic!("Cannot convert `{self:?}` to string")
+        }
+    }
+
     pub fn type_matches(&self, type_hint: &str) -> bool {
         match type_hint {
             "number" => matches!(self, Value::Number(_)),

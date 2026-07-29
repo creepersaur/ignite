@@ -3,7 +3,7 @@ import TokenKind from "token"
 const PUNCTUATION = "+-".chars()
 
 export struct Token {
-	kind: TokenKind,
+	kind: string,
 	value: any
 }
 
@@ -17,9 +17,16 @@ export class Lexer {
 
 	fn advance(self) {
 		if ++self.pos < self.text.len() {
-			self.cur_char = self.text[self.pos]
+			return self.cur_char = self.text[self.pos]
 		} else {
-			self.cur_char = nil
+			return self.cur_char = nil
+		}
+	}
+
+	fn token_from(value) {
+		new Token {
+			kind: Lexer::identify(value),
+			value
 		}
 	}
 
@@ -29,12 +36,43 @@ export class Lexer {
 
 		while self.advance() {
 			if self.cur_char == " " {
+				if cur_token.len() > 0 {
+					tokens.push(Lexer::token_from(cur_token))
+					cur_token = ""
+				}
+
 				continue
 			}
 
 			if PUNCTUATION.contains(self.cur_char) {
+				if cur_token.len() > 0 {
+					tokens.push(Lexer::token_from(cur_token))
+					cur_token.clear()
+				}
 
+					tokens.push(Lexer::token_from(self.cur_char))
+			} else {
+				cur_token += self.cur_char
 			}
 		}
+
+		if cur_token.len() > 0 {
+			tokens.push(Lexer::token_from(cur_token))
+		}
+
+		return tokens
+	}
+
+	fn identify(value) {
+		match value {
+			"+" => TokenKind::PLUS,
+			"-" => TokenKind::MINUS,
+
+			other => Lexer::identify_other(other)
+		}
+	}
+
+	fn identify_other(value) {
+		TokenKind::Identifier
 	}
 }

@@ -1,6 +1,7 @@
 export enum TokenKind {
-	NumberLiteral,
+	Identifier = "Identifier",
+	Int = "Int",
 
-	PLUS,
-	MINUS,
+	PLUS = "PLUS",
+	MINUS = "MINUS",
 }

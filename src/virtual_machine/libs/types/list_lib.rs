@@ -38,6 +38,8 @@ list_functions![
     "rep",
     "push_n",
     "shuffle",
+    "find",
+    "contains",
 ];
 
 pub struct ListLib;
@@ -223,6 +225,29 @@ impl ListLib {
         }
     }
 
+    fn find(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [list, item] = get_args!(args, 2);
+
+        if let Value::List(inner) = list {
+            match inner.values.borrow().iter().position(|x| x == &item) {
+                Some(idx) => Value::Number(idx as f64),
+                None => Value::Number(-1.0),
+            }
+        } else {
+            panic!("Can only use list.find on Lists");
+        }
+    }
+
+    fn contains(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [list, item] = get_args!(args, 2);
+
+        if let Value::List(inner) = list {
+            Value::Bool(inner.values.borrow().iter().any(|x| x == &item))
+        } else {
+            panic!("Can only use list.contains on Lists");
+        }
+    }
+
     fn sort(_vm: &mut VM, args: Vec<Value>) -> Value {
         let list = get_args!(args);
 
@@ -335,6 +360,8 @@ impl Library for ListLib {
             x if x == hash_u64!("concat") => return boxed!(Self::concat),
             x if x == hash_u64!("copy") => return boxed!(Self::copy),
             x if x == hash_u64!("count") => return boxed!(Self::count),
+            x if x == hash_u64!("find") => return boxed!(Self::find),
+            x if x == hash_u64!("contains") => return boxed!(Self::contains),
             x if x == hash_u64!("sort") => return boxed!(Self::sort),
             x if x == hash_u64!("reverse") => return boxed!(Self::reverse),
             x if x == hash_u64!("fill") => return boxed!(Self::fill),
