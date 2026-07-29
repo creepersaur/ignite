@@ -920,6 +920,9 @@ Use braces `new ...{{}}` to initialize a struct. Got {}",
                         } else if let (Value::String(a), Value::Number(b)) = (a, b) {
                             self.stack
                                 .push(Value::String(TString::new(a.0.repeat(*b as usize))));
+                        } else if let (Value::Number(a), Value::String(b)) = (a, b) {
+                            self.stack
+                                .push(Value::String(TString::new(b.0.repeat(*a as usize))));
                         } else {
                             panic!("Cannot multiply `{}` with `{}`", a.get_type(), b.get_type());
                         }
