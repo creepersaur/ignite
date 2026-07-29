@@ -297,7 +297,7 @@ impl StringLib {
         }
     }
 
-    /// contains(sub) -> number (index) or nil if not found
+    /// contains(sub) -> true or false if not found
     fn contains(_vm: &mut VM, args: Vec<Value>) -> Value {
         let [string, sub] = get_args!(args, 2);
 
