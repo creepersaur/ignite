@@ -412,6 +412,26 @@ impl AST {
                         },
                     },
 
+					(Node::StringLiteral(l), Node::NumberLiteral(r)) => match op {
+                        TokenKind::STAR => Node::StringLiteral(l.repeat(*r as usize)),
+
+                        _ => Node::BinOp {
+                            left: boxed!(folded_left),
+                            right: boxed!(folded_right),
+                            op,
+                        },
+                    },
+
+					(Node::NumberLiteral(l), Node::StringLiteral(r)) => match op {
+                        TokenKind::STAR => Node::StringLiteral(r.repeat(*l as usize)),
+
+                        _ => Node::BinOp {
+                            left: boxed!(folded_left),
+                            right: boxed!(folded_right),
+                            op,
+                        },
+                    },
+
                     (&Node::NIL, &Node::NIL) => match op {
                         TokenKind::OR => Node::BooleanLiteral(false),
                         TokenKind::AND => Node::BooleanLiteral(false),

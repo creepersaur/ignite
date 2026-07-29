@@ -277,6 +277,18 @@ impl Compiler {
                     self.compile_set_variable(false, target, value)
                 }
 
+                Node::ShorthandAssignment {
+                    token,
+                    target,
+                    value,
+                } => self.compile_shorthand_assignment(false, target, value, token),
+
+                Node::UnaryOp {
+                    op,
+                    right,
+                    is_prefix,
+                } => self.compile_unary_op(false, op, right, *is_prefix),
+
                 x => {
                     self.compile_node(&*x);
                     self.instructions.push(Inst::TRY_POP);
@@ -288,7 +300,7 @@ impl Compiler {
                 op,
                 right,
                 is_prefix,
-            } => self.compile_unary_op(op, right, *is_prefix),
+            } => self.compile_unary_op(true, op, right, *is_prefix),
             Node::BinOp { left, right, op } => self.compile_bin_op(left, right, op),
             Node::ComparisonChain {
                 expressions,
@@ -326,7 +338,7 @@ impl Compiler {
                 token,
                 target,
                 value,
-            } => self.compile_shorthand_assignment(target, value, token),
+            } => self.compile_shorthand_assignment(true, target, value, token),
 
             Node::FunctionCall { target, args } => self.compile_function_call(target, args),
 
@@ -599,7 +611,13 @@ impl Compiler {
         self.instructions.push(Inst::DICT(values.len() as u16));
     }
 
-    pub fn compile_unary_op(&mut self, op: &TokenKind, target: &Box<Node>, is_prefix: bool) {
+    pub fn compile_unary_op(
+        &mut self,
+        is_expr: bool,
+        op: &TokenKind,
+        target: &Box<Node>,
+        is_prefix: bool,
+    ) {
         // increment/decrement
         if matches!(op, TokenKind::INCREMENT | TokenKind::DECREMENT) {
             let operator_inst = match op {
@@ -612,26 +630,34 @@ impl Compiler {
             if let Node::Variable(x) = &**target {
                 self.compile_node(&**target);
                 if !is_prefix {
-                    self.instructions.push(Inst::DUP);
+                    if is_expr {
+                        self.instructions.push(Inst::DUP);
+                    }
                 }
                 self.instructions
                     .push(Inst::PUSH(boxed!(Value::Number(1.0))));
                 self.instructions.push(operator_inst);
                 if is_prefix {
-                    self.instructions.push(Inst::DUP);
+                    if is_expr {
+                        self.instructions.push(Inst::DUP);
+                    }
                 }
                 self.emit_set_var(x.as_str());
             } else if let Node::MemberAccess { expr, member } = &**target {
                 self.compile_node(&**expr);
                 self.emit_get_prop(member);
                 if !is_prefix {
-                    self.instructions.push(Inst::DUP);
+                    if is_expr {
+                        self.instructions.push(Inst::DUP);
+                    }
                 }
                 self.instructions
                     .push(Inst::PUSH(boxed!(Value::Number(1.0))));
                 self.instructions.push(operator_inst);
                 if !is_prefix {
-                    self.instructions.push(Inst::DUP);
+                    if is_expr {
+                        self.instructions.push(Inst::DUP);
+                    }
                 }
                 self.compile_node(&**expr);
                 self.emit_set_prop(member);
@@ -1026,6 +1052,7 @@ impl Compiler {
 
     pub fn compile_shorthand_assignment(
         &mut self,
+        is_expr: bool,
         target: &Box<Node>,
         value: &Box<Node>,
         token: &TokenKind,
@@ -1043,8 +1070,14 @@ impl Compiler {
 
         if let Node::Variable(x) = &**target {
             self.compile_node(&**target);
+            if is_expr {
+                self.instructions.push(Inst::DUP)
+            }
             self.compile_node(&**value);
             self.instructions.push(operator_inst);
+            if is_expr {
+                self.instructions.push(Inst::DUP);
+            }
             self.emit_set_var(x.as_str());
         } else if let Node::MemberAccess { expr, member } = &**target {
             self.compile_node(&**expr);
@@ -1052,6 +1085,9 @@ impl Compiler {
             self.compile_node(&**value); // LOAD 1
             self.instructions.push(operator_inst); // ADD
 
+            if is_expr {
+                self.instructions.push(Inst::DUP)
+            }
             self.compile_node(&**expr);
             self.emit_set_prop(member); // SET expr.member
         } else {
