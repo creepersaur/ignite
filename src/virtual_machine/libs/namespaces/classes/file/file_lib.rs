@@ -1,6 +1,5 @@
 use std::{
-    io::{Read, Write},
-    path::PathBuf,
+    io::{Read, Seek, SeekFrom, Write}, path::PathBuf,
 };
 
 use crate::{
@@ -201,16 +200,19 @@ impl FileLib {
     }
 
     fn read_exact(_vm: &mut VM, args: Vec<Value>) -> Value {
-        let [file, bytes] = get_args!(args, 2);
+        let [file, offset, bytes] = get_args!(args, 3);
 
         let file_data = Self::as_file_data(file, "File.read_exact() can only be used on Files");
 
         if file_data.path.exists() {
             let mut buffer = vec![0; bytes.as_number("number convertion") as usize];
 
-            std::fs::File::open(&file_data.path)
-                .expect("Could not read file bytes")
-                .read_exact(&mut buffer)
+            let mut f = std::fs::File::open(&file_data.path).expect("Could not read file bytes");
+
+            f.seek(SeekFrom::Start(offset.as_number("number convertion") as u64))
+                .expect("Failed to seek to offset");
+
+            f.read_exact(&mut buffer)
                 .expect("Reached [EOF] before finishing reading exact");
 
             Value::List(TList::from(
@@ -229,7 +231,7 @@ impl FileLib {
 
         let file_data = Self::as_file_data(file, "File.create() can only be used on Files");
 
-		std::fs::File::create(file_data.path).expect("Could not create file");
+        std::fs::File::create(file_data.path).expect("Could not create file");
 
         Value::NIL
     }

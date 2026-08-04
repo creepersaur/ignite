@@ -1,6 +1,2 @@
-import Lexer from "lexer"
-
-let lex = new Lexer("1 + 1")
-let tokens = lex.get_tokens()
-
-for i in tokens => println(i)
+Std.FS.get_file("hello.txt")
+		.read_exact(offset, amount)
