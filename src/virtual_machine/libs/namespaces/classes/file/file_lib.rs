@@ -1,11 +1,15 @@
 use std::{
-    io::{Read, Seek, SeekFrom, Write}, path::PathBuf,
+    io::{Read, Seek, SeekFrom, Write},
+    path::PathBuf,
 };
 
 use crate::{
     get_args,
     virtual_machine::{
-        libs::{lib::Library, namespaces::classes::file::file::FileData},
+        libs::{
+            lib::Library,
+            namespaces::classes::{directory::directory::DirectoryObject, file::file::FileData},
+        },
         types::list::TList,
         value::Value,
         vm::VM,
@@ -35,7 +39,7 @@ impl FileLib {
 
         let file_data = Self::as_file_data(file, "File.path() can only be used on Files");
 
-        Value::string(file_data.path.to_str().unwrap())
+        Value::string(file_data.path.borrow().to_str().unwrap())
     }
 
     fn name(_vm: &mut VM, args: Vec<Value>) -> Value {
@@ -43,7 +47,14 @@ impl FileLib {
 
         let file_data = Self::as_file_data(file, "File.name() can only be used on Files");
 
-        Value::string(file_data.path.file_name().unwrap().to_str().unwrap())
+        file_data
+            .path
+            .borrow()
+            .file_name()
+            .unwrap()
+            .to_str()
+            .and_then(|s| Some(Value::string(s)))
+            .unwrap_or(Value::NIL)
     }
 
     fn extension(_vm: &mut VM, args: Vec<Value>) -> Value {
@@ -51,7 +62,14 @@ impl FileLib {
 
         let file_data = Self::as_file_data(file, "File.extension() can only be used on Files");
 
-        Value::string(file_data.path.extension().unwrap().to_str().unwrap())
+        file_data
+            .path
+            .borrow()
+            .extension()
+            .unwrap()
+            .to_str()
+            .and_then(|s| Some(Value::string(s)))
+            .unwrap_or(Value::NIL)
     }
 
     fn stem(_vm: &mut VM, args: Vec<Value>) -> Value {
@@ -59,7 +77,14 @@ impl FileLib {
 
         let file_data = Self::as_file_data(file, "File.stem() can only be used on Files");
 
-        Value::string(file_data.path.file_stem().unwrap().to_str().unwrap())
+        file_data
+            .path
+            .borrow()
+            .file_stem()
+            .unwrap()
+            .to_str()
+            .and_then(|s| Some(Value::string(s)))
+            .unwrap_or(Value::NIL)
     }
 
     fn prefix(_vm: &mut VM, args: Vec<Value>) -> Value {
@@ -67,7 +92,14 @@ impl FileLib {
 
         let file_data = Self::as_file_data(file, "File.prefix() can only be used on Files");
 
-        Value::string(file_data.path.file_prefix().unwrap().to_str().unwrap())
+        file_data
+            .path
+            .borrow()
+            .file_prefix()
+            .unwrap()
+            .to_str()
+            .and_then(|s| Some(Value::string(s)))
+            .unwrap_or(Value::NIL)
     }
 
     fn size(_vm: &mut VM, args: Vec<Value>) -> Value {
@@ -75,9 +107,9 @@ impl FileLib {
 
         let file_data = Self::as_file_data(file, "File.size() can only be used on Files");
 
-        if file_data.path.exists() {
+        if file_data.path.borrow().exists() {
             Value::Number(
-                std::fs::metadata(file_data.path)
+                std::fs::metadata(file_data.path.borrow().as_path())
                     .expect("Could not get file size")
                     .len() as f64,
             )
@@ -94,7 +126,7 @@ impl FileLib {
 
         let file_data = Self::as_file_data(file, "File.exists() can only be used on Files");
 
-        Value::Bool(file_data.path.exists())
+        Value::Bool(file_data.path.borrow().exists())
     }
 
     fn is_file(_vm: &mut VM, args: Vec<Value>) -> Value {
@@ -102,7 +134,7 @@ impl FileLib {
 
         let file_data = Self::as_file_data(file, "File.is_file() can only be used on Files");
 
-        Value::Bool(file_data.path.is_file())
+        Value::Bool(file_data.path.borrow().is_file())
     }
 
     fn is_dir(_vm: &mut VM, args: Vec<Value>) -> Value {
@@ -110,7 +142,7 @@ impl FileLib {
 
         let file_data = Self::as_file_data(file, "File.is_dir() can only be used on Files");
 
-        Value::Bool(file_data.path.is_dir())
+        Value::Bool(file_data.path.borrow().is_dir())
     }
 
     fn rename(_vm: &mut VM, args: Vec<Value>) -> Value {
@@ -118,8 +150,11 @@ impl FileLib {
 
         let file_data = Self::as_file_data(file, "File.rename() can only be used on Files");
 
-        if file_data.path.exists() {
-            std::fs::rename(file_data.path, new_name.as_str()).expect("Could not rename file");
+        if file_data.path.borrow().exists() {
+            std::fs::rename(file_data.path.borrow().as_path(), new_name.as_str())
+                .expect("Could not rename file");
+
+            *file_data.path.borrow_mut() = new_name.as_str().into();
 
             Value::NIL
         } else {
@@ -132,10 +167,11 @@ impl FileLib {
 
         let file_data = Self::as_file_data(file, "File.move() can only be used on Files");
 
-        if file_data.path.exists() {
-            let path_buf =
-                PathBuf::from(destination.as_str()).join(file_data.path.file_name().unwrap());
-            std::fs::rename(file_data.path, path_buf).expect("Could not move file");
+        if file_data.path.borrow().exists() {
+            let path_buf = PathBuf::from(destination.as_str())
+                .join(file_data.path.borrow().file_name().unwrap());
+            std::fs::rename(file_data.path.borrow().as_path(), path_buf)
+                .expect("Could not move file");
 
             Value::NIL
         } else {
@@ -148,8 +184,9 @@ impl FileLib {
 
         let file_data = Self::as_file_data(file, "File.copy() can only be used on Files");
 
-        if file_data.path.exists() {
-            std::fs::copy(file_data.path, new_name.as_str()).expect("Could not copy file");
+        if file_data.path.borrow().exists() {
+            std::fs::copy(file_data.path.borrow().as_path(), new_name.as_str())
+                .expect("Could not copy file");
 
             Value::NIL
         } else {
@@ -157,13 +194,22 @@ impl FileLib {
         }
     }
 
-    // fn parent(_vm: &mut VM, args: Vec<Value>) -> Value {
-    //     let [file] = get_args!(args, 1);
+    fn parent(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [file] = get_args!(args, 1);
 
-    //     let file_data = Self::as_file_data(file, "File.parent() can only be used on Files");
+        let file_data = Self::as_file_data(file, "File.parent() can only be used on Files");
 
-    // 	todo!("Add `File.parent()`")
-    // }
+        file_data
+            .path
+            .borrow()
+            .parent()
+            .and_then(|path| {
+                Some(Value::ClassObject(DirectoryObject::new_as_classobject(
+                    path.into(),
+                )))
+            })
+            .unwrap_or(Value::NIL)
+    }
 
     ///////////////////////////////////////////////
     // IO
@@ -174,8 +220,11 @@ impl FileLib {
 
         let file_data = Self::as_file_data(file, "File.read() can only be used on Files");
 
-        if file_data.path.exists() {
-            Value::string(std::fs::read_to_string(&file_data.path).expect("Could not read file"))
+        if file_data.path.borrow().exists() {
+            Value::string(
+                std::fs::read_to_string(&file_data.path.borrow().as_path())
+                    .expect("Could not read file"),
+            )
         } else {
             panic!("Tried reading non-existing file (`{:?}`)", file_data.path)
         }
@@ -186,9 +235,9 @@ impl FileLib {
 
         let file_data = Self::as_file_data(file, "File.read_bytes() can only be used on Files");
 
-        if file_data.path.exists() {
+        if file_data.path.borrow().exists() {
             Value::List(TList::from(
-                std::fs::read(&file_data.path)
+                std::fs::read(&file_data.path.borrow().as_path())
                     .expect("Could not read file bytes")
                     .iter()
                     .map(|x| Value::Number(*x as f64))
@@ -204,10 +253,11 @@ impl FileLib {
 
         let file_data = Self::as_file_data(file, "File.read_exact() can only be used on Files");
 
-        if file_data.path.exists() {
+        if file_data.path.borrow().exists() {
             let mut buffer = vec![0; bytes.as_number("number convertion") as usize];
 
-            let mut f = std::fs::File::open(&file_data.path).expect("Could not read file bytes");
+            let mut f = std::fs::File::open(&file_data.path.borrow().as_path())
+                .expect("Could not read file bytes");
 
             f.seek(SeekFrom::Start(offset.as_number("number convertion") as u64))
                 .expect("Failed to seek to offset");
@@ -231,7 +281,11 @@ impl FileLib {
 
         let file_data = Self::as_file_data(file, "File.create() can only be used on Files");
 
-        std::fs::File::create(file_data.path).expect("Could not create file");
+        if file_data.path.borrow().exists() {
+            return Value::NIL;
+        }
+
+        std::fs::File::create(file_data.path.borrow().as_path()).expect("Could not create file");
 
         Value::NIL
     }
@@ -241,7 +295,10 @@ impl FileLib {
 
         let file_data = Self::as_file_data(file, "File.write() can only be used on Files");
 
-        std::fs::write(file_data.path, contents.as_str()).expect("Could not write to file");
+        std::fs::File::open(file_data.path.borrow().as_path())
+            .expect("Attempt to write to non-existing file")
+            .write_all(contents.as_str().as_bytes())
+            .expect("Could not write to file");
 
         Value::NIL
     }
@@ -255,7 +312,7 @@ impl FileLib {
             .create(true)
             .write(true)
             .truncate(true)
-            .open(&file_data.path)
+            .open(&file_data.path.borrow().as_path())
             .expect("Could not open file for writing bytes");
 
         if let Value::List(TList { values, .. }) = contents {
@@ -279,11 +336,11 @@ impl FileLib {
 
         let file_data = Self::as_file_data(file, "File.append() can only be used on Files");
 
-        if file_data.path.exists() {
+        if file_data.path.borrow().exists() {
             std::fs::OpenOptions::new()
                 .create(true)
                 .append(true)
-                .open(file_data.path)
+                .open(file_data.path.borrow().as_path())
                 .expect("Could not open file for appending")
                 .write_all(contents.as_str().as_bytes())
                 .expect("Could not append to file");
@@ -302,12 +359,12 @@ impl FileLib {
 
         let file_data = Self::as_file_data(file, "File.append_bytes() can only be used on Files");
 
-        if file_data.path.exists() {
+        if file_data.path.borrow().exists() {
             if let Value::List(TList { values, .. }) = contents {
                 std::fs::OpenOptions::new()
                     .create(true)
                     .append(true)
-                    .open(file_data.path)
+                    .open(file_data.path.borrow().as_path())
                     .expect("Could not open file for appending")
                     .write_all(
                         &values
@@ -317,6 +374,8 @@ impl FileLib {
                             .collect::<Vec<_>>(),
                     )
                     .expect("Could not append bytes to file");
+            } else {
+                panic!("Expected list of bytes (numbers), got {contents:?}")
             }
         } else {
             panic!(
@@ -333,8 +392,8 @@ impl FileLib {
 
         let file_data = Self::as_file_data(file, "File.delete() can only be used on Files");
 
-        if file_data.path.exists() {
-            std::fs::remove_file(file_data.path).expect("Could not delete file");
+        if file_data.path.borrow().exists() {
+            std::fs::remove_file(file_data.path.borrow().as_path()).expect("Could not delete file");
         } else {
             panic!("Tried deleting non-existing file (`{:?}`)", file_data.path)
         }
@@ -349,8 +408,8 @@ impl Library for FileLib {
         "File"
     }
 
-    fn get_function(&self, name: u64) -> Box<dyn Fn(&mut VM, Vec<Value>) -> Value> {
-        match name {
+    fn get_function(&self, name: u64) -> Option<Box<dyn Fn(&mut VM, Vec<Value>) -> Value>> {
+        Some(match name {
             // Metadata
             x if x == hash_u64!("path") => boxed!(Self::path),
             x if x == hash_u64!("name") => boxed!(Self::name),
@@ -364,7 +423,7 @@ impl Library for FileLib {
             x if x == hash_u64!("rename") => boxed!(Self::rename),
             x if x == hash_u64!("move") => boxed!(Self::r#move),
             x if x == hash_u64!("copy") => boxed!(Self::copy),
-            // x if x == hash_u64!("parent") => boxed!(Self::parent),
+            x if x == hash_u64!("parent") => boxed!(Self::parent),
 
             // IO
             x if x == hash_u64!("read") => boxed!(Self::read),
@@ -377,7 +436,7 @@ impl Library for FileLib {
             x if x == hash_u64!("append_bytes") => boxed!(Self::append_bytes),
             x if x == hash_u64!("delete") => boxed!(Self::delete),
 
-            _ => panic!("Unknown function `{name}` on lib {}", self.get_name()),
-        }
+            _ => return None,
+        })
     }
 }

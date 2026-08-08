@@ -6,7 +6,10 @@ use crate::{
         libs::{
             lib::Library,
             namespaces::{
-                classes::file::file_lib::FileLib, fs_lib::FSLib, io_lib::IOLib, math_lib::MathLib,
+                classes::{directory::directory_lib::DirectoryLib, file::file_lib::FileLib},
+                fs_lib::FSLib,
+                io_lib::IOLib,
+                math_lib::MathLib,
                 random_lib::RandomLib,
             },
             type_lib::TypeLib,
@@ -121,6 +124,7 @@ impl VM {
 
         // Other types
         libs.insert(hash_u64!("File"), boxed!(FileLib));
+        libs.insert(hash_u64!("Directory"), boxed!(DirectoryLib));
 
         // namespaces
         libs.insert(hash_u64!("Math"), boxed!(MathLib));
@@ -186,8 +190,16 @@ impl VM {
             args.reverse();
 
             if let Some(lib) = self.libraries.get(&library) {
-                let value = lib.get_function(method)(self, args);
-                self.stack.push(value);
+                if let Some(func) = lib.get_function(method) {
+                    let value = func(self, args);
+                    self.stack.push(value);
+                } else {
+                    panic!(
+                        "Unknown function `{}` on lib `{}`",
+                        self.lookup_intern(method),
+                        lib.get_name()
+                    )
+                }
             } else {
                 panic!(
                     "Library not found for handler key: {} (method: {})",
@@ -739,7 +751,7 @@ impl VM {
                             if !value.type_matches(v_type) {
                                 panic!(
                                     "Field '{}' expects type `{v_type}`, got `{}`.",
-									self.lookup_intern(*name),
+                                    self.lookup_intern(*name),
                                     value.get_type()
                                 )
                             }

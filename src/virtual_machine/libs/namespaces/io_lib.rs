@@ -209,8 +209,8 @@ impl Library for IOLib {
         "IO"
     }
 
-    fn get_function(&self, name: u64) -> Box<dyn Fn(&mut VM, Vec<Value>) -> Value> {
-        match name {
+    fn get_function(&self, name: u64) -> Option<Box<dyn Fn(&mut VM, Vec<Value>) -> Value>> {
+        Some(match name {
             // INPUT
             x if x == hash_u64!("read_line") => boxed!(Self::read_line),
             x if x == hash_u64!("read_line_raw") => boxed!(Self::read_line_raw),
@@ -224,7 +224,7 @@ impl Library for IOLib {
             x if x == hash_u64!("write") => boxed!(Self::write),
             x if x == hash_u64!("write_line") => boxed!(Self::write_line),
 
-            _ => panic!("Unknown function `{name}` on lib {}", self.get_name()),
-        }
+            _ => return None
+        })
     }
 }

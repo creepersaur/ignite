@@ -338,8 +338,8 @@ impl Library for MathLib {
         "Math"
     }
 
-    fn get_function(&self, name: u64) -> Box<dyn Fn(&mut VM, Vec<Value>) -> Value> {
-        match name {
+    fn get_function(&self, name: u64) -> Option<Box<dyn Fn(&mut VM, Vec<Value>) -> Value>> {
+        Some(match name {
             // Basic
             x if x == hash_u64!("abs") => boxed!(Self::abs),
             x if x == hash_u64!("ceil") => boxed!(Self::ceil),
@@ -410,7 +410,7 @@ impl Library for MathLib {
             x if x == hash_u64!("ping_pong") => boxed!(Self::ping_pong),
             x if x == hash_u64!("dist") => boxed!(Self::dist),
 
-            _ => panic!("Unknown function `{name}` on lib {}", self.get_name()),
-        }
+            _ => return None
+        })
     }
 }

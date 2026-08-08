@@ -555,8 +555,8 @@ impl Library for StringLib {
         "string"
     }
 
-    fn get_function(&self, name: u64) -> Box<dyn Fn(&mut VM, Vec<Value>) -> Value> {
-        match name {
+    fn get_function(&self, name: u64) -> Option<Box<dyn Fn(&mut VM, Vec<Value>) -> Value>> {
+        Some(match name {
             // Original
             x if x == hash_u64!("len") => boxed!(Self::len),
             x if x == hash_u64!("concat") => boxed!(Self::concat),
@@ -596,7 +596,7 @@ impl Library for StringLib {
             x if x == hash_u64!("is_empty") => boxed!(Self::is_empty),
             x if x == hash_u64!("is_whitespace") => boxed!(Self::is_whitespace),
 
-            _ => panic!("Unknown function `{name}` on lib {}", self.get_name()),
-        }
+            _ => return None
+        })
     }
 }

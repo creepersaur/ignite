@@ -1,7 +1,0 @@
-export enum TokenKind {
-	Identifier = "Identifier",
-	Int = "Int",
-
-	PLUS = "PLUS",
-	MINUS = "MINUS",
-}

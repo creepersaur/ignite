@@ -81,8 +81,8 @@ impl Library for TypeLib {
         "type"
     }
 
-    fn get_function(&self, name: u64) -> Box<dyn Fn(&mut VM, Vec<Value>) -> Value> {
-        match name {
+    fn get_function(&self, name: u64) -> Option<Box<dyn Fn(&mut VM, Vec<Value>) -> Value>> {
+        Some(match name {
             name if hash_u64!("typeof") == name => boxed!(Self::r#typeof),
 
             name if hash_u64!("string") == name => boxed!(Self::r#string),
@@ -91,6 +91,6 @@ impl Library for TypeLib {
             name if hash_u64!("char") == name => boxed!(Self::r#char),
 
             _ => panic!("Unknown type lib function"),
-        }
+        })
     }
 }

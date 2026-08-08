@@ -1,2 +1,5 @@
-Std.FS.get_file("hello.txt")
-		.read_exact(offset, amount)
+const file: File = Std::FS::get_file("sigma.ign")
+
+println(file.path())
+println(file.parent().path())
+println(file.parent().parent().path())

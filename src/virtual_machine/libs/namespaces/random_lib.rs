@@ -43,8 +43,8 @@ impl Library for RandomLib {
         "Random"
     }
 
-    fn get_function(&self, name: u64) -> Box<dyn Fn(&mut VM, Vec<Value>) -> Value> {
-        match name {
+    fn get_function(&self, name: u64) -> Option<Box<dyn Fn(&mut VM, Vec<Value>) -> Value>> {
+        Some(match name {
             // INPUT
             x if x == hash_u64!("int") => boxed!(Self::int),
             x if x == hash_u64!("uint") => boxed!(Self::uint),
@@ -53,7 +53,7 @@ impl Library for RandomLib {
             x if x == hash_u64!("float") => boxed!(Self::float),
             x if x == hash_u64!("float_range") => boxed!(Self::float_range),
 
-            _ => panic!("Unknown function `{name}` on lib {}", self.get_name()),
-        }
+            _ => return None
+        })
     }
 }

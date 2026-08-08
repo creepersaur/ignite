@@ -14,7 +14,7 @@ thread_local! {
         functions: rc!(RefCell::new({
             let mut map = HashMap::new();
 
-			// Metadata
+            // Metadata
             map.insert(hash_u64!("exists"), lib_function_id!("File", "exists"));
             map.insert(hash_u64!("path"), lib_function_id!("File", "path"));
             map.insert(hash_u64!("name"), lib_function_id!("File", "name"));
@@ -28,10 +28,10 @@ thread_local! {
             map.insert(hash_u64!("move"), lib_function_id!("File", "move"));
             map.insert(hash_u64!("copy"), lib_function_id!("File", "copy"));
 
-			// IO
-			map.insert(hash_u64!("read"), lib_function_id!("File", "read"));
-			map.insert(hash_u64!("read_bytes"), lib_function_id!("File", "read_bytes"));
-			map.insert(hash_u64!("read_exact"), lib_function_id!("File", "read_exact"));
+            // IO
+            map.insert(hash_u64!("read"), lib_function_id!("File", "read"));
+            map.insert(hash_u64!("read_bytes"), lib_function_id!("File", "read_bytes"));
+            map.insert(hash_u64!("read_exact"), lib_function_id!("File", "read_exact"));
             map.insert(hash_u64!("create"), lib_function_id!("File", "create"));
             map.insert(hash_u64!("write"), lib_function_id!("File", "write"));
             map.insert(hash_u64!("write_bytes"), lib_function_id!("File", "write_bytes"));
@@ -52,13 +52,27 @@ pub struct FileObject {
 
 #[derive(Clone)]
 pub struct FileData {
-    pub path: PathBuf,
+    pub path: Rc<RefCell<PathBuf>>,
 }
 
 impl FileObject {
     pub fn new(path: PathBuf) -> Self {
+        let path = std::env::current_dir()
+            .expect("Failed to get current directory")
+            .join(path);
+
         Self {
-            class_object: TClassObject::with_native(FILE_CLASS.with(Rc::clone), FileData { path }),
+            class_object: TClassObject::with_native(
+                FILE_CLASS.with(Rc::clone),
+                FileData {
+                    path: rc!(RefCell::new(path)),
+                },
+            ),
         }
+    }
+
+    #[allow(unused)]
+    pub fn new_as_classobject(path: PathBuf) -> TClassObject {
+        Self::new(path).class_object
     }
 }

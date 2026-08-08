@@ -346,30 +346,30 @@ impl Library for ListLib {
         "list"
     }
 
-    fn get_function(&self, name: u64) -> Box<dyn Fn(&mut VM, Vec<Value>) -> Value> {
-        match name {
-            x if x == hash_u64!("len") => return boxed!(Self::len),
-            x if x == hash_u64!("push") => return boxed!(Self::push),
-            x if x == hash_u64!("insert") => return boxed!(Self::insert),
-            x if x == hash_u64!("remove") => return boxed!(Self::remove),
-            x if x == hash_u64!("map") => return boxed!(Self::map),
-            x if x == hash_u64!("map_enumerate") => return boxed!(Self::map_enumerate),
-            x if x == hash_u64!("pop") => return boxed!(Self::pop),
-            x if x == hash_u64!("clear") => return boxed!(Self::clear),
-            x if x == hash_u64!("append") => return boxed!(Self::append),
-            x if x == hash_u64!("concat") => return boxed!(Self::concat),
-            x if x == hash_u64!("copy") => return boxed!(Self::copy),
-            x if x == hash_u64!("count") => return boxed!(Self::count),
-            x if x == hash_u64!("find") => return boxed!(Self::find),
-            x if x == hash_u64!("contains") => return boxed!(Self::contains),
-            x if x == hash_u64!("sort") => return boxed!(Self::sort),
-            x if x == hash_u64!("reverse") => return boxed!(Self::reverse),
-            x if x == hash_u64!("fill") => return boxed!(Self::fill),
-            x if x == hash_u64!("rep") => return boxed!(Self::rep),
-            x if x == hash_u64!("push_n") => return boxed!(Self::push_n),
-            x if x == hash_u64!("shuffle") => return boxed!(Self::shuffle),
+    fn get_function(&self, name: u64) -> Option<Box<dyn Fn(&mut VM, Vec<Value>) -> Value>> {
+        Some(match name {
+            x if x == hash_u64!("len") => boxed!(Self::len),
+            x if x == hash_u64!("push") => boxed!(Self::push),
+            x if x == hash_u64!("insert") => boxed!(Self::insert),
+            x if x == hash_u64!("remove") => boxed!(Self::remove),
+            x if x == hash_u64!("map") => boxed!(Self::map),
+            x if x == hash_u64!("map_enumerate") => boxed!(Self::map_enumerate),
+            x if x == hash_u64!("pop") => boxed!(Self::pop),
+            x if x == hash_u64!("clear") => boxed!(Self::clear),
+            x if x == hash_u64!("append") => boxed!(Self::append),
+            x if x == hash_u64!("concat") => boxed!(Self::concat),
+            x if x == hash_u64!("copy") => boxed!(Self::copy),
+            x if x == hash_u64!("count") => boxed!(Self::count),
+            x if x == hash_u64!("find") => boxed!(Self::find),
+            x if x == hash_u64!("contains") => boxed!(Self::contains),
+            x if x == hash_u64!("sort") => boxed!(Self::sort),
+            x if x == hash_u64!("reverse") => boxed!(Self::reverse),
+            x if x == hash_u64!("fill") => boxed!(Self::fill),
+            x if x == hash_u64!("rep") => boxed!(Self::rep),
+            x if x == hash_u64!("push_n") => boxed!(Self::push_n),
+            x if x == hash_u64!("shuffle") => boxed!(Self::shuffle),
 
-            _ => panic!("Unknown function `{name}` on lib {}", self.get_name()),
-        }
+            _ => return None,
+        })
     }
 }

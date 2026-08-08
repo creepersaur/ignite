@@ -1,7 +1,10 @@
 use crate::{
     get_args,
     virtual_machine::{
-        libs::{lib::Library, namespaces::classes::file::file::FileObject},
+        libs::{
+            lib::Library,
+            namespaces::classes::{directory::directory::DirectoryObject, file::file::FileObject},
+        },
         value::Value,
         vm::VM,
     },
@@ -16,6 +19,13 @@ impl FSLib {
 
         Value::ClassObject(file_obj.class_object)
     }
+
+    fn get_dir(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [path] = get_args!(args, 1);
+        let file_obj = DirectoryObject::new(path.as_str().into());
+
+        Value::ClassObject(file_obj.class_object)
+    }
 }
 
 // LIBRARY
@@ -24,12 +34,13 @@ impl Library for FSLib {
         "FS"
     }
 
-    fn get_function(&self, name: u64) -> Box<dyn Fn(&mut VM, Vec<Value>) -> Value> {
-        match name {
+    fn get_function(&self, name: u64) -> Option<Box<dyn Fn(&mut VM, Vec<Value>) -> Value>> {
+        Some(match name {
             // INPUT
             x if x == hash_u64!("get_file") => boxed!(Self::get_file),
+            x if x == hash_u64!("get_dir") => boxed!(Self::get_dir),
 
-            _ => panic!("Unknown function `{name}` on lib {}", self.get_name()),
-        }
+            _ => return None
+        })
     }
 }
