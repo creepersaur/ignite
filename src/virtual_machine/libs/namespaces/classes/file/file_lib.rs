@@ -1,8 +1,3 @@
-use std::{
-    io::{Read, Seek, SeekFrom, Write},
-    path::PathBuf,
-};
-
 use crate::{
     get_args,
     virtual_machine::{
@@ -15,6 +10,7 @@ use crate::{
         vm::VM,
     },
 };
+use std::io::{Read, Seek, SeekFrom, Write};
 
 pub struct FileLib;
 
@@ -151,10 +147,17 @@ impl FileLib {
         let file_data = Self::as_file_data(file, "File.rename() can only be used on Files");
 
         if file_data.path.borrow().exists() {
-            std::fs::rename(file_data.path.borrow().as_path(), new_name.as_str())
+            let new_path = file_data
+                .path
+                .borrow()
+                .parent()
+                .expect("Could not get file parent")
+                .join(new_name.as_str());
+
+            std::fs::rename(file_data.path.borrow().as_path(), &new_path)
                 .expect("Could not rename file");
 
-            *file_data.path.borrow_mut() = new_name.as_str().into();
+            *file_data.path.borrow_mut() = new_path;
 
             Value::NIL
         } else {
@@ -168,10 +171,21 @@ impl FileLib {
         let file_data = Self::as_file_data(file, "File.move() can only be used on Files");
 
         if file_data.path.borrow().exists() {
-            let path_buf = PathBuf::from(destination.as_str())
-                .join(file_data.path.borrow().file_name().unwrap());
-            std::fs::rename(file_data.path.borrow().as_path(), path_buf)
+            let new_path = std::env::current_dir()
+                .expect("Failed to get current directory")
+                .join(destination.as_str())
+                .join(
+                    file_data
+                        .path
+                        .borrow()
+                        .file_name()
+                        .expect("Could not get file name while moving"),
+                );
+
+            std::fs::rename(file_data.path.borrow().as_path(), &new_path)
                 .expect("Could not move file");
+
+            *file_data.path.borrow_mut() = new_path;
 
             Value::NIL
         } else {

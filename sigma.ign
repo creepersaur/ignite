@@ -1,5 +1,3 @@
-const file: File = Std::FS::get_file("sigma.ign")
+const file: File = Std::FS::get_file("hello/wow.txt")
 
-println(file.path())
-println(file.parent().path())
-println(file.parent().parent().path())
+file.move(".")

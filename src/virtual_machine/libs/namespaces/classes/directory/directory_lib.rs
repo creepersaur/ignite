@@ -1,10 +1,16 @@
-use std::{fs, path::PathBuf};
-
 use crate::{
-    get_args, virtual_machine::{
-        libs::{lib::Library, namespaces::classes::directory::directory::{DirectoryData, DirectoryObject}}, types::list::TList, value::Value, vm::VM,
+    get_args,
+    virtual_machine::{
+        libs::{
+            lib::Library,
+            namespaces::classes::directory::directory::{DirectoryData, DirectoryObject},
+        },
+        types::list::TList,
+        value::Value,
+        vm::VM,
     },
 };
+use std::fs;
 
 pub struct DirectoryLib;
 
@@ -32,13 +38,7 @@ impl DirectoryLib {
             "Directory.path() can only be used on Directories",
         );
 
-        Value::string(
-            directory_data
-                .path
-                .borrow()
-                .to_str()
-                .unwrap_or(""),
-        )
+        Value::string(directory_data.path.borrow().to_str().unwrap_or(""))
     }
 
     fn name(_vm: &mut VM, args: Vec<Value>) -> Value {
@@ -125,21 +125,26 @@ impl DirectoryLib {
             "Directory.rename() can only be used on Directories",
         );
 
-        if !directory_data.path.borrow().exists() {
+        if directory_data.path.borrow().exists() {
+            let new_path = directory_data
+                .path
+                .borrow()
+                .parent()
+                .expect("Could not get directory parent")
+                .join(new_name.as_str());
+
+            fs::rename(directory_data.path.borrow().as_path(), &new_path)
+                .expect("Could not rename directory");
+
+            *directory_data.path.borrow_mut() = new_path;
+
+            Value::NIL
+        } else {
             panic!(
-                "Cannot rename directory: directory does not exist (`{:?}`)",
+                "Tried renaming non-existing directory (`{:?}`)",
                 directory_data.path
-            );
+            )
         }
-
-        let new_path = PathBuf::from(new_name.as_str());
-
-        fs::rename(directory_data.path.borrow().as_path(), &new_path)
-            .expect("Could not rename directory");
-
-        *directory_data.path.borrow_mut() = new_path;
-
-        Value::NIL
     }
 
     fn r#move(_vm: &mut VM, args: Vec<Value>) -> Value {
@@ -150,27 +155,30 @@ impl DirectoryLib {
             "Directory.move() can only be used on Directories",
         );
 
-        if !directory_data.path.borrow().exists() {
+        if directory_data.path.borrow().exists() {
+            let new_path = std::env::current_dir()
+                .expect("Failed to get current directory")
+                .join(destination.as_str())
+                .join(
+                    directory_data
+                        .path
+                        .borrow()
+                        .file_name()
+                        .expect("Could not get directory name while moving"),
+                );
+
+            fs::rename(directory_data.path.borrow().as_path(), &new_path)
+                .expect("Could not move directory");
+
+            *directory_data.path.borrow_mut() = new_path;
+
+            Value::NIL
+        } else {
             panic!(
-                "Cannot move directory: directory does not exist (`{:?}`)",
+                "Tried moving non-existing directory (`{:?}`)",
                 directory_data.path
-            );
+            )
         }
-
-        let new_path = PathBuf::from(destination.as_str()).join(
-            directory_data
-                .path
-                .borrow()
-                .file_name()
-                .expect("Directory has no valid name"),
-        );
-
-        fs::rename(directory_data.path.borrow().as_path(), &new_path)
-            .expect("Could not move directory");
-
-        *directory_data.path.borrow_mut() = new_path;
-
-        Value::NIL
     }
 
     fn create(_vm: &mut VM, args: Vec<Value>) -> Value {
