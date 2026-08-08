@@ -5,7 +5,7 @@ use crate::virtual_machine::{
     },
     value::Value,
 };
-use std::{cell::RefCell, collections::HashMap, path::PathBuf, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, path::{Path, PathBuf}, rc::Rc};
 
 thread_local! {
     static DIR_CLASS: Rc<RefCell<TClass>> = Rc::new(RefCell::new(TClass {
@@ -17,8 +17,11 @@ thread_local! {
             // Metadata
             map.insert(hash_u64!("path"), lib_function_id!("Directory", "path"));
             map.insert(hash_u64!("name"), lib_function_id!("Directory", "name"));
-            map.insert(hash_u64!("parent"), lib_function_id!("Directory", "parent"));
             map.insert(hash_u64!("exists"), lib_function_id!("Directory", "exists"));
+            map.insert(hash_u64!("parent"), lib_function_id!("Directory", "parent"));
+            map.insert(hash_u64!("get_files"), lib_function_id!("Directory", "get_files"));
+            map.insert(hash_u64!("get_dirs"), lib_function_id!("Directory", "get_dirs"));
+            map.insert(hash_u64!("get_children"), lib_function_id!("Directory", "get_children"));
             map.insert(hash_u64!("is_dir"), lib_function_id!("Directory", "is_dir"));
             map.insert(hash_u64!("is_file"), lib_function_id!("Directory", "is_file"));
 
@@ -48,7 +51,7 @@ pub struct DirectoryData {
 }
 
 impl DirectoryObject {
-    pub fn new(path: PathBuf) -> Self {
+    pub fn new(path: impl AsRef<Path>) -> Self {
         let path = std::env::current_dir()
             .expect("Failed to get current directory")
             .join(path);
@@ -64,7 +67,7 @@ impl DirectoryObject {
     }
 
     #[allow(unused)]
-    pub fn new_as_classobject(path: PathBuf) -> TClassObject {
+    pub fn new_as_classobject(path: impl AsRef<Path>) -> TClassObject {
         Self::new(path).class_object
     }
 }

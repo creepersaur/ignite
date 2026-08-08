@@ -1,3 +1,0 @@
-const file: File = Std::FS::get_file("hello/wow.txt")
-
-file.move(".")

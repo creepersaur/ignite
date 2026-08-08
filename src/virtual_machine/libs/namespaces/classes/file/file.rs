@@ -5,7 +5,7 @@ use crate::virtual_machine::{
     },
     value::Value,
 };
-use std::{cell::RefCell, collections::HashMap, path::PathBuf, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, path::{Path, PathBuf}, rc::Rc};
 
 thread_local! {
     static FILE_CLASS: Rc<RefCell<TClass>> = Rc::new(RefCell::new(TClass {
@@ -56,7 +56,7 @@ pub struct FileData {
 }
 
 impl FileObject {
-    pub fn new(path: PathBuf) -> Self {
+    pub fn new(path: impl AsRef<Path>) -> Self {
         let path = std::env::current_dir()
             .expect("Failed to get current directory")
             .join(path);
@@ -72,7 +72,7 @@ impl FileObject {
     }
 
     #[allow(unused)]
-    pub fn new_as_classobject(path: PathBuf) -> TClassObject {
+    pub fn new_as_classobject(path: impl AsRef<Path>) -> TClassObject {
         Self::new(path).class_object
     }
 }

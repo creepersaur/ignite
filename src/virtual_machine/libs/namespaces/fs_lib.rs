@@ -15,14 +15,14 @@ pub struct FSLib;
 impl FSLib {
     fn get_file(_vm: &mut VM, args: Vec<Value>) -> Value {
         let [path] = get_args!(args, 1);
-        let file_obj = FileObject::new(path.as_str().into());
+        let file_obj = FileObject::new(path.as_str());
 
         Value::ClassObject(file_obj.class_object)
     }
 
     fn get_dir(_vm: &mut VM, args: Vec<Value>) -> Value {
         let [path] = get_args!(args, 1);
-        let file_obj = DirectoryObject::new(path.as_str().into());
+        let file_obj = DirectoryObject::new(path.as_str());
 
         Value::ClassObject(file_obj.class_object)
     }

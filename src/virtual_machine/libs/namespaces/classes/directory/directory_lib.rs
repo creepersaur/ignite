@@ -3,14 +3,17 @@ use crate::{
     virtual_machine::{
         libs::{
             lib::Library,
-            namespaces::classes::directory::directory::{DirectoryData, DirectoryObject},
+            namespaces::classes::{
+                directory::directory::{DirectoryData, DirectoryObject},
+                file::file::FileObject,
+            },
         },
         types::list::TList,
         value::Value,
         vm::VM,
     },
 };
-use std::fs;
+use std::{fs, path::Path};
 
 pub struct DirectoryLib;
 
@@ -24,6 +27,35 @@ impl DirectoryLib {
         } else {
             panic!("{panic_message}")
         }
+    }
+
+    fn get_dir_files(path: impl AsRef<Path>) -> Vec<std::path::PathBuf> {
+        fs::read_dir(path)
+            .expect("Could not read directory")
+            .filter_map(|entry| {
+                let path = entry.ok()?.path();
+
+                if path.is_file() { Some(path) } else { None }
+            })
+            .collect()
+    }
+
+    fn get_dir_dirs(path: impl AsRef<Path>) -> Vec<std::path::PathBuf> {
+        fs::read_dir(path)
+            .expect("Could not read directory")
+            .filter_map(|entry| {
+                let path = entry.ok()?.path();
+
+                if path.is_dir() { Some(path) } else { None }
+            })
+            .collect()
+    }
+
+    fn get_dir_children(path: impl AsRef<Path>) -> Vec<std::path::PathBuf> {
+        fs::read_dir(path)
+            .expect("Could not read directory")
+            .filter_map(|entry| Some(entry.ok()?.path()))
+            .collect()
     }
 
     ///////////////////////////////////////////////
@@ -107,10 +139,70 @@ impl DirectoryLib {
             .parent()
             .and_then(|path| {
                 Some(Value::ClassObject(DirectoryObject::new_as_classobject(
-                    path.into(),
+                    path,
                 )))
             })
             .unwrap_or(Value::NIL)
+    }
+
+    fn get_children(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [directory] = get_args!(args, 1);
+
+        let directory_data = Self::as_directory_data(
+            directory,
+            "Directory.get_children() can only be used on Directories",
+        );
+
+        let children = Self::get_dir_children(directory_data.path.borrow().as_path());
+
+        Value::List(TList::from(
+            children
+                .iter()
+                .map(|path| {
+                    if path.is_file() {
+                        Value::ClassObject(FileObject::new_as_classobject(path))
+                    } else {
+                        Value::ClassObject(DirectoryObject::new_as_classobject(path))
+                    }
+                })
+                .collect::<Vec<_>>(),
+        ))
+    }
+
+    fn get_files(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [directory] = get_args!(args, 1);
+
+        let directory_data = Self::as_directory_data(
+            directory,
+            "Directory.get_files() can only be used on Directories",
+        );
+
+        let children = Self::get_dir_files(directory_data.path.borrow().as_path());
+
+        Value::List(TList::from(
+            children
+                .iter()
+                .map(|path| Value::ClassObject(FileObject::new_as_classobject(path)))
+                .collect::<Vec<_>>(),
+        ))
+    }
+
+    fn get_dirs(_vm: &mut VM, args: Vec<Value>) -> Value {
+        let [directory] = get_args!(args, 1);
+
+        let directory_data = Self::as_directory_data(
+            directory,
+            "Directory.get_dirs() can only be used on Directories",
+        );
+
+        let children = Self::get_dir_dirs(directory_data.path.borrow().as_path());
+
+        Value::List(TList::from(
+            children
+                .iter()
+                .map(|path| Value::ClassObject(DirectoryObject::new_as_classobject(path)))
+                .collect::<Vec<_>>(),
+        ))
     }
 
     ///////////////////////////////////////////////
@@ -305,6 +397,9 @@ impl Library for DirectoryLib {
             x if x == hash_u64!("exists") => boxed!(Self::exists),
             x if x == hash_u64!("is_file") => boxed!(Self::is_file),
             x if x == hash_u64!("is_dir") => boxed!(Self::is_dir),
+            x if x == hash_u64!("get_files") => boxed!(Self::get_files),
+            x if x == hash_u64!("get_dirs") => boxed!(Self::get_dirs),
+            x if x == hash_u64!("get_children") => boxed!(Self::get_children),
 
             // Filesystem
             x if x == hash_u64!("rename") => boxed!(Self::rename),

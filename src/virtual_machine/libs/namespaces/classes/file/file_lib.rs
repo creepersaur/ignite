@@ -219,7 +219,7 @@ impl FileLib {
             .parent()
             .and_then(|path| {
                 Some(Value::ClassObject(DirectoryObject::new_as_classobject(
-                    path.into(),
+                    path,
                 )))
             })
             .unwrap_or(Value::NIL)
