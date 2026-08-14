@@ -112,7 +112,7 @@ impl Parser {
         self.expect_and_consume(left)?;
 
         loop {
-            self.skip_new_lines();
+            self.skip_new_lines_and_semi();
             if self.check_current(right.clone())? {
                 break;
             }
@@ -134,7 +134,7 @@ impl Parser {
     }
 
     pub fn parse(&mut self) -> NodeResult {
-        self.skip_new_lines();
+        self.skip_new_lines_and_semi();
 
         match self.current()?.kind {
             TokenKind::USING => self.parse_using(),
@@ -529,6 +529,14 @@ impl Parser {
     pub fn skip_new_lines(&mut self) {
         while let Ok(next) = self.current()
             && matches!(next.kind, TokenKind::NEWLINE)
+        {
+            self.advance().unwrap();
+        }
+    }
+
+    pub fn skip_new_lines_and_semi(&mut self) {
+        while let Ok(next) = self.current()
+            && matches!(next.kind, TokenKind::NEWLINE | TokenKind::SEMI)
         {
             self.advance().unwrap();
         }
@@ -1296,7 +1304,7 @@ impl Parser {
         let mut body = vec![];
 
         loop {
-            self.skip_new_lines();
+            self.skip_new_lines_and_semi();
 
             let next = match self.current() {
                 Ok(tok) => tok,
@@ -1600,7 +1608,7 @@ impl Parser {
         let mut constructor = None;
 
         loop {
-            self.skip_new_lines();
+            self.skip_new_lines_and_semi();
 
             if let Ok(next) = self.current() {
                 if next.kind == TokenKind::RBRACE {
@@ -1627,13 +1635,10 @@ impl Parser {
                         constructor = Some(boxed!(self.parse_function_def(true, false)?))
                     }
                     TokenKind::FN => functions.push(self.parse_function_def(false, false)?),
-                    TokenKind::SEMI => {
-                        self.advance()?;
-                    }
 
                     _ => {
                         return Err(format!(
-                            "Class definitions can only take functions or let statements."
+                            "Class definitions can only take functions, constructor or let statements."
                         ));
                     }
                 }
