@@ -496,10 +496,10 @@ impl Compiler {
             let mut parser = Parser::new(text, tokens);
             let mut nodes = vec![];
 
-            parser.skip_new_lines();
+            parser.skip_new_lines_and_semi();
             while parser.current().is_ok() {
                 nodes.push(parser.parse().unwrap());
-                parser.skip_new_lines();
+                parser.skip_new_lines_and_semi();
             }
 
             for i in nodes.iter() {
